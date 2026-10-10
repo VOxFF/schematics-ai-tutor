@@ -53,7 +53,7 @@ flowchart LR
 - **Backend:** Python. It owns the evaluator and all Claude API calls.
 - **Task flow:** Claude proposes a task. The evaluator validates it and computes its targets, and the frontend receives the resulting task. Details are in [schematics.md](schematics.md#3-task-flow).
 - **Request flow:** the frontend sends the learner's work. The backend runs the evaluator, passes its result together with the task context to Claude, and returns both the verdict and the tutor message.
-- **Transport:** REST for static resources (curated levels), and one WebSocket per learning session for the interactive loop: live evaluation on every board edit and streamed tutor messages. Details are in [contract.md](contract.md).
+- **Transport:** REST for static resources (curated levels), and one WebSocket per learning session for the interactive loop: live evaluation on every board edit and validated tutor messages. Details are in [contract.md](contract.md).
 
 ## 4. Security and operations
 
@@ -73,7 +73,7 @@ claude:
     timeout_s: 30
   tutor_request:               # learner check / hint / message
     model: claude-opus-5-5
-    effort: low
+    effort: medium             # rarer than reactions and matter more
     max_tokens: 16000
     timeout_s: 30
   task_generation:
@@ -88,6 +88,7 @@ tutor:
   idle_threshold_ms: 1500
   max_snapshots: 10
   history_turns: 6
+  offer_hint_after_reactions: 3
 
 task_generation:
   recent_tasks: 10
@@ -113,5 +114,4 @@ The values above are the defaults, as described in [contract.md](contract.md).
 
 ## Open decisions
 
-- Tutor teaching behavior: system prompt and hint content (the interface is fixed in [contract.md](contract.md))
 - Hosting and deployment

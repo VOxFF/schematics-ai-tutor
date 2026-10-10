@@ -41,7 +41,7 @@ The learner has a skill level that starts at 1 and goes up by one with each solv
 2. The learner places components and wires on the grid.
 3. On every edit, the evaluator builds the netlist and computes the values, and meter readings update live. It reports one status, from `short_circuit` through `near_target` to `solved`, with live readings of every placed meter and the issues behind the status.
 4. When the learner pauses (a burst of quick edits counts as one), the backend sends Claude the snapshots since its last call: each grid, its graph and its evaluation. Claude reacts to what the learner just did. A misstep gets a nudge, such as "this wire end isn't touching anything", and progress gets encouragement.
-5. The learner can also ask for a check or a hint, or write a message. Claude responds with feedback and, if asked, the next hint.
+5. The learner can also ask for a check or write a message, and Claude responds. Requesting hints comes later, with the hint ladder.
 6. The learner revises and repeats from step 2, or moves on when the status is `solved`: the skill level goes up by one, and the next task is served. That level was pre-generated in the background.
 
 ## Major constraints
@@ -58,6 +58,4 @@ The learner has a skill level that starts at 1 and goes up by one with each solv
 
 ## To be defined
 
-- Claude's teaching behavior and hint content (the interface is in [contract.md](contract.md))
 - Final level list (draft in [schematics.md](schematics.md))
-- Whether current is measured with an ammeter component or reported directly by the evaluator
