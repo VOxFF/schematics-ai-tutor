@@ -18,3 +18,11 @@ A Claude-based tutor for learning electric circuits and schematics on an interac
 ```
 
 Server output goes to `.run/backend.log`. Usage and cost logs go to `logs/run-<timestamp>.jsonl` (toggle `logs.enabled` in [`config.yaml`](config.yaml)). Details are in [backend/README.md](backend/README.md).
+
+## Checks
+
+```sh
+./check.sh    # links, config vs. docs, layout snapshot, secrets, scripts, backend tests
+```
+
+The same checks run in GitHub Actions on every pull request.
