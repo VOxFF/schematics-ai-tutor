@@ -209,15 +209,16 @@ button.large {
 
 .actions-slot > * {
   grid-area: 1 / 1;
-  justify-self: end;
+  justify-self: stretch; /* both groups take the slot's full width */
   align-self: center;
 }
 
 /* Warning above its buttons. */
 .header .confirm {
   flex-direction: column;
-  align-items: flex-end;
+  align-items: stretch;
   gap: 6px;
+  text-align: right;
 }
 
 .header .confirm span {
@@ -228,6 +229,11 @@ button.large {
 .confirm-buttons {
   display: flex;
   gap: 8px;
+}
+
+/* Cancel and Confirm share the same total width as Restart Learning and Next. */
+.confirm-buttons > button {
+  flex: 1;
 }
 
 button.danger {
