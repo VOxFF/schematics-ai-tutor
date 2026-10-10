@@ -28,6 +28,8 @@ A board is one JSON document. The same shape describes a level's starting board 
 }
 ```
 
+The example is abbreviated. A real document must also list `VM1` and `AM1` in `components` or `inventory`, as the validation rules below require.
+
 ### Coordinates
 
 - A point is `[col, row]`, the same order as x and y in three.js.
@@ -157,7 +159,7 @@ The order of edges, and of the two pins within an edge, carries no meaning. Any 
 
 1. **Union-find over points.** Every wire segment merges its two points. The resulting sets are the electrically connected regions of the grid.
 2. **Pins to groups.** Each component pin joins the set that contains its point. Sets with fewer than two pins are dropped.
-3. **Emit edges:** one pin-pair edge per wire connection between pins.
+3. **Emit edges:** for each group of connected pins, emit pin-pair edges that link every pin in the group. Two pins give one edge; three pins, as at a T-junction, give two edges.
 4. **Pin location map.** The backend also keeps a map from each pin reference to its grid point. It is not part of the graph. It translates graph-level findings, such as an issue on `"AM1.negative"`, back to grid points so three.js can highlight them.
 
 ### Patterns the validator reads from the graph
