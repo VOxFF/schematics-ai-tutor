@@ -51,7 +51,7 @@ Hints are given **only when the learner asks**, one level at a time. The backend
 
 ## 4. Free chat
 
-The learner can write to the tutor at any time. The backend packs the same context as for any tutor call: level, reference, recent chat, snapshots and request.
+The learner can write to the tutor at any time. The backend packs the same context as for any tutor call: level, reference, circuit summary, recent chat, snapshots and request.
 
 - **Concept questions** ("What is a voltmeter?") get full, plain explanations. Explaining concepts doesn't give the task away.
 - **"Just tell me the answer"** is redirected to the hint ladder, kindly.

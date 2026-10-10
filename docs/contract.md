@@ -78,7 +78,7 @@ Every message is a JSON object with a `type` field.
 | `session.start` | `progress?`, `level?`, `board?`, `history?` | Starts a session (the server sends `task.ready` with the curated level for the skill level) or resumes one (`level` given). The server also replies with `evaluation`. |
 | `task.next` | — | Asks for the next task, usually after the current one is solved |
 | `board.update` | `seq`, `board` | Sent on each finished edit (a part dropped, a wire piece placed or removed). The server records a snapshot, re-evaluates and replies with `evaluation` carrying the same `seq`. |
-| `tutor.request` | `request_id`, `action` (`"check"`, `"hint"` or `"message"`), `learner_text?` | Runs the evaluator and then Claude on the latest board |
+| `tutor.request` | `request_id`, `action` (`"check"`, `"hint"` or `"message"`), `learner_text?` | Runs the evaluator and then Claude on the latest board. `"hint"` arrives with the hint ladder, in the learning-depth phase ([plan.md](plan.md#5-learning-depth)). |
 
 **Server → client**
 
@@ -158,7 +158,7 @@ interface TaskSummary {          // one line of task history
   shape: string;                 // e.g. "series: V + 2R + AM"
   difficulty: number;            // 1–5, from the TaskSpec
   hints_used: number;
-  misconceptions: string[];      // tutor labels, e.g. "current is used up"
+  misconceptions: Misconception[];  // fixed tutor labels (tutor.md §5)
 }
 
 interface Progress {
@@ -352,7 +352,7 @@ The prompt has two parts: **task context**, which is the same for every request 
     { "title": "Close the loop", "concept": "closed circuit", "shape": "V + R + VM",
       "difficulty": 1, "hints_used": 0, "misconceptions": [] },
     { "title": "Find the current", "concept": "Ohm's law", "shape": "V + R + AM",
-      "difficulty": 2, "hints_used": 2, "misconceptions": ["bigger resistor means more current"] }
+      "difficulty": 2, "hints_used": 2, "misconceptions": ["bigger_r_more_current"] }
   ],
   "older_tasks": { "count": 1, "concepts": ["closed circuit"] }
 }
