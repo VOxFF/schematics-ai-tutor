@@ -39,8 +39,8 @@ On load, if a saved session exists, the app opens the learning screen and sends 
 
 The **Restart Learning** button in the header:
 
-1. asks for confirmation: "This erases your progress and history. Start over?"
-2. on confirm, clears the saved session from `localStorage` and closes the WebSocket session
+1. asks for confirmation **in place**, with no browser popup: the header's Restart Learning and Next buttons are replaced by "Your progress will be lost.", a **Cancel** button and a red **Confirm** button (Esc also cancels)
+2. on Confirm, clears the saved session from `localStorage` and closes the WebSocket session
 3. shows the start screen
 
 ## 2. Learning screen layout

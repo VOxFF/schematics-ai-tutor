@@ -40,8 +40,8 @@ export default function App() {
     setSession(fresh);
   };
 
+  // Confirmation happens in the header (TutorScreen); this only wipes.
   const restart = () => {
-    if (!window.confirm("This erases your progress and history. Start over?")) return;
     clearSession();
     setError(null);
     setSession(null);

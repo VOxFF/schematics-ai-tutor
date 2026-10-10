@@ -1,11 +1,22 @@
 // Learning (tutor) screen layout from the sketch (docs/gui.md §2). The editor shows the
 // received task JSON until the grid editor exists.
 
+import { useEffect, useState } from "react";
 import { readableJson } from "../lib/jsonfmt.js";
 
 const WIRE_PALETTE = ["Straight (horizontal)", "Straight (vertical)", "Corner", "T", "+"];
 
+// Restart Learning asks for confirmation in place of the buttons (no browser popup).
 function Header({ progress, onRestart }) {
+  const [confirming, setConfirming] = useState(false);
+
+  useEffect(() => {
+    if (!confirming) return undefined;
+    const cancelOnEsc = (e) => e.key === "Escape" && setConfirming(false);
+    window.addEventListener("keydown", cancelOnEsc);
+    return () => window.removeEventListener("keydown", cancelOnEsc);
+  }, [confirming]);
+
   return (
     <header className="panel header">
       <div className="header-info">
@@ -17,12 +28,22 @@ function Header({ progress, onRestart }) {
           <span className="muted">Tasks solved: {progress.history.length}</span>
         </div>
       </div>
-      <div className="actions">
-        <button onClick={onRestart}>Restart Learning</button>
-        <button className="primary" disabled title="Enabled when the task is solved">
-          Next
-        </button>
-      </div>
+      {confirming ? (
+        <div className="actions confirm" role="alertdialog" aria-label="Confirm restart">
+          <span>Your progress will be lost.</span>
+          <button onClick={() => setConfirming(false)}>Cancel</button>
+          <button className="danger" onClick={onRestart} autoFocus>
+            Confirm
+          </button>
+        </div>
+      ) : (
+        <div className="actions">
+          <button onClick={() => setConfirming(true)}>Restart Learning</button>
+          <button className="primary" disabled title="Enabled when the task is solved">
+            Next
+          </button>
+        </div>
+      )}
     </header>
   );
 }

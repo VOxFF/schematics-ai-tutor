@@ -56,13 +56,33 @@ test("a returning learner resumes on the tutor screen without a new request", as
   expect(fetch).not.toHaveBeenCalled();
 });
 
-test("restart learning wipes the session and returns to the start screen", () => {
+function renderSaved() {
   localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 2, history: [] }, level: LEVEL }));
-  vi.spyOn(window, "confirm").mockReturnValue(true);
   render(<App />);
+}
+
+test("restart learning asks in place, then wipes the session and returns to the start screen", () => {
+  renderSaved();
   fireEvent.click(screen.getByRole("button", { name: "Restart Learning" }));
+  expect(screen.getByText("Your progress will be lost.")).toBeDefined();
+  expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Restart Learning" })).toBeNull();
+
+  fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
   expect(screen.getByRole("button", { name: "Start Learning" })).toBeDefined();
   expect(localStorage.getItem(SESSION_KEY)).toBeNull();
+});
+
+test("cancel and Esc keep the session", () => {
+  renderSaved();
+  fireEvent.click(screen.getByRole("button", { name: "Restart Learning" }));
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(screen.getByRole("button", { name: "Next" })).toBeDefined();
+
+  fireEvent.click(screen.getByRole("button", { name: "Restart Learning" }));
+  fireEvent.keyDown(window, { key: "Escape" });
+  expect(screen.getByRole("button", { name: "Restart Learning" })).toBeDefined();
+  expect(localStorage.getItem(SESSION_KEY)).not.toBeNull();
 });
 
 test("a failed generation shows the error and a retry button", async () => {

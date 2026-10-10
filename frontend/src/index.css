@@ -198,7 +198,19 @@ button.large {
 
 .header .actions {
   display: flex;
+  align-items: center;
   gap: 8px;
+}
+
+.header .confirm span {
+  color: var(--error);
+  font-weight: 600;
+}
+
+button.danger {
+  background: var(--error);
+  border-color: var(--error);
+  color: #fff;
 }
 
 .task {
