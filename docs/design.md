@@ -151,6 +151,49 @@ The values above are the defaults, as described in [contract.md](contract.md). T
 
 **Why three.js:** every component and wire is its own scene node, so the learner can select, move and edit any of them individually.
 
+## 7. Repository layout
+
+A snapshot of the repository; it is updated as the structure changes. Entries marked *(gitignored)* exist only locally.
+
+```text
+schematics-ai-tutor/
+├── README.md                  project overview and how to run
+├── LICENSE
+├── config.yaml                models, knobs, rate limits, logging, pricing (§5)
+├── start.sh                   start the local stack in the background
+├── stop.sh                    stop it
+├── .env.example               optional local overrides (copy to .env)
+├── .gitignore
+├── docs/
+│   ├── task.md                product, concept of operations, constraints
+│   ├── design.md              system design (this file)
+│   ├── contract.md            frontend ↔ backend and backend ↔ Claude interfaces
+│   ├── schematics.md          grid and graph formats, task flow, evaluator, levels
+│   ├── tutor.md               tutor behavior, hint ladder, guardrails
+│   ├── gui.md                 screens, layout, interaction, learner journey
+│   ├── plan.md                build plan with checklist
+│   └── images/
+│       └── gui-layout.png     GUI layout sketch
+├── backend/
+│   ├── README.md
+│   ├── pyproject.toml         FastAPI service and dependencies
+│   ├── app/
+│   │   ├── main.py            FastAPI app: /api/health, startup and shutdown
+│   │   ├── config.py          loads the root config.yaml
+│   │   └── usage_log.py       per-run usage and cost log
+│   ├── tests/
+│   │   ├── test_health.py
+│   │   └── test_usage_log.py
+│   ├── keys/
+│   │   ├── README.md
+│   │   └── apikey.txt         Anthropic API key (gitignored)
+│   └── .venv/                 Python virtualenv, created by start.sh (gitignored)
+├── frontend/
+│   └── README.md              placeholder until the React app exists
+├── logs/                      usage and cost logs, one per run (gitignored)
+└── .run/                      PID files and server output from start.sh (gitignored)
+```
+
 ## Open decisions
 
 - Hosting and deployment
