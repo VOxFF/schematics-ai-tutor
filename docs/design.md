@@ -195,6 +195,8 @@ schematics-ai-tutor/
 │   │   ├── evaluate.py        status, readings and issues
 │   │   ├── task_spec.py       TaskSpec schema, validation stages, targets, task-grid derivation
 │   │   ├── task_generation.py Claude task generation with the validate_grid tool
+│   │   ├── tutor.py           tutor call: context, TutorMessage schema, backstop
+│   │   ├── session.py         WebSocket learning session
 │   │   └── jsonfmt.py         readable JSON formatting
 │   ├── data/
 │   │   └── examples/          example TaskSpecs for the generation prompt
@@ -224,6 +226,7 @@ schematics-ai-tutor/
 │   │   └── lib/
 │   │       ├── api.js         backend calls
 │   │       ├── session.js     localStorage session
+│   │       ├── tutorSession.js WebSocket session hook (chat, live evaluation)
 │   │       └── jsonfmt.js     readable JSON, same rules as the backend formatter
 │   ├── node_modules/          npm packages, installed by start.sh (gitignored)
 │   └── dist/                  production build output (gitignored)

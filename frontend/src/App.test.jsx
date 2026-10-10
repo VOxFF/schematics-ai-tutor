@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import App from "./App.jsx";
 
 const LEVEL = {
@@ -25,7 +25,35 @@ function mockFetch(response) {
 }
 const ok = (body) => ({ ok: true, status: 200, json: () => Promise.resolve(body) });
 
-beforeEach(() => localStorage.clear());
+// Fake WebSocket: records what the app sends and lets a test play the server.
+class FakeSocket {
+  static OPEN = 1;
+  static last = null;
+  constructor(url) {
+    this.url = url;
+    this.sent = [];
+    this.readyState = 0;
+    FakeSocket.last = this;
+    setTimeout(() => {
+      this.readyState = FakeSocket.OPEN;
+      this.onopen?.();
+    }, 0);
+  }
+  send(data) {
+    this.sent.push(JSON.parse(data));
+  }
+  close() {
+    this.readyState = 3;
+  }
+  serverSends(message) {
+    act(() => this.onmessage?.({ data: JSON.stringify(message) }));
+  }
+}
+
+beforeEach(() => {
+  localStorage.clear();
+  vi.stubGlobal("WebSocket", FakeSocket);
+});
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -101,4 +129,47 @@ test("the start screen shows eight learning path steps, the first current and th
   expect(steps[0].textContent).toBe("Closed LoopCurrent flows only around a complete loop");
   expect(steps[0].querySelector(".bolt")).not.toBeNull();
   expect(steps.slice(1).every((li) => li.querySelector(".lock"))).toBe(true);
+});
+
+test("the learner chats with the tutor through the session socket", async () => {
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [] }));
+  render(<App />);
+  const input = await screen.findByPlaceholderText("Ask the tutor…");
+  const ws = FakeSocket.last;
+  expect(ws.url).toMatch(/\/ws\/session$/);
+  expect(ws.sent[0]).toMatchObject({ type: "session.start", level: { id: "gen-1234" }, history: [] });
+
+  ws.serverSends({ type: "evaluation", seq: 0, evaluation: { status: "open_circuit", readings: { VM1: 0 }, issues: [] } });
+  expect(screen.getByLabelText("Task and targets").textContent).toContain("VM1: 0");
+
+  fireEvent.change(input, { target: { value: "Why is it zero?" } });
+  fireEvent.submit(input.closest("form"));
+  const request = ws.sent[1];
+  expect(request).toMatchObject({ type: "tutor.request", action: "message", learner_text: "Why is it zero?" });
+  expect(screen.getByText("Why is it zero?")).toBeDefined();
+
+  ws.serverSends({ type: "tutor.started", request_id: request.request_id, trigger: "request" });
+  expect(screen.getByText("Tutor is thinking…")).toBeDefined();
+  ws.serverSends({
+    type: "tutor.message",
+    request_id: request.request_id,
+    evaluation: { status: "open_circuit", readings: { VM1: 0 }, issues: [] },
+    message: { meta: { principle: "closed_loop", highlights: [], hint_level: 0, misconception: null },
+               chat: { kind: "question", text: "Does the current have a way back?" } },
+  });
+  expect(screen.queryByText("Tutor is thinking…")).toBeNull();
+  expect(screen.getByText("Does the current have a way back?")).toBeDefined();
+  const saved = JSON.parse(localStorage.getItem(SESSION_KEY)).chat;
+  expect(saved.map((m) => m.role)).toEqual(["learner", "tutor"]);
+});
+
+test("a tutor error shows in the chat", async () => {
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [] }));
+  render(<App />);
+  const input = await screen.findByPlaceholderText("Ask the tutor…");
+  fireEvent.change(input, { target: { value: "hello" } });
+  fireEvent.submit(input.closest("form"));
+  const request = FakeSocket.last.sent[1];
+  FakeSocket.last.serverSends({ type: "error", code: "rate_limited", message: "The tutor needs a moment; try again shortly.", request_id: request.request_id });
+  expect(screen.getByText("The tutor needs a moment; try again shortly.")).toBeDefined();
 });

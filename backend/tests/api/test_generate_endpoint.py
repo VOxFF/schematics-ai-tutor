@@ -1,8 +1,11 @@
 from fastapi.testclient import TestClient
 
-from app.main import app, get_claude, get_config, get_usage_log
+from app.main import References, app, get_claude, get_config, get_references, get_usage_log
 from app.usage_log import UsageLog
 from tests.conftest import FakeClaude, as_claude_output, load_example, text_response
+
+
+REFERENCES = References()
 
 
 def client_with(claude, config):
@@ -10,6 +13,7 @@ def client_with(claude, config):
         get_claude: lambda: claude,
         get_config: lambda: config,
         get_usage_log: lambda: UsageLog(None),
+        get_references: lambda: REFERENCES,
     }
     return TestClient(app)
 
@@ -22,6 +26,7 @@ def test_generate_returns_a_level(config):
     assert body["level"]["order"] == 3
     assert body["level"]["board"]["inventory"][0]["id"] == "R2"
     assert body["difficulty"] == 3 and body["attempts"] == 1
+    assert body["level"]["id"] in REFERENCES  # reference kept server-side for the tutor
 
 
 def test_generate_without_claude_is_503(config):

@@ -63,6 +63,8 @@ Errors: `404` for an unknown level, `429` when the rate limit is exceeded.
 
 ### WebSocket session
 
+> **Build status.** Implemented: `session.start`, `board.update` → `evaluation`, `tutor.request` with `action: "message"` → `tutor.started` → `tutor.message`, and `error`. The server keeps generated levels' reference solutions in memory by level ID for the tutor. Until the editor sends edits, the tutor context carries the current snapshot only, not a list. Still to come: `task.next` / `task.ready`, reactions, and `hint`.
+
 One connection is one learning session, and it can span several tasks.
 
 - **Server state.** The server keeps the session state in memory for the life of the connection:

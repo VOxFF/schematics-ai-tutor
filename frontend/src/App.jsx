@@ -47,6 +47,14 @@ export default function App() {
     setSession(null);
   };
 
+  const setChat = useCallback((chat) => {
+    setSession((current) => {
+      const next = { ...current, chat };
+      saveSession(next);
+      return next;
+    });
+  }, []);
+
   if (!session) return <StartScreen onStart={start} />;
   return (
     <TutorScreen
@@ -55,6 +63,7 @@ export default function App() {
       error={error}
       onRestart={restart}
       onRetry={() => fetchTask(session)}
+      onChat={setChat}
     />
   );
 }

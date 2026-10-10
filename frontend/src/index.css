@@ -366,7 +366,36 @@ button.danger {
 }
 
 .chat .messages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   overflow: auto;
+  min-height: 0;
+}
+
+.chat .learner-message {
+  align-self: flex-end;
+  max-width: 85%;
+}
+
+.chat .tutor-message {
+  align-self: flex-start;
+  max-width: 90%;
+}
+
+.chat .error-message {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--error-tint);
+  color: var(--error);
+}
+
+.chat form {
+  display: flex;
+}
+
+.chat form input {
+  flex: 1;
 }
 
 /* Tutor messages on a light accent tint, learner messages neutral (when the chat exists). */
