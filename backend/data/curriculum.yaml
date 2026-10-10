@@ -9,7 +9,8 @@
 #   decoys     extra inventory parts that aren't needed
 #   targets    number of target meters
 #   variants   per-task overrides, cycled by the task number within the level
-# Ranges are [min, max], inclusive.
+# Ranges are [min, max], inclusive. Removed wires grow with the level, so the learner
+# builds more of the circuit themselves as they progress.
 
 levels:
   - level: 1
@@ -32,7 +33,7 @@ levels:
     tasks: 2
     grid: { columns: [10, 12], rows: [6, 8] }
     circuit: a source, one resistor and a meter; the learner picks the resistor
-    removed: { wires: [1, 1], parts: [1, 1] }
+    removed: { wires: [1, 2], parts: [1, 1] }
     decoys: [1, 2]
     targets: [1, 1]
 
@@ -42,7 +43,7 @@ levels:
     tasks: 3
     grid: { columns: [10, 12], rows: [6, 8] }
     circuit: a source, one resistor and a meter
-    removed: { wires: [2, 3], parts: [1, 1] }
+    removed: { wires: [2, 4], parts: [1, 1] }
     decoys: [3, 3]
     targets: [1, 1]
 
@@ -52,7 +53,7 @@ levels:
     tasks: 3
     grid: { columns: [12, 12], rows: [8, 8] }
     circuit: a source and two resistors in series, with a voltmeter across one of them
-    removed: { wires: [1, 3], parts: [1, 2] }
+    removed: { wires: [3, 5], parts: [1, 2] }
     decoys: [2, 3]
     targets: [1, 1]
 
@@ -62,7 +63,7 @@ levels:
     tasks: 3
     grid: { columns: [12, 12], rows: [8, 8] }
     circuit: a source, two resistors in parallel and an ammeter for the total or a branch current
-    removed: { wires: [1, 3], parts: [1, 1] }
+    removed: { wires: [4, 6], parts: [1, 1] }
     decoys: [2, 3]
     targets: [1, 1]
 
@@ -72,7 +73,7 @@ levels:
     tasks: 4
     grid: { columns: [12, 14], rows: [8, 10] }
     circuit: a source and three resistors in a series–parallel combination, with a voltmeter and an ammeter
-    removed: { wires: [1, 3], parts: [2, 2] }
+    removed: { wires: [5, 8], parts: [2, 2] }
     decoys: [2, 3]
     targets: [2, 2]
 
@@ -82,7 +83,7 @@ levels:
     tasks: 4
     grid: { columns: [10, 12], rows: [8, 8] }
     circuit: a working circuit of a source and one or two resistors; the meters are missing
-    removed: { wires: [0, 2], parts: [1, 2], meters: [1, 2] }
+    removed: { wires: [2, 4], parts: [1, 2], meters: [1, 2] }
     decoys: [0, 0]
     targets: [1, 2]
     removed_targets_allowed: true   # the learner places the target meters themselves
@@ -93,7 +94,7 @@ levels:
     tasks: 4
     grid: { columns: [10, 12], rows: [6, 8] }
     circuit: a source, one resistor and an ammeter; some decoy resistors would overheat (more than 5 W)
-    removed: { wires: [1, 2], parts: [1, 1] }
+    removed: { wires: [3, 5], parts: [1, 1] }
     decoys: [2, 3]
     targets: [1, 1]
 

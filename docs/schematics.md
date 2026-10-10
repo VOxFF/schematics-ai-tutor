@@ -195,18 +195,18 @@ flowchart TD
 ### Progression
 
 - **Skill level.** The backend keeps the learner's skill level, an integer starting at 1, and adds 1 each time a task is solved. Nothing else changes it.
-- **Curriculum.** The skill level maps to a **curriculum level** and a task within it ([`backend/data/curriculum.yaml`](../backend/data/curriculum.yaml)). More complex levels get more practice: levels 1–2 take 2 tasks each, levels 3–5 take 3, and levels 6–8 take 4. That is 25 tasks to finish level 8; after that, tasks stay at level 8.
+- **Curriculum.** The skill level maps to a **curriculum level** and a task within it ([`backend/data/curriculum.yaml`](../backend/data/curriculum.yaml)). More complex levels get more practice and more construction (removed wires grow with the level): levels 1–2 take 2 tasks each, levels 3–5 take 3, and levels 6–8 take 4. That is 25 tasks to finish level 8; after that, tasks stay at level 8.
 
 | Level | Concept | Grid | Missing (the learner places it) | Decoys | Targets |
 |---|---|---|---|---|---|
 | 1 | Closed loop | 8–10 × 6 | Task 1: 1–2 wire pieces. Task 2: several elements, e.g. the resistor and a wire, or the battery | 0 | 1 |
-| 2 | Ohm's law: pick the resistor | 10–12 × 6–8 | 1 resistor + 1 wire | 1–2 | 1 |
-| 3 | Ohm's law, more choices | 10–12 × 6–8 | 1 resistor + 2–3 wires | 3 | 1 |
-| 4 | Series resistors (voltage divider) | 12 × 8 | 1–2 resistors + 1–3 wires | 2–3 | 1 |
-| 5 | Parallel resistors | 12 × 8 | 1 branch resistor + 1–3 wires | 2–3 | 1 |
-| 6 | Series–parallel combination | 12–14 × 8–10 | 2 resistors + 1–3 wires | 2–3 | 2 (a voltage and a current) |
-| 7 | Measuring right | 10–12 × 8 | The meters (1–2) and up to 2 wires; the learner places the target meters | 0 | 1–2 |
-| 8 | Power and safety | 10–12 × 6–8 | 1 resistor + 1–2 wires; some decoys would overheat | 2–3 | 1 |
+| 2 | Ohm's law: pick the resistor | 10–12 × 6–8 | 1 resistor + 1–2 wires | 1–2 | 1 |
+| 3 | Ohm's law, more choices | 10–12 × 6–8 | 1 resistor + 2–4 wires | 3 | 1 |
+| 4 | Series resistors (voltage divider) | 12 × 8 | 1–2 resistors + 3–5 wires | 2–3 | 1 |
+| 5 | Parallel resistors | 12 × 8 | 1 branch resistor + 4–6 wires | 2–3 | 1 |
+| 6 | Series–parallel combination | 12–14 × 8–10 | 2 resistors + 5–8 wires | 2–3 | 2 (a voltage and a current) |
+| 7 | Measuring right | 10–12 × 8 | The meters (1–2) and 2–4 wires; the learner places the target meters | 0 | 1–2 |
+| 8 | Power and safety | 10–12 × 6–8 | 1 resistor + 3–5 wires; some decoys would overheat | 2–3 | 1 |
 | 9 | Troubleshooting | — | Find and fix one fault. *Needs a format extension for replaced parts; not generated yet.* | | |
 
 - **Generation follows the level.** The backend picks the grid size within the level's range and sends Claude the level's rules: concept, goal, circuit, what to remove, decoys, targets, and the task's variant. Claude chooses the circuit within those rules; a random variation hint (layout, source voltage, resistor range) keeps tasks different even for identical learners.
