@@ -1,2 +1,9 @@
 # schematics-ai-tutor
-Claude based leaning tool for leaning schematics and electirc rules.
+
+A Claude-based tutor for learning electric circuits and schematics on an interactive breadboard.
+
+## Structure
+
+- [`docs/`](docs/): design documents. Start with [approach.md](docs/approach.md).
+- [`frontend/`](frontend/): breadboard editor and tutor UI
+- [`backend/`](backend/): circuit evaluator and Claude API integration
