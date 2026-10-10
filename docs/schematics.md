@@ -130,18 +130,13 @@ The graph is a distilled version of a grid. It drops all placement information (
 ```json
 {
   "components": [
-    { "id": "AM1", "type": "ammeter" },
-    { "id": "R1",  "type": "resistor",       "value": 20 },
-    { "id": "V1",  "type": "voltage_source", "value": 12 },
-    { "id": "VM1", "type": "voltmeter" }
+    { "id": "V1", "type": "voltage_source", "value": 12, "pins": ["positive", "negative"] },
+    { "id": "AM1", "type": "ammeter", "pins": ["positive", "negative"] },
+    { "id": "R1", "type": "resistor", "value": 20, "pins": ["a", "b"] }
   ],
-  "edges": [
-    ["AM1.negative", "V1.positive"],
-    ["AM1.positive", "R1.a"], ["AM1.positive", "VM1.positive"],
-    ["R1.b", "V1.negative"], ["R1.b", "VM1.negative"]
-  ],
-  "targets": { "VM1": { "value": 4.0, "tolerance": 0.1 } },
-  "inventory": [ { "id": "R3", "type": "resistor", "value": 50 } ]
+  "inventory": [ { "id": "R3", "type": "resistor", "value": 50 } ],
+  "edges": [ ["V1.positive", "AM1.positive"], ["AM1.negative", "R1.a"] ],
+  "targets": { "AM1": { "value": 0.2 } }
 }
 ```
 
@@ -149,27 +144,20 @@ The graph is a distilled version of a grid. It drops all placement information (
 
 | Key | Meaning |
 |---|---|
-| `components` | The graph's nodes: every placed component, with `id`, `type` and `value`, sorted by `id` |
-| `edges` | Pin-to-pin connections: two pins joined by wires, in canonical form (see below) |
-| `targets` | Copied from the grid |
+| `components` | The graph's nodes: every placed component, with `id`, `type`, `value` and its pin names |
 | `inventory` | Copied from the grid: the parts not yet placed |
+| `edges` | Connections, each a pair of pins joined by wires |
+| `targets` | Copied from the grid, in the same format |
 
 A **pin reference** is the string `"<componentId>.<pinName>"`, for example `"R1.a"` or `"V1.positive"`.
 
-### Canonical form
-
-The same circuit always produces exactly the same graph, byte for byte. This makes two graphs comparable, for example the learner's against the reference. The rules:
-
-1. Group the pins that are connected to each other through wires. A pin connected to nothing appears in no edge.
-2. Within each group, sort the pins lexicographically. Pair the first pin with each of the others in turn; when 3 or more pins meet, this gives a star.
-3. Sort the edges lexicographically.
-4. Sort `components` and `inventory` by `id`.
+The order of edges, and of the two pins within an edge, carries no meaning. Any sorting or normalization, for example to compare the learner's graph with the reference, happens inside the backend and is not part of the format.
 
 ### Grid → graph conversion
 
 1. **Union-find over points.** Every wire segment merges its two points. The resulting sets are the electrically connected regions of the grid.
 2. **Pins to groups.** Each component pin joins the set that contains its point. Sets with fewer than two pins are dropped.
-3. **Emit edges** in canonical form.
+3. **Emit edges:** one pin-pair edge per wire connection between pins.
 4. **Pin location map.** The backend also keeps a map from each pin reference to its grid point. It is not part of the graph. It translates graph-level findings, such as an issue on `"AM1.negative"`, back to grid points so three.js can highlight them.
 
 ### Patterns the validator reads from the graph

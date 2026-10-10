@@ -133,11 +133,11 @@ interface Board {                // the `grid` document
 
 type PinRef = string;            // "<componentId>.<pinName>", e.g. "R1.a"
 
-interface Graph {                // the `graph` document: connectivity only, canonical form
-  components: { id: string; type: ComponentType; value?: number }[];
-  edges: [PinRef, PinRef][];     // pin-to-pin connections, canonical
-  targets: Board["targets"];
+interface Graph {                // the `graph` document: connectivity only
+  components: { id: string; type: ComponentType; value?: number; pins: string[] }[];
   inventory: InventoryItem[];
+  edges: [PinRef, PinRef][];     // pin pairs joined by wires; order carries no meaning
+  targets: Board["targets"];
 }
 
 interface LevelSummary {
