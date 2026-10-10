@@ -91,24 +91,40 @@ Rendered with three.js in an orthographic, top-down view. Every grid point, comp
 - Meters show `--` when the reading is `null`.
 - `fixed` parts show a small lock and cannot be moved.
 
+**Selection and highlights**
+
+- **Selection** is a state. The selected element is **editable**: it can be dragged, rotated and deleted. Only one element is selected at a time.
+- **A highlight** is visual only: an outline (silhouette line) around the element's shape. Selection shows a highlight, but a highlight does not make an element selected or editable.
+- **Highlight colors:**
+
+| Highlight | Color | Meaning |
+|---|---|---|
+| Selection | Blue outline | The learner selected this element; it is editable |
+| Drop target, valid | Blue, on the grid holes nearest the element's pins | Where the element will connect if dropped |
+| Drop target, invalid | Red, on those holes | The spot is taken or off the grid; dropping snaps back |
+| Tutor `attention` | Amber, pulsing outline | Claude draws attention here |
+| Tutor `error` | Red outline | Claude points at a problem |
+| Tutor `success` | Green outline | Claude points at what was done right |
+
+A tutor highlight lasts until the next tutor message, or until the learner edits the highlighted element.
+
 **Interaction**
 
-| Action | How |
+| Action | Behavior |
 |---|---|
-| Place a part | Drag it from the inventory. While dragging, the pins it would snap to are highlighted. Drop to place it. |
-| Rotate | Press **R** while dragging or while a part or wire piece is selected |
-| Place a wire piece | Drag it from the wire palette and drop it onto a point. Each placement gets the next wire ID. |
-| Select | Click a part or wire piece |
-| Remove | Select it and press **Delete**. A part goes back to the inventory; a wire piece just disappears. |
-| See connections | Hover a point to highlight every point and pin in the same net |
+| Mouse down on an element | Selects it (blue outline). The same press can turn straight into a drag, with no separate click needed. |
+| Drag from the inventory, the wire palette, or the grid | The grid holes nearest the element's pins are highlighted, showing where it will connect |
+| **R** while dragging | Rotates the element; the pin highlights follow the new orientation |
+| **R** while selected | Rotates the element in place |
+| Release on a valid spot | Drops the element onto the highlighted holes. A new wire piece gets the next wire ID. |
+| Release on an invalid spot | The element snaps back to where it came from: the inventory, the palette, or its previous position |
+| **Esc** while dragging | Cancels the drag; the element snaps back |
+| **Del** on the selection | A part goes back to the inventory; a wire piece is deleted |
+| Click empty grid, or **Esc** | Deselects |
+| Hover a hole | Highlights every hole and pin in the same net |
 
-- **Sending edits.** Each finished edit (drop, rotate, remove) sends `board.update`. Dragging stays local until the drop.
-- **Tutor highlights.** Components, wires and points in `meta.highlights` are drawn with their style:
-  - `attention` pulses
-  - `error` is a red outline
-  - `success` is a green outline
-
-  A highlight lasts until the next tutor message, or until the learner edits the highlighted element.
+- **Fixed parts** can be selected, so they show the outline and the hint bar explains them, but they can't be dragged, rotated or deleted.
+- **Sending edits.** Each finished edit (drop, rotate, delete) sends one `board.update`. Dragging stays local until the drop.
 
 ## 5. Hint bar
 
@@ -116,12 +132,12 @@ The frontend generates the hint text from the current UI state. Claude and the b
 
 | UI state | Hint |
 |---|---|
-| Nothing selected | "Click an element to select it, or drag one from the inventory" |
-| Part or wire selected | "Press R to rotate · Delete to remove" |
+| Nothing selected | "Click or drag an element on the grid, or drag one from the inventory" |
+| Part or wire selected | "Drag to move · R to rotate · Del to remove · Esc to deselect" |
 | Fixed part selected | "This part is fixed and can't be moved" |
-| Dragging a part | "Drop onto the highlighted pins to connect · Press R to change orientation" |
-| Dragging a wire piece | "Drop onto a point · Press R to rotate" |
-| Drop not possible here | "Can't place here: the spot is taken or off the grid" |
+| Dragging a part | "Drop onto the highlighted holes to connect · R to rotate · Esc to cancel" |
+| Dragging a wire piece | "Drop onto the highlighted holes · R to rotate · Esc to cancel" |
+| Dragging over an invalid spot | "Can't place here: the spot is taken or off the grid" |
 
 ## 6. Inventory
 
