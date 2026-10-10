@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { resistorBands } from "./colorCode.js";
 import { buildBoard, toWorld } from "./scene.js";
-import { CELL } from "./theme.js";
+import { CELL, STYLE } from "./style.js";
 
 describe("resistor color bands", () => {
   test.each([
@@ -66,7 +66,7 @@ describe("band order on screen", () => {
     const r1 = buildBoard(board).getObjectByName("R1");
     r1.updateMatrixWorld(true);
     const bands = [];
-    r1.traverse((o) => o.isMesh && o.geometry.parameters?.width === 4 && bands.push(o.getWorldPosition(new THREE.Vector3())));
+    r1.traverse((o) => o.isMesh && o.geometry.parameters?.width === STYLE.resistor.band_width && bands.push(o.getWorldPosition(new THREE.Vector3())));
     return bands;
   };
 
@@ -78,5 +78,32 @@ describe("band order on screen", () => {
   ])("%s: digit bands first, gold last, reading left→right or top→bottom", (orientation, pins, axis) => {
     const order = bandPositions(orientation, pins).map((p) => (axis === "x" ? p.x : -p.y));
     expect(order).toEqual([...order].sort((a, b) => a - b));
+  });
+});
+
+describe("schematic style", () => {
+  test("the YAML style is loaded", () => {
+    expect(STYLE.wire.thickness).toBeGreaterThan(0);
+    expect(STYLE.meter.voltmeter_fill).toMatch(/^#[0-9a-f]{6}$/i);
+  });
+
+  test("sizes and colors come from the style", () => {
+    const board = {
+      grid: { columns: 12, rows: 8 },
+      wires: [{ id: "W1", segments: [[[1, 1], [2, 1]]] }],
+      components: [{ id: "V1", type: "voltage_source", value: 12, fixed: true, orientation: "N",
+                     pins: { positive: [3, 3], negative: [3, 5] } }],
+    };
+    const root = buildBoard(board);
+    const segment = root.getObjectByName("W1").children[0];
+    expect(segment.geometry.parameters.height).toBe(STYLE.wire.thickness);
+
+    const plates = [];
+    root.getObjectByName("V1").traverse((o) => o.isMesh && o.geometry.parameters?.height === STYLE.battery.long_plate && plates.push(o));
+    expect("#" + plates[0].material.color.getHexString()).toBe(STYLE.battery.positive_color.toLowerCase());
+
+    const signs = [];
+    root.getObjectByName("V1").traverse((o) => o.isCSS2DObject && signs.push(o.element.textContent));
+    expect(signs).toEqual(expect.arrayContaining(["+", "−"]));
   });
 });

@@ -61,6 +61,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Start screen: what it is, how it works, learning path, Start Learning
 - [x] Learning screen layout: header, task/targets panel, editor (shows the task JSON for now), hint bar, inventory, chat placeholder
 - [x] Grid rendering: schematic symbols, labels, resistor color bands, live readings (three.js, one scene node per element; JSON view behind a toggle)
+- [x] Schematic style config: `frontend/src/editor/schematic-style.yaml`
 - [ ] Selection and drag-and-drop: click-and-drag, pin-target highlights, R to rotate, Del, Esc, snap-back
 - [ ] Placing and removing components from inventory
 - [ ] Wire palette: horizontal, vertical, corner, T, + (non-depleting, R to rotate)

@@ -3,7 +3,7 @@
 import * as THREE from "three";
 import { CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import { BAND_COLORS, resistorBands } from "./colorCode.js";
-import { CELL, THEME } from "./theme.js";
+import { CELL, STYLE } from "./style.js";
 
 const PIN_NAMES = {
   voltage_source: ["positive", "negative"],
@@ -36,47 +36,57 @@ function ring(inner, outer, color, z = 0) {
   return mesh;
 }
 
-function label(text, className, x = 0, y = 0) {
+function label(text, className, x = 0, y = 0, size = STYLE.labels.size) {
   const element = document.createElement("div");
   element.className = className;
   element.textContent = text;
+  element.style.fontSize = `${size}px`;
   const object = new CSS2DObject(element);
   object.position.set(x, y, 0);
   return object;
 }
 
 // Symbol in a local frame: body at the origin, first pin at (+CELL, 0), second at (-CELL, 0).
+// Sizes and colors come from schematic-style.yaml.
 function symbol(component) {
+  const { pin, outline, resistor, battery, meter } = STYLE;
   const g = new THREE.Group();
-  const lead = (from, to) => g.add(rect(Math.abs(to - from), 2.5, THEME.ink, (from + to) / 2, 0, 0.1));
-  g.add(disc(3.5, THEME.ink, CELL, 0, 0.3), disc(3.5, THEME.ink, -CELL, 0, 0.3)); // pins
+  const lead = (from, to) => g.add(rect(Math.abs(to - from), pin.lead_thickness, pin.color, (from + to) / 2, 0, 0.1));
+  g.add(disc(pin.connector_radius, pin.color, CELL, 0, 0.3), disc(pin.connector_radius, pin.color, -CELL, 0, 0.3));
 
   if (component.type === "resistor") {
-    lead(CELL, 22);
-    lead(-22, -CELL);
-    g.add(rect(46, 18, THEME.ink, 0, 0, 0.1), rect(43, 15, THEME.resistorBody, 0, 0, 0.2));
+    const half = resistor.length / 2;
+    lead(CELL, half);
+    lead(-half, -CELL);
+    const t = outline.thickness * 2;
+    g.add(rect(resistor.length, resistor.height, outline.color, 0, 0, 0.1));
+    g.add(rect(resistor.length - t, resistor.height - t, resistor.fill, 0, 0, 0.2));
     // W and N rotate the symbol by 180° / 90°; mirror the bands so the code always reads
     // left to right or top to bottom, with the gold tolerance band last.
     const mirror = component.orientation === "W" || component.orientation === "N" ? -1 : 1;
+    const step = resistor.length / 6;
     (resistorBands(component.value) ?? []).forEach((band, i) => {
-      const x = -12 + i * 7 + (i === 3 ? 5 : 0);
-      g.add(rect(4, 15, new THREE.Color(BAND_COLORS[band]), mirror * x, 0, 0.3));
+      const x = -resistor.length / 2 + step * (i + 1) + (i === 3 ? step * 0.6 : 0);
+      g.add(rect(resistor.band_width, resistor.height - t, BAND_COLORS[band], mirror * x, 0, 0.3));
     });
   } else if (component.type === "voltage_source") {
-    lead(CELL, 5);
-    lead(-5, -CELL);
-    g.add(rect(2.5, 30, THEME.ink, 5, 0, 0.2)); // long plate: positive
-    g.add(rect(5, 16, THEME.ink, -5, 0, 0.2)); // short plate: negative
-    g.add(label("+", "editor-plus", 14, 14));
+    const half = battery.gap / 2;
+    lead(CELL, half);
+    lead(-half, -CELL);
+    g.add(rect(battery.long_plate_thickness, battery.long_plate, battery.positive_color, half, 0, 0.2));
+    g.add(rect(battery.short_plate_thickness, battery.short_plate, battery.negative_color, -half, 0, 0.2));
+    const off = battery.long_plate / 2 + 4;
+    g.add(label("+", "editor-sign editor-plus", half + 6, off, battery.sign_size));
+    g.add(label("−", "editor-sign editor-minus", -half - 6, off, battery.sign_size));
   } else {
-    lead(CELL, 16);
-    lead(-16, -CELL);
-    g.add(disc(16, THEME.meterFill, 0, 0, 0.1), ring(14.5, 17, THEME.ink, 0.2));
-    g.add(label(component.type === "ammeter" ? "A" : "V", "editor-meter-letter"));
+    lead(CELL, meter.radius);
+    lead(-meter.radius, -CELL);
+    const fill = component.type === "ammeter" ? meter.ammeter_fill : meter.voltmeter_fill;
+    g.add(disc(meter.radius, outline.color, 0, 0, 0.1), disc(meter.radius - outline.thickness, fill, 0, 0, 0.2));
+    g.add(label(component.type === "ammeter" ? "A" : "V", "editor-meter-letter", 0, 0, meter.letter_size));
   }
   return g;
 }
-
 function componentNode(component, reading) {
   const [first, second] = PIN_NAMES[component.type].map((name) => component.pins[name]);
   const [dx, dy] = DIRECTIONS[component.orientation];
@@ -92,10 +102,16 @@ function componentNode(component, reading) {
 
   const vertical = dx === 0;
   const valueText = component.value != null ? ` ${component.value} ${UNITS[component.type] ?? ""}` : "";
-  node.add(label(`${component.id}${valueText}`.trim(), "editor-label", vertical ? 30 : 0, vertical ? 0 : -24));
+  // Labels sit beside the symbol: right of vertical parts, below horizontal ones; readings opposite.
+  const halfSize = {
+    resistor: STYLE.resistor.height / 2,
+    voltage_source: STYLE.battery.long_plate / 2,
+  }[component.type] ?? STYLE.meter.radius;
+  const clearance = halfSize + 12;
+  node.add(label(`${component.id}${valueText}`.trim(), "editor-label", vertical ? clearance : 0, vertical ? 0 : -clearance));
   if (READING_UNITS[component.type]) {
     const text = reading == null ? "--" : `${reading} ${READING_UNITS[component.type]}`;
-    node.add(label(text, "editor-reading", vertical ? -36 : 0, vertical ? 0 : 26));
+    node.add(label(text, "editor-reading", vertical ? -clearance - 6 : 0, vertical ? 0 : clearance));
   }
   return node;
 }
@@ -109,14 +125,14 @@ function wireNode(wire) {
   for (const [a, b] of wire.segments) {
     const pa = toWorld(a);
     const pb = toWorld(b);
-    const segment = rect(pa.distanceTo(pb), 3, THEME.wire, (pa.x + pb.x) / 2, (pa.y + pb.y) / 2);
+    const segment = rect(pa.distanceTo(pb), STYLE.wire.thickness, STYLE.wire.color, (pa.x + pb.x) / 2, (pa.y + pb.y) / 2);
     segment.rotation.z = Math.atan2(pb.y - pa.y, pb.x - pa.x);
     node.add(segment);
     points.add(a.join(",")).add(b.join(","));
   }
   for (const key of points) {
     const p = toWorld(key.split(",").map(Number));
-    node.add(disc(2.5, THEME.wire, p.x, p.y, 0.1)); // round joints
+    node.add(disc(STYLE.grid.connected_hole_radius, STYLE.wire.color, p.x, p.y, 0.1)); // round joints
   }
   return node;
 }
@@ -126,8 +142,8 @@ function gridNode(columns, rows) {
   node.name = "grid";
   node.userData = { kind: "grid" };
   const dots = new THREE.InstancedMesh(
-    new THREE.CircleGeometry(1.6, 12),
-    new THREE.MeshBasicMaterial({ color: THEME.dot }),
+    new THREE.CircleGeometry(STYLE.grid.hole_radius, 12),
+    new THREE.MeshBasicMaterial({ color: STYLE.grid.hole_color }),
     columns * rows,
   );
   const m = new THREE.Matrix4();

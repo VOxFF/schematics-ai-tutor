@@ -440,14 +440,12 @@ button:focus-visible {
 }
 
 .editor-label {
-  font-size: 12px;
   font-weight: 600;
   color: var(--text);
   white-space: nowrap;
 }
 
 .editor-reading {
-  font-size: 12px;
   font-weight: 600;
   padding: 1px 6px;
   border-radius: 999px;
@@ -458,15 +456,22 @@ button:focus-visible {
 }
 
 .editor-meter-letter {
-  font-size: 15px;
   font-weight: 700;
   color: var(--text);
 }
 
-.editor-plus {
-  font-size: 13px;
+/* Font sizes of editor labels come from schematic-style.yaml. */
+.editor-sign {
   font-weight: 700;
+  line-height: 1;
+}
+
+.editor-plus {
   color: var(--error);
+}
+
+.editor-minus {
+  color: var(--text);
 }
 
 .json-toggle {

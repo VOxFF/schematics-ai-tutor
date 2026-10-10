@@ -1,0 +1,49 @@
+# Schematic style for the grid editor (docs/gui.md §4).
+# Sizes are in grid units: one step between neighboring grid points is 40.
+# Colors are hex strings. Edit and save; the dev server reloads the page.
+
+canvas:
+  background: "#fbfaf6"        # paper tint behind the grid
+
+grid:
+  hole_radius: 1.6             # empty pin hole (grid point)
+  hole_color: "#d8d4c8"
+  connected_hole_radius: 2.2   # round joint where wires meet at a hole
+
+wire:
+  thickness: 2
+  color: "#2f3640"
+
+pin:
+  connector_radius: 3.2        # dot on each component pin
+  lead_thickness: 2            # line from the pin to the symbol body
+  color: "#1f2328"
+
+outline:
+  thickness: 1.5               # border of resistor bodies and meter circles
+  color: "#1f2328"
+
+resistor:
+  length: 38                   # along the leads
+  height: 13
+  fill: "#f1e3c6"
+  band_width: 3.5
+
+battery:
+  long_plate: 28               # positive plate length
+  short_plate: 15              # negative plate length
+  long_plate_thickness: 2.5
+  short_plate_thickness: 5
+  gap: 9                       # distance between the plates
+  positive_color: "#cf222e"    # the positive plate
+  negative_color: "#1f2328"
+  sign_size: 15                # font size (px) of the + and − marks
+
+meter:
+  radius: 19
+  letter_size: 19              # font size (px) of A / V
+  voltmeter_fill: "#eaf2fc"
+  ammeter_fill: "#fdf3d7"
+
+labels:
+  size: 12                     # font size (px) of part labels and readings

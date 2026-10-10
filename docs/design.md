@@ -228,7 +228,8 @@ schematics-ai-tutor/
 │   │   │   ├── GridEditor.jsx three.js renderer, camera fit, label layer
 │   │   │   ├── scene.js       scene graph: one node per component and wire
 │   │   │   ├── colorCode.js   resistor 4-band color code
-│   │   │   └── theme.js       editor colors and grid spacing
+│   │   │   ├── schematic-style.yaml  sizes and colors of the schematic (wires, pins, symbols)
+│   │   │   └── style.js       loads the style file; grid spacing
 │   │   └── lib/
 │   │       ├── api.js         backend calls
 │   │       ├── session.js     localStorage session

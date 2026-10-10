@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import { boardBounds, buildBoard, disposeTree } from "./scene.js";
-import { THEME } from "./theme.js";
+import { STYLE } from "./style.js";
 
 const MARGIN = 1.04; // a little air around the grid
 
@@ -23,7 +23,7 @@ export default function GridEditor({ board, readings }) {
       return undefined;
     }
     renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setClearColor(THEME.canvas);
+    renderer.setClearColor(STYLE.canvas.background);
     const labels = new CSS2DRenderer();
     labels.domElement.className = "editor-labels";
     host.current.append(renderer.domElement, labels.domElement);
