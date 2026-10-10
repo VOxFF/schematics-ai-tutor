@@ -4,6 +4,6 @@ A Claude-based tutor for learning electric circuits and schematics on an interac
 
 ## Structure
 
-- [`docs/`](docs/): design documents. Start with [approach.md](docs/approach.md).
+- [`docs/`](docs/): design documents. Start with [task.md](docs/task.md), then [design.md](docs/design.md).
 - [`frontend/`](frontend/): breadboard editor and tutor UI
 - [`backend/`](backend/): circuit evaluator and Claude API integration

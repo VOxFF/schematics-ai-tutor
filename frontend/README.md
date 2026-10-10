@@ -1,3 +1,3 @@
 # Frontend
 
-Breadboard editor and tutor UI. See [docs/approach.md](../docs/approach.md).
+Breadboard editor and tutor UI. See [docs/design.md](../docs/design.md).

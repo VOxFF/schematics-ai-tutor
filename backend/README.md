@@ -1,3 +1,3 @@
 # Backend
 
-Deterministic circuit evaluator and Claude API integration. See [docs/approach.md](../docs/approach.md).
+Deterministic circuit evaluator and Claude API integration. See [docs/design.md](../docs/design.md).
