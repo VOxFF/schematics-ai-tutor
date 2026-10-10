@@ -11,7 +11,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Contracts: frontend ↔ backend and backend ↔ Claude ([contract.md](contract.md))
 - [x] Gitignore for the Python and React stack
 - [x] Tutor triggers: idle-triggered reactions on snapshots, plus learner requests ([contract.md](contract.md#21-tutor-call))
-- [ ] Tutor design: teaching behavior, system prompt, hint ladder content
+- [ ] Tutor design: teaching behavior, system prompt, hint ladder content, free learner chat (context packed by the backend)
 - [x] Domain design: grid model, components, netlist mapping, evaluator checks ([schematics.md](schematics.md))
 - [x] Board data format: the `grid` document ([schematics.md](schematics.md))
 - [x] Graph format: the `graph` document with pin-pair edges ([schematics.md](schematics.md#2-graph-format-the-graph-document))
