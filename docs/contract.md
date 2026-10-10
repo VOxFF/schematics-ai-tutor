@@ -131,7 +131,10 @@ interface InventoryItem {
 }
 
 type Segment = [Point, Point];   // orthogonal neighbors
-type Wire = Segment[];           // straight (1), corner (2), T (3), + (4)
+interface Wire {
+  id: string;                    // "W1", "W2", …; assigned when placed
+  segments: Segment[];           // straight (1), corner (2), T (3), + (4)
+}
 
 interface Board {                // the `grid` document
   grid: { columns: number; rows: number };
@@ -234,7 +237,7 @@ interface TutorMessage {
 interface Highlight {
   target:
     | { component: string }        // a component id, e.g. "R1"
-    | { wire: number }             // index into `wires` of the latest snapshot's grid
+    | { wire: string }             // a wire id, e.g. "W2"
     | { point: Point };            // a single grid point, e.g. a dangling wire end
   style: "attention" | "error" | "success";  // pulse, red outline, green outline
 }
@@ -243,7 +246,6 @@ interface Highlight {
 **Highlights**
 - three.js draws each highlight on the referenced component, wire piece or point.
 - **Lifetime:** a highlight stays until the next tutor message, or until the learner edits the highlighted element.
-- **Wires:** wires have no IDs in the grid format, so a wire is referenced by its index in the `wires` array of the latest snapshot. That is the board Claude saw.
 - **Style:** a nudge typically uses `attention` or `error` on the problem, and praise uses `success` on what was just done right.
 
 ## 2. Backend ↔ Claude API
@@ -292,7 +294,7 @@ The order runs from most stable to least stable, so the cached prefix stays vali
 - Parse the structured output into `TutorMessage`.
 - Stream `chat.text` from the partial JSON to the client as `tutor.delta`. Send the parsed `TutorMessage` as `tutor.message`.
 - Enforce `hint_level` server-side: the session tracks the highest hint given. Claude may go at most one level higher, and anything beyond that is clamped.
-- Check every highlight against the latest snapshot: the component ID exists, the wire index is in range, and the point is inside the grid. Drop any that fail.
+- Check every highlight against the latest snapshot: the component ID exists, the wire ID exists, and the point is inside the grid. Drop any that fail.
 - The returned `evaluation` always comes from the evaluator, never from Claude.
 
 ### 2.2 Task generation call

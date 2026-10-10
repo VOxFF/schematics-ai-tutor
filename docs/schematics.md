@@ -17,9 +17,9 @@ A board is one JSON document. The same shape describes a level's starting board 
   ],
   "inventory": [ { "id": "R3", "type": "resistor", "value": 50 } ],
   "wires": [
-    [[[3, 1], [4, 1]]],
-    [[[1, 3], [1, 2]], [[1, 2], [1, 1]]],
-    [[[8, 2], [8, 3]], [[8, 3], [9, 3]], [[7, 3], [8, 3]]]
+    { "id": "W1", "segments": [[[3, 1], [4, 1]]] },
+    { "id": "W2", "segments": [[[1, 3], [1, 2]], [[1, 2], [1, 1]]] },
+    { "id": "W3", "segments": [[[8, 2], [8, 3]], [[8, 3], [9, 3]], [[7, 3], [8, 3]]] }
   ],
   "targets": {
     "VM1": { "value": 4.0, "tolerance": 0.1 },
@@ -70,7 +70,8 @@ Pin names by type. The first pin listed is the one `orientation` points to.
 
 ### Wires
 
-- A wire piece is a list of **segments**.
+- A wire piece is an object with an `id` and a list of `segments`.
+- **Wire IDs.** A wire gets a unique ID (`W1`, `W2`, …) when it is placed on the grid. The editor assigns the next number after the highest existing wire number. A removed wire's ID is therefore never taken by an older wire, and IDs stay stable while other wires are added or removed.
 - A segment is a pair of points `[[c1, r1], [c2, r2]]` that are orthogonal neighbors (a distance of exactly 1 apart).
 - The segments of one piece must form one of four shapes:
 
@@ -116,7 +117,7 @@ Voltmeters and ammeters can appear in both `components` and `inventory`, dependi
 The backend rejects a document that breaks any of these rules, before any electrical evaluation:
 
 - Every point is inside the grid.
-- `id`s are unique, and every `targets` key names a meter in `components` or `inventory`.
+- `id`s are unique across components, inventory and wires, and every `targets` key names a meter in `components` or `inventory`.
 - Pins match the type's pin names, lie 2 apart in a straight line, and agree with `orientation`.
 - Every wire segment joins orthogonal neighbors, and every wire piece has one of the four shapes.
 - No two components share a point: neither pins nor bodies may overlap. Components connect only through wires.
