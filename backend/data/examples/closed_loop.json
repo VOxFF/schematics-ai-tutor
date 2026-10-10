@@ -1,0 +1,62 @@
+{
+  "concept": "closed circuit",
+  "title": "Close the loop",
+  "intro": "The voltmeter should show the full source voltage across R1. Something is missing.",
+  "complete_board": {
+    "grid": {"columns": 12, "rows": 8},
+    "components": [
+      {
+        "id": "V1",
+        "type": "voltage_source",
+        "fixed": true,
+        "orientation": "N",
+        "pins": {"positive": [2, 4], "negative": [2, 6]},
+        "value": 12
+      },
+      {
+        "id": "R1",
+        "type": "resistor",
+        "fixed": true,
+        "orientation": "W",
+        "pins": {"a": [5, 3], "b": [7, 3]},
+        "value": 60
+      },
+      {
+        "id": "VM1",
+        "type": "voltmeter",
+        "fixed": true,
+        "orientation": "W",
+        "pins": {"positive": [5, 1], "negative": [7, 1]}
+      }
+    ],
+    "wires": [
+      {"id": "W1", "segments": [[[2, 4], [2, 3]]]},
+      {"id": "W2", "segments": [[[2, 3], [3, 3]]]},
+      {"id": "W3", "segments": [[[3, 3], [4, 3]]]},
+      {"id": "W4", "segments": [[[4, 3], [5, 3]]]},
+      {"id": "W5", "segments": [[[7, 3], [8, 3]]]},
+      {"id": "W6", "segments": [[[8, 3], [9, 3]]]},
+      {"id": "W7", "segments": [[[9, 3], [9, 4]]]},
+      {"id": "W8", "segments": [[[9, 4], [9, 5]]]},
+      {"id": "W9", "segments": [[[9, 5], [9, 6]]]},
+      {"id": "W10", "segments": [[[9, 6], [9, 7]]]},
+      {"id": "W11", "segments": [[[9, 7], [8, 7]]]},
+      {"id": "W12", "segments": [[[8, 7], [7, 7]]]},
+      {"id": "W13", "segments": [[[7, 7], [6, 7]]]},
+      {"id": "W14", "segments": [[[6, 7], [5, 7]]]},
+      {"id": "W15", "segments": [[[5, 7], [4, 7]]]},
+      {"id": "W16", "segments": [[[4, 7], [3, 7]]]},
+      {"id": "W17", "segments": [[[3, 7], [2, 7]]]},
+      {"id": "W18", "segments": [[[2, 7], [2, 6]]]},
+      {"id": "W19", "segments": [[[5, 1], [5, 2]]]},
+      {"id": "W20", "segments": [[[5, 2], [5, 3]]]},
+      {"id": "W21", "segments": [[[7, 1], [7, 2]]]},
+      {"id": "W22", "segments": [[[7, 2], [7, 3]]]}
+    ]
+  },
+  "removed_ids": ["W9"],
+  "decoys": [],
+  "target_meter_ids": ["VM1"],
+  "difficulty": 1,
+  "rationale": "A first task: one missing wire teaches that current needs a closed loop."
+}

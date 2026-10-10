@@ -216,6 +216,8 @@ Claude does **not** produce the task grid or any target value. The backend deriv
 
 ### Validation stages
 
+> **Build status.** Stage 1 (format) is implemented. Stages 2–4 need the evaluator and come with it.
+
 Every generated task passes the same validator that checks learner boards. All of Claude's output is treated as untrusted input.
 
 | Stage | Checks |

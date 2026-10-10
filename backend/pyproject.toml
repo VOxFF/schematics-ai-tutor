@@ -7,6 +7,7 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "pyyaml>=6",
+    "anthropic>=1.13",
 ]
 
 [project.optional-dependencies]
@@ -24,3 +25,6 @@ include = ["app*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Live tests call the real Claude API and cost money; run them with ./test.sh live.
+markers = ["live: calls the real Claude API"]
+addopts = "-m 'not live'"

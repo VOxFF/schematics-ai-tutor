@@ -119,6 +119,7 @@ tutor:
 
 task_generation:
   recent_tasks: 10
+  grid: { columns: 12, rows: 8 }   # grid size for generated tasks
 
 rate_limits:
   tutor_calls_per_session_per_min: 6
@@ -163,6 +164,7 @@ schematics-ai-tutor/
 ├── start.sh                   start the local stack in the background
 ├── stop.sh                    stop it
 ├── check.sh                   integrity checks: docs, config, layout, secrets, tests
+├── test.sh                    backend tests: unit + api, or live (real Claude)
 ├── .env.example               optional local overrides (copy to .env)
 ├── .gitignore
 ├── .github/
@@ -184,12 +186,20 @@ schematics-ai-tutor/
 │   ├── README.md
 │   ├── pyproject.toml         FastAPI service and dependencies
 │   ├── app/
-│   │   ├── main.py            FastAPI app: /api/health, startup and shutdown
+│   │   ├── main.py            FastAPI app: REST endpoints, startup and shutdown
 │   │   ├── config.py          loads the root config.yaml
-│   │   └── usage_log.py       per-run usage and cost log
+│   │   ├── usage_log.py       per-run usage and cost log
+│   │   ├── grid.py            grid format validation
+│   │   ├── task_spec.py       TaskSpec schema, format checks, task-grid derivation
+│   │   ├── task_generation.py Claude task generation with the validate_grid tool
+│   │   └── jsonfmt.py         readable JSON formatting
+│   ├── data/
+│   │   └── examples/          example TaskSpecs for the generation prompt
 │   ├── tests/
-│   │   ├── test_health.py
-│   │   └── test_usage_log.py
+│   │   ├── conftest.py        examples and a fake Claude client
+│   │   ├── unit/              pure logic, offline
+│   │   ├── api/               endpoints with a fake Claude
+│   │   └── live/              real Claude calls, opt-in (./test.sh live)
 │   ├── keys/
 │   │   ├── README.md
 │   │   └── apikey.txt         Anthropic API key (gitignored)
@@ -199,6 +209,10 @@ schematics-ai-tutor/
 ├── logs/                      usage and cost logs, one per run (gitignored)
 └── .run/                      PID files and server output from start.sh (gitignored)
 ```
+
+### Conventions
+
+- **Readable JSON.** JSON files in the repo, and JSON embedded in Claude prompts, are human-readable: indented, short arrays and objects on one line (`[5, 3]`), and arrays longer than 6 elements wrapped 6 per line. `backend/app/jsonfmt.py` implements it, and `./check.sh` enforces it for tracked `.json` files. JSONL logs are the exception: one event per line.
 
 ## Open decisions
 
