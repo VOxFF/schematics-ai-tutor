@@ -50,7 +50,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Placing and removing components from inventory
 - [ ] Wire pieces: straight, corner, T and +
 - [ ] Level view: targets, inventory, check action, next task
-- [ ] Live meter readings and tutor focus highlights
+- [ ] Live meter readings and tutor highlights (components, wires, points)
 - [ ] Tutor panel
 - [ ] Backend integration
 

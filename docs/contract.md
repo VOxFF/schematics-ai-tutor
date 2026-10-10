@@ -88,7 +88,7 @@ Every message is a JSON object with a `type` field.
 | `task.generating` | — | Sent when `task.next` arrives before the pre-generated task is ready |
 | `evaluation` | `seq`, `evaluation: Evaluation` | The client ignores any `seq` older than the last one it applied |
 | `tutor.started` | `request_id`, `trigger` (`"reaction"` or `"request"`) | The UI shows "tutor is thinking". Reactions get a server-generated `request_id`. |
-| `tutor.delta` | `request_id`, `text` | An incremental chunk of `TutorMessage.text`, for live display |
+| `tutor.delta` | `request_id`, `text` | An incremental chunk of `TutorMessage.chat.text`, for live display |
 | `tutor.message` | `request_id`, `evaluation`, `message: TutorMessage` | Final and authoritative; replaces the streamed text |
 | `error` | `code`, `message`, `request_id?` | Codes: `bad_message`, `unknown_level`, `rate_limited`, `tutor_unavailable`. Generation failures never surface: they fall back to a curated level. |
 
@@ -217,14 +217,34 @@ interface Snapshot {               // recorded by the server on every board.upda
   evaluation: Evaluation;
 }
 
+// Claude's feedback has two parts: `chat`, shown in the chat panel, and
+// `meta`, which drives the grid UI and the backend and is never shown as text.
 interface TutorMessage {
-  kind: "feedback" | "nudge" | "hint" | "question" | "praise";
-  text: string;                    // learner-facing, plain language
-  hint_level: 0 | 1 | 2 | 3;       // 0 if this isn't a hint
-  focus: { component_ids: string[]; points: Point[] };  // what three.js should highlight
-  misconception: string | null;    // internal label, e.g. "current is used up"; not shown
+  chat: {
+    kind: "feedback" | "nudge" | "hint" | "question" | "praise";
+    text: string;                  // learner-facing, plain language
+  };
+  meta: {
+    highlights: Highlight[];       // draws the learner's attention on the grid
+    hint_level: 0 | 1 | 2 | 3;     // 0 if this isn't a hint
+    misconception: string | null;  // internal label, e.g. "current is used up"
+  };
+}
+
+interface Highlight {
+  target:
+    | { component: string }        // a component id, e.g. "R1"
+    | { wire: number }             // index into `wires` of the latest snapshot's grid
+    | { point: Point };            // a single grid point, e.g. a dangling wire end
+  style: "attention" | "error" | "success";  // pulse, red outline, green outline
 }
 ```
+
+**Highlights**
+- three.js draws each highlight on the referenced component, wire piece or point.
+- **Lifetime:** a highlight stays until the next tutor message, or until the learner edits the highlighted element.
+- **Wires:** wires have no IDs in the grid format, so a wire is referenced by its index in the `wires` array of the latest snapshot. That is the board Claude saw.
+- **Style:** a nudge typically uses `attention` or `error` on the problem, and praise uses `success` on what was just done right.
 
 ## 2. Backend ↔ Claude API
 
@@ -259,7 +279,7 @@ The order runs from most stable to least stable, so the cached prefix stays vali
      - **praise** after progress, briefly and specifically
      - **feedback** otherwise
    - write in plain language for beginners
-   - set `focus` to the relevant parts
+   - put learner-facing words only in `chat`, and point at the relevant components, wires or points with `meta.highlights` instead of describing their location
 2. **One user turn per call.** Each call is self-contained; there is no multi-turn conversation. The turn contains:
    - `<level>`: concept, targets and intro text
    - `<reference>`: the reference solution's `graph` when available, so hints can point toward a solution without revealing it
@@ -270,9 +290,9 @@ The order runs from most stable to least stable, so the cached prefix stays vali
 #### Response handling
 
 - Parse the structured output into `TutorMessage`.
-- Stream the `text` field of the partial JSON to the client as `tutor.delta`. Send the parsed `TutorMessage` as `tutor.message`.
+- Stream `chat.text` from the partial JSON to the client as `tutor.delta`. Send the parsed `TutorMessage` as `tutor.message`.
 - Enforce `hint_level` server-side: the session tracks the highest hint given. Claude may go at most one level higher, and anything beyond that is clamped.
-- Check that `focus` IDs exist on the board, and drop any that don't.
+- Check every highlight against the latest snapshot: the component ID exists, the wire index is in range, and the point is inside the grid. Drop any that fail.
 - The returned `evaluation` always comes from the evaluator, never from Claude.
 
 ### 2.2 Task generation call

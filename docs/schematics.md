@@ -295,7 +295,7 @@ These run before and alongside the solve, and fill `Evaluation.issues`.
   - `+` rails are red and `−` rails are blue.
   - Resistors show real color bands, so the learner absorbs the color code.
   - Each voltmeter's live reading is shown above it, from the latest `evaluation`.
-- **Highlights:** the components and holes in a `TutorMessage.focus` are outlined. Hovering a hole highlights its whole strip, which makes the hidden connections visible.
+- **Highlights:** the components, wires and points in `TutorMessage.meta.highlights` are drawn with their style. Hovering a hole highlights its whole strip, which makes the hidden connections visible.
 
 ## 8. Levels (draft)
 
