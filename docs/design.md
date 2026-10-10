@@ -22,12 +22,23 @@ The system has two engines with strictly separated responsibilities:
 
 ## 3. System architecture
 
-```
-Frontend (React)                        Backend (Python)
-┌───────────────────────┐   JSON    ┌────────────────────────────┐
-│ Interactive workspace │ ───────▶  │ Evaluator (deterministic)  │
-│ Tutor panel           │ ◀───────  │ Tutor ──▶ Claude API       │
-└───────────────────────┘           └────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph FE["Frontend (React)"]
+        W[Interactive workspace]
+        T[Tutor panel]
+    end
+    subgraph BE["Backend (Python)"]
+        E["Evaluator (deterministic)"]
+        TS[Tutor service]
+    end
+    C[(Claude API)]
+
+    W -- "learner's work" --> E
+    E -- verdict + results --> TS
+    TS -- task context + results --> C
+    C -- feedback / hint --> TS
+    TS -- verdict + tutor message --> T
 ```
 
 - **Frontend:** JavaScript + React. It owns the interactive workspace and displays the tutor's messages. It holds no secrets and does no grading.
