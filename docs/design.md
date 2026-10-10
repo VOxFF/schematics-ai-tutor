@@ -44,6 +44,7 @@ flowchart LR
 - **Frontend:** JavaScript + React. It owns the interactive workspace and displays the tutor's messages. It holds no secrets and does no grading.
 - **Backend:** Python. It owns the evaluator and all Claude API calls.
 - **Request flow:** the frontend sends the learner's work. The backend runs the evaluator, passes its result together with the task context to Claude, and returns both the verdict and the tutor message.
+- **Transport:** REST for static resources (levels), and one WebSocket per learning session for the interactive loop: live evaluation on every board edit and streamed tutor messages. Details are in [contract.md](contract.md).
 
 ## 4. Security and operations
 
@@ -56,6 +57,7 @@ flowchart LR
 |---|---|---|
 | Backend | Python | Decided |
 | Frontend | JavaScript + React | Decided |
+| Frontend ↔ backend transport | REST + WebSocket | Decided |
 | Workspace rendering | three.js | Decided |
 | Hosting | — | Open |
 
