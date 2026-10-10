@@ -71,7 +71,7 @@ claude:
     effort: low
     max_tokens: 16000
     timeout_s: 30
-  tutor_request:               # learner check / hint / message
+  tutor_request:               # learner message / hint
     model: claude-opus-5-5
     effort: medium             # rarer than reactions and matter more
     max_tokens: 16000

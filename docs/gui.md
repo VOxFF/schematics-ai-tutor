@@ -105,6 +105,7 @@ Rendered with three.js in an orthographic, top-down view. Every grid point, comp
 | Tutor `attention` | Amber, pulsing outline | Claude draws attention here |
 | Tutor `error` | Red outline | Claude points at a problem |
 | Tutor `success` | Green outline | Claude points at what was done right |
+| Net hover | Light grey, on points and pins | Everything electrically connected to the hovered point |
 
 A tutor highlight lasts until the next tutor message, or until the learner edits the highlighted element.
 

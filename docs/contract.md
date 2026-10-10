@@ -78,7 +78,7 @@ Every message is a JSON object with a `type` field.
 | `session.start` | `progress?`, `level?`, `board?`, `history?` | Starts a session (the server sends `task.ready` with the curated level for the skill level) or resumes one (`level` given). The server also replies with `evaluation`. |
 | `task.next` | — | Asks for the next task, usually after the current one is solved |
 | `board.update` | `seq`, `board` | Sent on each finished edit (a part dropped, a wire piece placed or removed). The server records a snapshot, re-evaluates and replies with `evaluation` carrying the same `seq`. |
-| `tutor.request` | `request_id`, `action` (`"check"`, `"hint"` or `"message"`), `learner_text?` | Runs the evaluator and then Claude on the latest board. `"hint"` arrives with the hint ladder, in the learning-depth phase ([plan.md](plan.md#5-learning-depth)). |
+| `tutor.request` | `request_id`, `action` (`"message"`, or `"hint"` later), `learner_text?` | Runs the evaluator and then Claude on the latest board. `"hint"` arrives with the hint ladder, in the learning-depth phase ([plan.md](plan.md#5-learning-depth)). |
 
 **Server → client**
 
