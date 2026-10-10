@@ -17,9 +17,9 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Graph format: the `graph` document with pin-pair edges ([schematics.md](schematics.md#2-graph-format-the-graph-document))
 - [x] Task flow: generation, validation stages, derivation, grading ([schematics.md](schematics.md#3-task-flow))
 - [x] Task generation input: task context, learner context, skill level ([contract.md](contract.md#22-task-generation-call))
-- [ ] Evaluator design: revise `schematics.md` §4–8 for the grid and graph (solver with ammeter, structural checks including ammeter in parallel, rendering)
+- [x] Evaluator design: pipeline, solver with ammeter, structural checks, rendering ([schematics.md](schematics.md#4-evaluation-pipeline))
 - [x] Terminology: "grid" across the docs
-- [ ] Level design and progression
+- [ ] Level design: validate the curated levels by playtesting
 - [x] Workspace rendering decision: three.js
 
 ## 2. Backend

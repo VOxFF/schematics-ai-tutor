@@ -179,12 +179,13 @@ interface Level extends LevelSummary {
   board: Board;                  // the starting board; fixed parts, inventory and targets included
 }
 
-type IssueCode =
-  | "short_circuit"        // source terminals connected with ~0 Ω
-  | "open_circuit"         // no closed loop through the source
-  | "bypassed"             // both pins of a component on the same node
-  | "floating_component"   // a lead not connected to anything
-  | "no_source";
+type IssueCode =                 // detection rules: schematics.md §6
+  | "no_source"
+  | "short_circuit"              // source pins joined through wires/ammeters only
+  | "bypassed"                   // both pins of a component in the same net
+  | "floating_component"         // a pin connected to no other pin
+  | "ammeter_parallel"           // an ammeter across a resistor
+  | "open_circuit";              // source current below ammeter resolution
 
 interface Issue {
   code: IssueCode;
