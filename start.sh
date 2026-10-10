@@ -14,6 +14,9 @@ if [ -f "$ROOT/.env" ]; then
   set +a
 fi
 BACKEND_PORT="${BACKEND_PORT:-8000}"
+# One run id per ./start.sh: the backend writes logs/run-<id>.jsonl (if enabled in config.yaml).
+export SCHEMATICS_RUN_ID="$(date +%Y%m%d-%H%M%S)"
+export SCHEMATICS_CONFIG="$ROOT/config.yaml"
 
 # Fall back to the gitignored key file when the key isn't set (see backend/keys/README.md).
 KEY_FILE="$ROOT/backend/keys/apikey.txt"

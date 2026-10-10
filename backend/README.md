@@ -13,7 +13,8 @@ cp .env.example .env    # optional; or put the key in backend/keys/apikey.txt
 ```
 
 - Health check: `curl http://127.0.0.1:8000/api/health`
-- Logs: `.run/backend.log`
+- Server output: `.run/backend.log`
+- Usage and cost log: `logs/run-<timestamp>.jsonl`, one per `./start.sh`; on/off via `logs.enabled` in the root `config.yaml`
 
 ## Test
 

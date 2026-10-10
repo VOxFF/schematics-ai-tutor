@@ -57,7 +57,7 @@ flowchart LR
 
 ## 4. Security and operations
 
-- The Claude API key exists only on the backend, loaded from the environment.
+- The Claude API key exists only on the backend, loaded from the environment or the gitignored `backend/keys/apikey.txt`.
 - The deployed prototype is public and uses our API key, so the backend enforces the rate limits below. They protect the cost of Claude calls and the server. **Evaluation never depends on Claude**, so when a Claude limit is hit, the grid, the readings and the status keep working. Only the tutor goes quiet, or generation falls back to curated levels.
 
 | Scope | Limit (default) | When exceeded |
@@ -72,13 +72,21 @@ flowchart LR
 
 - **Implementation.** In-memory token buckets in the single backend process. Running several instances would need a shared store such as Redis; that is noted for scale, not built for the prototype.
 - **Configuration.** All limits are settings in `config.yaml` (§5).
+- **Usage and cost log.** When `logs.enabled` is on, the backend writes one JSON-lines file per run, `logs/run-<timestamp>.jsonl` (gitignored). It records server start and stop, every Claude call (purpose, model, learner session ID, token usage, estimated cost from the `pricing` table) and a run summary with totals. Each `./start.sh` is one run; code reloads append to the same file.
 - **Message size.** No fixed limit yet; the grid size caps already bound it indirectly. Typical message sizes will be observed in practice before a limit is set.
 
 ## 5. Configuration
 
-The Claude models and behavior knobs live in one YAML file, `backend/config.yaml`, not in code. That lets us switch models, for example Opus vs. Haiku for reactions, and tune thresholds without code changes. The API key is never in this file; it comes from the environment.
+The Claude models, behavior knobs, logging and pricing live in one YAML file, [`config.yaml`](../config.yaml) in the repo root, not in code. That lets us switch models, for example Opus vs. Haiku for reactions, and tune thresholds without code changes. The API key is never in this file; it comes from the environment.
 
 ```yaml
+logs:
+  enabled: true                # usage and cost log per backend run
+  dir: logs
+
+pricing:                       # USD per million tokens, for cost estimates
+  claude-opus-5-5: { input: 4.00, output: 20.00, cache_read: 0.20, cache_write: 5.00 }
+
 claude:
   tutor_reaction:              # idle-triggered reactions
     model: claude-opus-5-5
@@ -129,7 +137,7 @@ evaluator:
   resistor_max_power_w: 5      # above this, a resistor is "overcurrent"
 ```
 
-The values above are the defaults, as described in [contract.md](contract.md).
+The values above are the defaults, as described in [contract.md](contract.md). The backend reads the file at startup, so changes need a restart (`./stop.sh && ./start.sh`).
 
 ## 6. Stack
 

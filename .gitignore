@@ -256,3 +256,6 @@ Thumbs.db
 # Local API keys (only the README is tracked)
 backend/keys/*
 !backend/keys/README.md
+
+# Backend usage and cost logs (one file per run)
+/logs/

@@ -16,4 +16,4 @@ A Claude-based tutor for learning electric circuits and schematics on an interac
 ./stop.sh
 ```
 
-Logs are in `.run/`. Details are in [backend/README.md](backend/README.md).
+Server output goes to `.run/backend.log`. Usage and cost logs go to `logs/run-<timestamp>.jsonl` (toggle `logs.enabled` in [`config.yaml`](config.yaml)). Details are in [backend/README.md](backend/README.md).
