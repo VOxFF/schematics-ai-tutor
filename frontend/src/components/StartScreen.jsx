@@ -46,7 +46,6 @@ export default function StartScreen({ onStart }) {
               </li>
             ))}
           </ol>
-          <p className="note">Tasks adapt to you, so your path may differ.</p>
         </section>
 
         <div className="start-action">
@@ -55,6 +54,7 @@ export default function StartScreen({ onStart }) {
           </button>
         </div>
       </div>
+      <p className="note">Tasks adapt to you, so your path may differ.</p>
     </main>
   );
 }

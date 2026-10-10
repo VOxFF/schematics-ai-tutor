@@ -131,9 +131,12 @@ button.large {
   margin-top: 24px;
 }
 
+/* Below the card, bottom-left. */
 .start .note {
+  margin: 10px 4px 0;
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 1.05rem;
+  font-style: italic;
 }
 
 /* Tutor screen: layout from docs/images/gui-layout.png */
