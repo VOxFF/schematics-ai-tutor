@@ -38,9 +38,9 @@ The learning path is a sequence of levels that grow in complexity, starting with
 
 1. The learner opens a level and sees the goal, the starting breadboard and the available components.
 2. The learner places components and wires into breadboard holes.
-3. The learner submits the circuit for checking.
-4. The evaluator builds the netlist and computes the values. It reports whether the goal is met, along with structural issues such as shorts, open circuits and components bypassed in the same row.
-5. Claude receives the level, the circuit and the evaluator results and responds with feedback and, if needed, a hint.
+3. On every edit, the evaluator builds the netlist and computes the values, and meter readings update live. It reports whether the goal is met, along with structural issues such as shorts, open circuits and components bypassed in the same strip.
+4. When the learner asks for a check or a hint, or writes a message, the evaluator runs again on the server.
+5. Claude receives the level, the circuit and the evaluator results, and responds with feedback and, if needed, a hint.
 6. The learner revises and repeats from step 2, or advances when the goal is met.
 
 ## Major constraints
@@ -57,6 +57,6 @@ The learning path is a sequence of levels that grow in complexity, starting with
 
 ## To be defined
 
-- Claude's exact responsibilities and the hint escalation policy
-- Level list and progression
+- Claude's teaching behavior and hint content (the interface is in [contract.md](contract.md))
+- Final level list (draft in [schematics.md](schematics.md))
 - Whether current is measured with an ammeter component or reported directly by the evaluator

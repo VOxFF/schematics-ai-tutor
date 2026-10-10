@@ -65,5 +65,5 @@ flowchart LR
 
 ## Open decisions
 
-- Tutor contract: what context Claude receives, when it responds, the hint escalation policy
+- Tutor teaching behavior: system prompt and hint content (the interface is fixed in [contract.md](contract.md))
 - Hosting and deployment

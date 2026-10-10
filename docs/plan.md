@@ -24,7 +24,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Structural checks (shorts, open circuits, bypassed components)
 - [ ] Level definitions and goal checking
 - [ ] Tutor service: Claude API integration and prompts
-- [ ] API endpoints
+- [ ] REST endpoints and WebSocket session
 - [ ] Rate limiting and API key handling
 - [ ] Tests for the evaluator
 
