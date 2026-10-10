@@ -39,7 +39,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Server-side refusal fallbacks for Claude calls
 - [ ] Background pre-generation of the next task
 - [ ] Skill level and task history (`Progress`)
-- [ ] Repeat check against recent task graphs
+- [x] Repeat check against recent tasks (circuit signature)
 - [x] Prompt examples as files (`backend/data/examples/`), validated in tests
 - [ ] Tutor service, simple first: reactions and free chat, without the hint ladder
 - [ ] Snapshot recording and idle-triggered reactions

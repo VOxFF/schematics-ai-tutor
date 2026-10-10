@@ -164,6 +164,7 @@ interface TaskSummary {          // one line of task history
   difficulty: number;            // 1–5, from the TaskSpec
   hints_used: number;
   misconceptions: Misconception[];  // fixed tutor labels (tutor.md §5)
+  signature: string;             // Level.signature: circuit fingerprint for the repeat check
   final_grid?: Board;            // bonus: the solved grid, for read-only review
 }
 
@@ -182,6 +183,7 @@ interface LevelSummary {
 interface Level extends LevelSummary {
   intro: string;                 // learner-facing task text
   board: Board;                  // the starting board; fixed parts, inventory and targets included
+  signature?: string;            // generated levels: circuit fingerprint, kept in TaskSummary
 }
 
 // One overall status: the most severe finding wins. Detection and precedence:

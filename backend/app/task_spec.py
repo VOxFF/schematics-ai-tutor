@@ -8,6 +8,7 @@ target computation, and the derivation of the learner's task grid.
 import uuid
 
 from .evaluate import RESOLUTION, evaluate
+from .graph import assign_nets, to_graph
 from .grid import METER_TYPES, PIN_NAMES, validate_grid
 
 COMPONENT_TYPES = sorted(PIN_NAMES)
@@ -191,7 +192,33 @@ def check_not_solved(task_board: dict, settings: dict | None = None) -> list[str
     return []
 
 
-def validate(spec: dict, grid_limits: dict | None = None, settings: dict | None = None) -> dict:
+def signature(spec: dict) -> str:
+    """A fingerprint of the complete circuit, independent of IDs and layout.
+
+    Each net is described by the parts touching it ("resistor:60"); the sorted list of nets,
+    plus the target meter types, identifies the circuit. Series and parallel versions of the
+    same parts differ; moving parts around the grid does not.
+    """
+    graph, _ = to_graph(complete_grid(spec))
+    nets = assign_nets(graph)
+    label = {c["id"]: f"{c['type']}:{c.get('value', '')}" for c in graph["components"]}
+    by_net: dict[int, list[str]] = {}
+    for pin, net in nets.items():
+        by_net.setdefault(net, []).append(label[pin.split(".")[0]])
+    types = {c["id"]: c["type"] for c in graph["components"]}
+    targets = sorted(types[m] for m in spec["target_meter_ids"])
+    return "|".join(sorted(",".join(sorted(parts)) for parts in by_net.values())) + "|targets:" + ",".join(targets)
+
+
+def check_not_repeat(spec: dict, recent_signatures) -> list[str]:
+    """Stage 4: not the same circuit as a recent task."""
+    if signature(spec) in set(recent_signatures):
+        return ["this task repeats a recent one (same parts and connections); design a different circuit"]
+    return []
+
+
+def validate(spec: dict, grid_limits: dict | None = None, settings: dict | None = None,
+             recent_signatures=()) -> dict:
     """All validation stages for a normalized TaskSpec.
 
     Returns {"errors", "readings", "targets", "board"}; `board` is the learner's task grid
@@ -205,7 +232,7 @@ def validate(spec: dict, grid_limits: dict | None = None, settings: dict | None 
     if errors:
         return {"errors": errors, "readings": readings, "targets": {}, "board": None}
     board = derive_task_board(spec, targets)
-    errors = check_reconstruction(spec, board) + check_not_solved(board, settings)
+    errors = check_reconstruction(spec, board) + check_not_solved(board, settings) + check_not_repeat(spec, recent_signatures)
     return {"errors": errors, "readings": readings, "targets": targets, "board": None if errors else board}
 
 
@@ -218,4 +245,6 @@ def build_level(spec: dict, skill_level: int, board: dict | None = None) -> dict
         "concept": spec["concept"],
         "intro": spec["intro"],
         "board": board or derive_task_board(spec),
+        # Stored in the learner's history (TaskSummary.signature) for the repeat check.
+        "signature": signature(spec),
     }

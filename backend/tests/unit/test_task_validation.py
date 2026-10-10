@@ -66,3 +66,22 @@ def test_reconstruction_detects_a_tampered_task_board():
     errors = check_reconstruction(spec, board)
     assert any("V1 differs" in e for e in errors)
     assert any("removed part R2" in e for e in errors)
+
+
+def test_signature_ignores_layout_but_not_wiring():
+    from app.task_spec import signature
+    divider = load_example("voltage_divider")
+    moved = copy.deepcopy(divider)
+    for c in moved["complete_board"]["components"]:
+        c["id"] = c["id"] + "x"  # IDs don't matter
+    moved["target_meter_ids"] = [m + "x" for m in moved["target_meter_ids"]]
+    assert signature(moved) == signature(divider)
+    assert signature(load_example("parallel_paths")) != signature(divider)
+
+
+def test_recent_repeat_is_rejected():
+    from app.task_spec import signature
+    spec = load_example("voltage_divider")
+    result = validate(spec, recent_signatures=[signature(spec)])
+    assert any("repeats a recent one" in e for e in result["errors"])
+    assert validate(spec, recent_signatures=["something else"])["errors"] == []

@@ -108,8 +108,8 @@ claude:
     effort: high
     max_tokens: 16000
     timeout_s: 120
-    max_validate_calls: 5
-    max_attempts: 2
+    max_validate_calls: 5        # validate_grid tool calls per attempt
+    max_attempts: 2              # failed attempts before giving up and telling the learner
 
 tutor:
   idle_threshold_ms: 1500

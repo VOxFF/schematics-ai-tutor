@@ -94,8 +94,8 @@ def learner_context(skill_level: int, history: list[dict], grid: dict, recent: i
     }
 
 
-def tool_result(draft: dict, grid_limits: dict, settings: dict) -> str:
-    result = validate(normalize(draft), grid_limits, settings)
+def tool_result(draft: dict, grid_limits: dict, settings: dict, recent_signatures=()) -> str:
+    result = validate(normalize(draft), grid_limits, settings, recent_signatures)
     return json.dumps({"ok": not result["errors"], "errors": result["errors"], "readings": result["readings"]})
 
 
@@ -126,6 +126,7 @@ async def generate_task(
     generation = config.get("task_generation", {})
     limits = config.get("rate_limits", {})
     evaluator = config.get("evaluator", {})
+    recent = [t["signature"] for t in history[-generation.get("recent_tasks", 10):] if t.get("signature")]
     system = [{"type": "text", "text": system_prompt(load_examples()), "cache_control": {"type": "ephemeral"}}]
     context = learner_context(skill_level, history, generation.get("grid", {"columns": 12, "rows": 8}),
                               generation.get("recent_tasks", 10))
@@ -139,12 +140,12 @@ async def generate_task(
         if feedback:
             content += "\n\nYour previous proposal was rejected. Fix these errors:\n- " + "\n- ".join(feedback)
         messages = [{"role": "user", "content": content}]
-        spec, failure = await _run_conversation(client, settings, system, messages, (limits, evaluator), usage_log,
+        spec, failure = await _run_conversation(client, settings, system, messages, (limits, evaluator, recent), usage_log,
                                                 session_id, attempt)
         if spec is None:
             feedback = [failure]
             continue
-        validation = validate(spec, limits, evaluator)
+        validation = validate(spec, limits, evaluator, recent)
         errors = validation["errors"]
         if not errors:
             result.spec, result.errors = spec, []
