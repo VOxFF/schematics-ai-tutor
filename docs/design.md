@@ -162,8 +162,14 @@ schematics-ai-tutor/
 ├── config.yaml                models, knobs, rate limits, logging, pricing (§5)
 ├── start.sh                   start the local stack in the background
 ├── stop.sh                    stop it
+├── check.sh                   integrity checks: docs, config, layout, secrets, tests
 ├── .env.example               optional local overrides (copy to .env)
 ├── .gitignore
+├── .github/
+│   └── workflows/
+│       └── check.yml          runs ./check.sh on every PR and on main
+├── scripts/
+│   └── check_integrity.py     docs, config, layout and secrets checks used by check.sh
 ├── docs/
 │   ├── task.md                product, concept of operations, constraints
 │   ├── design.md              system design (this file)

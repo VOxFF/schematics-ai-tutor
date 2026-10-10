@@ -45,6 +45,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] REST endpoints and WebSocket session
 - [x] Configuration loader for the root `config.yaml`
 - [x] Usage and cost log per backend run (`logs/`, on/off in `config.yaml`)
+- [x] Integrity checks: `./check.sh` locally and in GitHub Actions on every PR
 - [ ] Rate limiting (per session, per IP, global Claude budget) and API key handling
 - [ ] Tests for the evaluator
 
