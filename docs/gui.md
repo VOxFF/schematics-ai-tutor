@@ -8,7 +8,7 @@ The app has three screens: the **start screen**, the **learning screen** (the tu
 
 | Learner | Lands on |
 |---|---|
-| New: no saved session in this browser | Start screen. **Start learning** opens the first curated level on the learning screen. |
+| New: no saved session in this browser | Start screen. **Start Learning** opens the first curated level on the learning screen. |
 | Returning, or after a page reload | The learning screen directly, resumed exactly where they left off. Showing the start screen would feel like lost progress. |
 | After **Restart Learning** | Everything is wiped, then the start screen |
 
@@ -17,12 +17,12 @@ The app has three screens: the **start screen**, the **learning screen** (the tu
 One static screen, with no sign-up and no backend call:
 
 1. **What it is:** "Learn how electric circuits work by building them. An AI tutor watches and helps you think."
-2. **How it works,** in three short points:
+2. **How it works,** as three short bullet points without a heading:
    - build circuits on the grid
    - see live meter readings
    - get nudges and questions from the tutor, never the answer
-3. **Learning path:** a typical route, from closed loop to Ohm's law, voltage divider, measuring and parallel circuits. Tasks adapt to the learner, so it is shown as a typical path, not a fixed sequence.
-4. **One large Start learning button.**
+3. **Your Learning Path:** a typical route, shown as one column of pills, from closed loop to Ohm's law, voltage divider, measuring and parallel circuits. Tasks adapt to the learner, so it is shown as a typical path, not a fixed sequence.
+4. **One large, centered Start Learning button.**
 
 It also sets expectations about agency up front: the tutor asks rather than tells. That prevents "why won't it just tell me?" frustration, and it gives reviewers opening the URL cold the context in seconds.
 
@@ -162,7 +162,7 @@ The frontend generates the hint text from the current UI state. Claude and the b
 flowchart TD
     O[Open the app] --> P{"Saved session<br/>in this browser?"}
     P -- no --> SS["Start screen:<br/>what it is, how it works, learning path"]
-    SS -- "Start learning" --> L1[First curated level]
+    SS -- "Start Learning" --> L1[First curated level]
     P -- yes --> R["Learning screen, resumed"]
     L1 --> B
     R --> B
@@ -181,7 +181,7 @@ flowchart TD
     RL["Restart Learning<br/>(confirm, wipe)"] -.-> SS
 ```
 
-1. **First visit.** The start screen explains what the tutor offers and the typical learning path. **Start learning** opens the first curated level, so there's no waiting.
+1. **First visit.** The start screen explains what the tutor offers and the typical learning path. **Start Learning** opens the first curated level, so there's no waiting.
 2. **Read.** The task panel states the goal in plain words, and each target shows its live reading.
 3. **Build.** The learner drags parts and wires onto the grid, and the hint bar explains the controls as they go.
 4. **Observe.** After each finished edit the status and meter readings update immediately, so cause and effect are visible.

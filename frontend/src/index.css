@@ -61,22 +61,25 @@ button.large {
 
 .start .path {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
   padding: 0;
   list-style: none;
 }
 
+/* One column of equal-width pills, text centered. */
 .start .path li {
-  padding: 4px 10px;
+  padding: 6px 12px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--panel);
+  text-align: center;
 }
 
-.start .path li + li::before {
-  content: "→ ";
-  color: var(--muted);
+.start-action {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
 }
 
 .start .note {

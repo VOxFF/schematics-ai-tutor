@@ -55,7 +55,7 @@ The major steps to build the product. A step is checked off when it is complete,
 ## 3. Frontend
 
 - [x] Scaffold the React app (Vite, Vitest, dev proxy to the backend; started by `start.sh`)
-- [x] Start screen: what it is, how it works, learning path, Start learning
+- [x] Start screen: what it is, how it works, learning path, Start Learning
 - [x] Learning screen layout: header, task/targets panel, editor (shows the task JSON for now), hint bar, inventory, chat placeholder
 - [ ] Grid rendering: schematic symbols, labels, resistor color bands, live readings
 - [ ] Selection and drag-and-drop: click-and-drag, pin-target highlights, R to rotate, Del, Esc, snap-back

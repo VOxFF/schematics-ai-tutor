@@ -35,9 +35,9 @@ afterEach(() => {
 test("a new learner sees the start screen, then gets a task", async () => {
   const fetch = mockFetch(ok({ level: LEVEL, difficulty: 3, rationale: "", attempts: 1 }));
   render(<App />);
-  expect(screen.getByRole("button", { name: "Start learning" })).toBeDefined();
+  expect(screen.getByRole("button", { name: "Start Learning" })).toBeDefined();
 
-  fireEvent.click(screen.getByRole("button", { name: "Start learning" }));
+  fireEvent.click(screen.getByRole("button", { name: "Start Learning" }));
   expect(await screen.findByRole("heading", { name: "Share the voltage" })).toBeDefined();
   expect(screen.getByLabelText("Editor").textContent).toContain('"id": "gen-1234"');
   expect(screen.getByLabelText("Skill level").textContent).toBe("Level 1");
@@ -61,14 +61,14 @@ test("restart learning wipes the session and returns to the start screen", () =>
   vi.spyOn(window, "confirm").mockReturnValue(true);
   render(<App />);
   fireEvent.click(screen.getByRole("button", { name: "Restart Learning" }));
-  expect(screen.getByRole("button", { name: "Start learning" })).toBeDefined();
+  expect(screen.getByRole("button", { name: "Start Learning" })).toBeDefined();
   expect(localStorage.getItem(SESSION_KEY)).toBeNull();
 });
 
 test("a failed generation shows the error and a retry button", async () => {
   mockFetch({ ok: false, status: 503, json: () => Promise.resolve({ detail: "Claude is not configured" }) });
   render(<App />);
-  fireEvent.click(screen.getByRole("button", { name: "Start learning" }));
+  fireEvent.click(screen.getByRole("button", { name: "Start Learning" }));
   expect(await screen.findByText("Claude is not configured")).toBeDefined();
   expect(screen.getByRole("button", { name: "Try again" })).toBeDefined();
 });

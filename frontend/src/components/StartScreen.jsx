@@ -11,7 +11,6 @@ export default function StartScreen({ onStart }) {
       </p>
 
       <section>
-        <h2>How it works</h2>
         <ul>
           <li>Build circuits on the grid from parts and wires.</li>
           <li>Watch live meter readings as you change the circuit.</li>
@@ -20,7 +19,7 @@ export default function StartScreen({ onStart }) {
       </section>
 
       <section>
-        <h2>A typical learning path</h2>
+        <h2>Your Learning Path</h2>
         <ol className="path">
           {PATH.map((step) => (
             <li key={step}>{step}</li>
@@ -29,9 +28,11 @@ export default function StartScreen({ onStart }) {
         <p className="note">Tasks adapt to you, so your path may differ.</p>
       </section>
 
-      <button className="primary large" onClick={onStart}>
-        Start learning
-      </button>
+      <div className="start-action">
+        <button className="primary large" onClick={onStart}>
+          Start Learning
+        </button>
+      </div>
     </main>
   );
 }
