@@ -318,22 +318,9 @@ A reversed meter gives a negative reading, so it counts as `misplaced`; the tuto
 - **Rounding.** Readings are rounded to meter resolution (§1).
 - **When unavailable.** They are `null` when the circuit can't be solved (`short_circuit`), and the UI shows "--". With `no_source` they are all `0`.
 
-## 7. Rendering and interaction (three.js)
+## 7. Rendering and interaction
 
-- **Scene graph:** every grid point, component and wire piece is its own scene object, carrying its `id` (or point) for raycast picking.
-- **Grid:** a lattice of points. Components connect only through wires.
-- **Placing a part:**
-  - Drag it from the inventory and drop it so its body snaps to a free point. Its pins then occupy the two points 2 apart.
-  - Press **R** to cycle the orientation.
-  - Parts marked `fixed` cannot be moved.
-- **Placing a wire:** choose a piece (straight, corner, T or +) from the wire palette, press **R** to rotate it, and click a point to place it. Each placement assigns the next wire ID (§1).
-- **Removing:** select a non-fixed part or wire and press Delete. A removed part goes back to the inventory.
-- **Visual cues:**
-  - Source pins are red (`positive`) and black (`negative`).
-  - Resistors show real color bands.
-  - Each meter shows its live reading, from the latest `evaluation`.
-  - Hovering a point highlights every point and pin in the same net, which makes connectivity visible.
-- **Highlights:** the components, wires and points in `TutorMessage.meta.highlights` are drawn with their style (see [contract.md](contract.md)).
+The grid's rendering, symbols, interaction and highlights are defined in [gui.md](gui.md#3-grid).
 
 ## 8. Curated levels (draft)
 
