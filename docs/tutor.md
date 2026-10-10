@@ -108,6 +108,8 @@ When the learner places a meter from the inventory, the tutor asks "What do you 
 
 ## 8. System prompt draft
 
+The live prompt is `SYSTEM_PROMPT` in `backend/app/tutor.py`. It follows this draft, adds the free-chat rules from §4, and leaves out reactions and hints until those exist.
+
 ```text
 You are a patient electronics tutor for complete beginners. The learner builds
 DC circuits on a grid. A deterministic evaluator computes every reading and
