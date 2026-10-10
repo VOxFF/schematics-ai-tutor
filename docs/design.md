@@ -56,11 +56,12 @@ flowchart LR
 |---|---|---|
 | Backend | Python | Decided |
 | Frontend | JavaScript + React | Decided |
-| Workspace rendering | three.js or SVG | Open |
+| Workspace rendering | three.js | Decided |
 | Hosting | — | Open |
+
+**Why three.js:** every component and wire is its own scene node, so the learner can select, move and edit any of them individually.
 
 ## Open decisions
 
 - Tutor contract: what context Claude receives, when it responds, the hint escalation policy
-- Workspace rendering technology
 - Hosting and deployment

@@ -12,7 +12,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Tutor contract: Claude's context, when it responds, hint escalation
 - [ ] Domain design: breadboard model, components, netlist mapping, evaluator checks
 - [ ] Level design and progression
-- [ ] Workspace rendering decision (three.js or SVG)
+- [x] Workspace rendering decision: three.js
 - [ ] Hosting decision
 
 ## 2. Backend

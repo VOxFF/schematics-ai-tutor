@@ -53,11 +53,10 @@ The learning path is a sequence of levels that grow in complexity, starting with
 | Claude must not be trusted for electrical math | Deterministic evaluator; Claude only interprets its output |
 | Entry-level audience | Simple DC circuits only (resistors, sources, meters); plain language, no jargon without explanation |
 | Enhance, not replace, human agency | No auto-solve; hints escalate only when the learner asks |
-| Stack | Python backend; JavaScript/React frontend |
+| Stack | Python backend; JavaScript/React + three.js frontend |
 
 ## To be defined
 
 - Claude's exact responsibilities and the hint escalation policy
 - Level list and progression
-- Breadboard rendering (three.js or SVG)
 - Whether current is measured with an ammeter component or reported directly by the evaluator
