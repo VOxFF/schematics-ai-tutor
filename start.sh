@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Start the local dev stack in the background. Logs and PIDs go to .run/.
-# Usage: ./start.sh            (BACKEND_PORT defaults to 8000)
+# Usage: ./start.sh            (BACKEND_PORT defaults to 8000, FRONTEND_PORT to 5173)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -14,6 +14,8 @@ if [ -f "$ROOT/.env" ]; then
   set +a
 fi
 BACKEND_PORT="${BACKEND_PORT:-8000}"
+FRONTEND_PORT="${FRONTEND_PORT:-5173}"
+export BACKEND_PORT FRONTEND_PORT
 # One run id per ./start.sh: the backend writes logs/run-<id>.jsonl (if enabled in config.yaml).
 export SCHEMATICS_RUN_ID="$(date +%Y%m%d-%H%M%S)"
 export SCHEMATICS_CONFIG="$ROOT/config.yaml"
@@ -28,14 +30,28 @@ if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
   echo "warning: ANTHROPIC_API_KEY is not set; Claude features will be unavailable" >&2
 fi
 
-# True when the PID file points at a live uvicorn process (guards against stale, reused PIDs).
+# True when the PID file ($1) points at a live process whose command contains $2
+# (guards against stale PIDs reused by unrelated processes).
 is_running() {
-  [ -f "$1" ] && ps -p "$(cat "$1")" -o command= 2>/dev/null | grep -q uvicorn
+  [ -f "$1" ] && ps -p "$(cat "$1")" -o command= 2>/dev/null | grep -q "$2"
+}
+
+# Wait until $1 answers, then print $2; fail with a pointer to the log $3.
+wait_for() {
+  for _ in $(seq 1 40); do
+    if curl -sf "$1" > /dev/null; then
+      echo "$2"
+      return
+    fi
+    sleep 0.5
+  done
+  echo "not ready: $1; see $3" >&2
+  exit 1
 }
 
 start_backend() {
   local pidfile="$RUN/backend.pid"
-  if is_running "$pidfile"; then
+  if is_running "$pidfile" uvicorn; then
     echo "backend already running (pid $(cat "$pidfile"))"
     return
   fi
@@ -61,16 +77,32 @@ start_backend() {
     echo $! > "$pidfile"
   )
 
-  for _ in $(seq 1 40); do
-    if curl -sf "http://127.0.0.1:$BACKEND_PORT/api/health" > /dev/null; then
-      echo "backend ready: http://127.0.0.1:$BACKEND_PORT (log: .run/backend.log)"
-      return
-    fi
-    sleep 0.5
-  done
-  echo "backend did not become healthy; see .run/backend.log" >&2
-  exit 1
+  wait_for "http://127.0.0.1:$BACKEND_PORT/api/health" \
+    "backend ready:  http://127.0.0.1:$BACKEND_PORT (log: .run/backend.log)" .run/backend.log
+}
+
+start_frontend() {
+  local pidfile="$RUN/frontend.pid"
+  if is_running "$pidfile" vite; then
+    echo "frontend already running (pid $(cat "$pidfile"))"
+    return
+  fi
+
+  local dir="$ROOT/frontend"
+  # Reinstall only when package-lock.json changed since the last install.
+  if [ ! -d "$dir/node_modules" ] || [ "$dir/package-lock.json" -nt "$dir/node_modules/.package-lock.json" ]; then
+    echo "installing frontend dependencies..."
+    (cd "$dir" && npm ci --silent)
+  fi
+
+  (
+    cd "$dir"
+    nohup ./node_modules/.bin/vite > "$RUN/frontend.log" 2>&1 &
+    echo $! > "$pidfile"
+  )
+  wait_for "http://127.0.0.1:$FRONTEND_PORT/" \
+    "frontend ready: http://127.0.0.1:$FRONTEND_PORT (log: .run/frontend.log)" .run/frontend.log
 }
 
 start_backend
-# The frontend will be started here once it exists.
+start_frontend

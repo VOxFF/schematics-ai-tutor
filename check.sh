@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Integrity checks before every PR: docs, config, layout, secrets, scripts, tests.
+# Integrity checks before every PR: docs, config, layout, secrets, scripts, backend and frontend tests.
 # Runs locally (uses backend/.venv when present) and in CI.
 set -euo pipefail
 
@@ -20,3 +20,9 @@ echo "scripts: ok"
 
 echo "== backend tests"
 "$PY" -m pytest -q backend
+
+echo "== frontend tests and build"
+if [ ! -d frontend/node_modules ]; then
+  (cd frontend && npm ci --silent)
+fi
+(cd frontend && npm test --silent && npm run build --silent > /dev/null && echo "frontend build: ok")

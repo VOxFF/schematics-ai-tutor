@@ -128,9 +128,13 @@ def check_stale_terms(md_files: list[str]) -> None:
                 errors.append(f"{name}: stale term '{term}'")
 
 
+# Files written by tools in their own format (npm rewrites these on every install).
+TOOL_MANAGED_JSON = {"package.json", "package-lock.json"}
+
+
 def check_json_format(tracked: list[str]) -> None:
     for name in tracked:
-        if name.endswith(".json"):
+        if name.endswith(".json") and Path(name).name not in TOOL_MANAGED_JSON:
             text = (ROOT / name).read_text()
             if text != dumps(json.loads(text)):
                 errors.append(f"{name}: not in the readable JSON format (backend/app/jsonfmt.py)")

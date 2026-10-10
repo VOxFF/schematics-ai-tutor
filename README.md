@@ -13,11 +13,11 @@ A Claude-based tutor for learning electric circuits and schematics on an interac
 
 ```sh
 # API key: backend/keys/apikey.txt (gitignored), or ANTHROPIC_API_KEY in .env
-./start.sh              # starts the backend in the background
+./start.sh              # starts backend (:8000) and frontend (:5173) in the background
 ./stop.sh
 ```
 
-Server output goes to `.run/backend.log`. Usage and cost logs go to `logs/run-<timestamp>.jsonl` (toggle `logs.enabled` in [`config.yaml`](config.yaml)). Details are in [backend/README.md](backend/README.md).
+Open http://127.0.0.1:5173. Server output goes to `.run/backend.log` and `.run/frontend.log`. Usage and cost logs go to `logs/run-<timestamp>.jsonl` (toggle `logs.enabled` in [`config.yaml`](config.yaml)). Details are in [backend/README.md](backend/README.md).
 
 ## Tests
 
@@ -29,7 +29,7 @@ Server output goes to `.run/backend.log`. Usage and cost logs go to `logs/run-<t
 ## Checks
 
 ```sh
-./check.sh    # links, config vs. docs, layout snapshot, secrets, scripts, backend tests
+./check.sh    # links, config vs. docs, layout snapshot, secrets, scripts, backend and frontend tests
 ```
 
 The same checks run in GitHub Actions on every pull request.
