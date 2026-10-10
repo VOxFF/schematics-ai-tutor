@@ -97,7 +97,7 @@ Every message is a JSON object with a `type` field.
 
 ### Data model
 
-The board format (the `grid` document) and its validation rules are defined in [schematics.md](schematics.md#1-board-format-the-grid-document). The shapes below fix the contract.
+The board format (the `grid` document) and its validation rules are defined in [schematics.md](schematics.md#1-board-format-the-grid-document). The `graph` document is defined in [schematics.md](schematics.md#2-graph-format-the-graph-document). The frontend sends and receives only grids; graphs are internal to the backend and its Claude calls. The shapes below fix the contract.
 
 ```ts
 type Point = [number, number];   // [col, row], 1-based, row 1 at the top
@@ -131,6 +131,15 @@ interface Board {                // the `grid` document
   targets: Record<string, { value: number; tolerance?: number }>;  // meter id -> target (V or A)
 }
 
+type PinRef = string;            // "<componentId>.<pinName>", e.g. "R1.a"
+
+interface Graph {                // the `graph` document: connectivity only, canonical form
+  components: { id: string; type: ComponentType; value?: number }[];
+  edges: [PinRef, PinRef][];     // pin-to-pin connections, canonical
+  targets: Board["targets"];
+  inventory: InventoryItem[];
+}
+
 interface LevelSummary {
   id: string;
   order: number;
@@ -153,7 +162,8 @@ type IssueCode =
 interface Issue {
   code: IssueCode;
   component_ids: string[];
-  points: Point[];
+  pins: PinRef[];                // the pins involved, from the graph
+  points: Point[];               // the same pins mapped to grid points, for highlighting
 }
 
 interface Measurement {
@@ -216,8 +226,8 @@ The order runs from most stable to least stable, so the cached prefix stays vali
    - set `focus` to the relevant parts
 2. **Messages.** The session's history turns as alternating user and assistant text, then the current user turn with tagged JSON blocks:
    - `<level>`: concept, targets and intro text
-   - `<reference>`: the complete reference board when available, so hints can point toward a solution without revealing it
-   - `<board>`: the learner's components
+   - `<reference>`: the reference solution's `graph` when available, so hints can point toward a solution without revealing it
+   - `<graph>`: the learner's board as a `graph`, which is compact and placement-free
    - `<evaluation>`: the evaluator's result, which is the only source of electrical values
    - `<request>`: the `action`, the next allowed hint level and `learner_text`
 
@@ -231,7 +241,7 @@ The order runs from most stable to least stable, so the cached prefix stays vali
 
 ### 2.2 Task generation call
 
-Claude proposes a task. The backend validates it and turns it into a `Level`; the full flow is in [schematics.md](schematics.md#2-task-flow).
+Claude proposes a task. The backend validates it and turns it into a `Level`; the full flow is in [schematics.md](schematics.md#3-task-flow).
 
 #### Call settings
 

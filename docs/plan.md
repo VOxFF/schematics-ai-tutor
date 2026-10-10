@@ -13,7 +13,8 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Tutor design: teaching behavior, system prompt, hint ladder content
 - [x] Domain design: breadboard model, components, netlist mapping, evaluator checks ([schematics.md](schematics.md))
 - [x] Board data format: the `grid` document ([schematics.md](schematics.md))
-- [x] Task flow: generation, validation stages, derivation, grading ([schematics.md](schematics.md#2-task-flow))
+- [x] Graph format: the `graph` document with canonical edges ([schematics.md](schematics.md#2-graph-format-the-graph-document))
+- [x] Task flow: generation, validation stages, derivation, grading ([schematics.md](schematics.md#3-task-flow))
 - [ ] Level design and progression
 - [x] Workspace rendering decision: three.js
 - [ ] Hosting decision

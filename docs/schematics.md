@@ -1,6 +1,6 @@
 # Schematics
 
-The domain-specific design: the board format, the task flow, the components, how a board becomes a circuit, how the evaluator solves it, and the levels. Everything here is specific to electronics. The domain-independent architecture is in [design.md](design.md), and the data shapes are in [contract.md](contract.md).
+The domain-specific design: the grid and graph formats, the task flow, the components, how a board becomes a circuit, how the evaluator solves it, and the levels. Everything here is specific to electronics. The domain-independent architecture is in [design.md](design.md), and the data shapes are in [contract.md](contract.md).
 
 ## 1. Board format: the `grid` document
 
@@ -123,12 +123,70 @@ The backend rejects a document that breaks any of these rules, before any electr
 
 - **Redundant pins:** pin positions are fully determined by the body point and `orientation`. Both are kept for now, and validation checks that they agree. This is to be revisited in an optimization step.
 
-## 2. Task flow
+## 2. Graph format: the `graph` document
+
+The graph is a distilled version of a grid. It drops all placement information (coordinates, orientation, wire shapes, `fixed`) and keeps only connectivity. The evaluator and Claude work on the graph; only the frontend works on the grid.
+
+```json
+{
+  "components": [
+    { "id": "AM1", "type": "ammeter" },
+    { "id": "R1",  "type": "resistor",       "value": 20 },
+    { "id": "V1",  "type": "voltage_source", "value": 12 },
+    { "id": "VM1", "type": "voltmeter" }
+  ],
+  "edges": [
+    ["AM1.negative", "V1.positive"],
+    ["AM1.positive", "R1.a"], ["AM1.positive", "VM1.positive"],
+    ["R1.b", "V1.negative"], ["R1.b", "VM1.negative"]
+  ],
+  "targets": { "VM1": { "value": 4.0, "tolerance": 0.1 } },
+  "inventory": [ { "id": "R3", "type": "resistor", "value": 50 } ]
+}
+```
+
+### Sections
+
+| Key | Meaning |
+|---|---|
+| `components` | The graph's nodes: every placed component, with `id`, `type` and `value`, sorted by `id` |
+| `edges` | Pin-to-pin connections: two pins joined by wires, in canonical form (see below) |
+| `targets` | Copied from the grid |
+| `inventory` | Copied from the grid: the parts not yet placed |
+
+A **pin reference** is the string `"<componentId>.<pinName>"`, for example `"R1.a"` or `"V1.positive"`.
+
+### Canonical form
+
+The same circuit always produces exactly the same graph, byte for byte. This makes two graphs comparable, for example the learner's against the reference. The rules:
+
+1. Group the pins that are connected to each other through wires. A pin connected to nothing appears in no edge.
+2. Within each group, sort the pins lexicographically. Pair the first pin with each of the others in turn; when 3 or more pins meet, this gives a star.
+3. Sort the edges lexicographically.
+4. Sort `components` and `inventory` by `id`.
+
+### Grid → graph conversion
+
+1. **Union-find over points.** Every wire segment merges its two points. The resulting sets are the electrically connected regions of the grid.
+2. **Pins to groups.** Each component pin joins the set that contains its point. Sets with fewer than two pins are dropped.
+3. **Emit edges** in canonical form.
+4. **Pin location map.** The backend also keeps a map from each pin reference to its grid point. It is not part of the graph. It translates graph-level findings, such as an issue on `"AM1.negative"`, back to grid points so three.js can highlight them.
+
+### Patterns the validator reads from the graph
+
+| Pattern | Meaning |
+|---|---|
+| A pin in no edge | Floating pin: that lead is connected to nothing |
+| A source's `positive` and `negative` connected | Short circuit |
+| A component's two pins connected to each other | Bypassed component |
+| An ammeter's two pins connected to the two pins of a single resistor or source | The ammeter is in parallel, which is effectively a short across that part |
+
+## 3. Task flow
 
 There are two data objects:
 
 - **Grid:** the `grid` document from §1. It is what the learner sees and edits.
-- **Graph:** the netlist (ratsnest) derived from a grid. Nodes are connected sets of points, and edges are components. The evaluator works only on the graph, never on the grid directly.
+- **Graph:** the `graph` document from §2, the netlist (ratsnest) derived from a grid. The evaluator works only on the graph, never on the grid directly.
 
 ```mermaid
 flowchart TD
@@ -190,9 +248,9 @@ Every generated task passes the same validator that checks learner boards. All o
 - The backend generates the next task in the background as soon as the current one is delivered.
 - Each concept opens with a curated level, so the learner never waits at the start.
 
-## 3. From board to circuit
+## 4. From board to circuit
 
-> **Pending revision.** Sections 3–7 predate the `grid` format: they assume breadboard strips and rails, and a `battery` component. They will be updated when the evaluator is designed.
+> **Pending revision.** Sections 4–8 predate the `grid` format: they assume breadboard strips and rails, and a `battery` component. They will be updated when the evaluator is designed.
 
 ```mermaid
 flowchart LR
@@ -214,7 +272,7 @@ flowchart LR
 2. **Elements.** Every non-wire component becomes an element between the nodes of its two pins.
 3. **Ground.** The node of the battery's `−` pin is the reference, at 0 V.
 
-## 4. Solver
+## 5. Solver
 
 A DC **modified nodal analysis (MNA)** over the netlist, solved with `numpy.linalg.solve`. Nothing beyond DC is in scope.
 
@@ -224,7 +282,7 @@ A DC **modified nodal analysis (MNA)** over the netlist, solved with `numpy.lina
 - Results per element: the voltage across it and the current through it, rounded for display to 3 significant figures.
 - **Goal check:** `|actual − target| ≤ tolerance`.
 
-## 5. Structural checks
+## 6. Structural checks
 
 These run before and alongside the solve, and fill `Evaluation.issues`.
 
@@ -236,7 +294,7 @@ These run before and alongside the solve, and fill `Evaluation.issues`.
 | `floating_component` | A component pin's node connects to nothing else | `true` |
 | `open_circuit` | The battery current is ~0 (below 1 µA) although a source exists | `true` |
 
-## 6. Rendering and interaction (three.js)
+## 7. Rendering and interaction (three.js)
 
 - **Scene graph:** every hole, component and wire is its own scene object, carrying the component `id` for raycast picking.
 - **Placing a part:** drag from the palette, then click two holes. Each pin snaps to the nearest free hole.
@@ -247,7 +305,7 @@ These run before and alongside the solve, and fill `Evaluation.issues`.
   - Each voltmeter's live reading is shown above it, from the latest `evaluation`.
 - **Highlights:** the components and holes in a `TutorMessage.focus` are outlined. Hovering a hole highlights its whole strip, which makes the hidden connections visible.
 
-## 7. Levels (draft)
+## 8. Levels (draft)
 
 Each level teaches one concept and targets known beginner misconceptions. The tutor receives the concept and the misconception list for the current level.
 
