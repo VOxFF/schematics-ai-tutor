@@ -205,6 +205,13 @@ button.large {
   grid-area: task;
 }
 
+/* Top boxes share the start screen's green, so the two screens feel connected. */
+.header,
+.task {
+  background: var(--success-tint);
+  border-color: var(--success-border);
+}
+
 .task h2 {
   margin: 0 0 6px;
   font-size: 1.05rem;

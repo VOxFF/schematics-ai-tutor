@@ -216,7 +216,7 @@ A bonus feature, built after everything else ([plan.md](plan.md#7-bonus)). It gi
 | Page / panels | `#f6f7f9` / `#ffffff`, borders `#d0d7de` | Layout |
 | Canvas | `#fbfaf6` with `#d8d4c8` dots | The grid's work area |
 | Accent | `#0969da`, tint `#eef4fc` | Primary actions (Start, Next), the level badge, selection, tutor chat bubbles |
-| Success | `#1a7f37`, border `#4ac26b`, tint `#eaf7ee` | Solved, tutor `success`, the current learning-path step |
+| Success | `#1a7f37`, border `#4ac26b`, tint `#eaf7ee` | Solved, tutor `success`, the current learning-path step, and the background of the top boxes (header, task) |
 | Attention | `#bf8700`, tint `#fff8e1` | Tutor `attention` |
 | Error | `#cf222e`, tint `#ffebe9` | Tutor `error`, invalid drops, errors |
 | Locked / disabled | `#8c959f` | Locked path steps, disabled controls |
