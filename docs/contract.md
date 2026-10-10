@@ -271,7 +271,7 @@ interface Highlight {
 
 ## 2. Backend ↔ Claude API
 
-The backend makes three kinds of Claude calls: **tutoring** (2.1), **task generation** (2.2) and, as a bonus, the **skill summary** (2.3). Models, effort and limits are read from `backend/config.yaml` ([design.md](design.md#5-configuration)); the values below are the defaults.
+The backend makes three kinds of Claude calls: **tutoring** (2.1), **task generation** (2.2) and, as a bonus, the **skill summary** (2.3). Models, effort and limits are read from the root `config.yaml` ([design.md](design.md#5-configuration)); the values below are the defaults.
 
 ### 2.1 Tutor call
 
