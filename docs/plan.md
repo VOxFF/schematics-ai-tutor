@@ -11,13 +11,14 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Contracts: frontend ↔ backend and backend ↔ Claude ([contract.md](contract.md))
 - [x] Gitignore for the Python and React stack
 - [x] Tutor triggers: idle-triggered reactions on snapshots, plus learner requests ([contract.md](contract.md#21-tutor-call))
-- [ ] Tutor design: teaching behavior, system prompt, hint ladder content
+- [ ] Tutor design: teaching behavior, system prompt, hint ladder content, free learner chat (context packed by the backend)
 - [x] Domain design: grid model, components, netlist mapping, evaluator checks ([schematics.md](schematics.md))
 - [x] Board data format: the `grid` document ([schematics.md](schematics.md))
 - [x] Graph format: the `graph` document with pin-pair edges ([schematics.md](schematics.md#2-graph-format-the-graph-document))
 - [x] Task flow: generation, validation stages, derivation, grading ([schematics.md](schematics.md#3-task-flow))
 - [x] Task generation input: task context, learner context, skill level ([contract.md](contract.md#22-task-generation-call))
 - [x] Evaluator design: pipeline, solver with ammeter, structural checks, rendering ([schematics.md](schematics.md#4-evaluation-pipeline))
+- [x] Evaluation result: status, readings of all placed meters, issues ([schematics.md](schematics.md#6-structural-checks-and-status))
 - [ ] Level design: validate the curated levels by playtesting
 - [x] Workspace rendering decision: three.js
 
@@ -27,7 +28,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Grid format validation
 - [ ] Grid-to-graph conversion
 - [ ] Circuit solver (voltages and currents)
-- [ ] Structural checks (shorts, open circuits, bypassed components)
+- [ ] Structural checks and status precedence
 - [ ] Meter readings: rounding to resolution, target tolerance check
 - [ ] Curated levels (tagged by skill level) and goal checking
 - [ ] Task generation: Claude call, `validate_grid` tool, derivation, retries and fallback

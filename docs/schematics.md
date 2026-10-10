@@ -163,14 +163,9 @@ The order of edges, and of the two pins within an edge, carries no meaning. Any 
 3. **Emit edges:** for each group of connected pins, emit pin-pair edges that link every pin in the group. Two pins give one edge; three pins, as at a T-junction, give two edges.
 4. **Pin location map.** The backend also keeps a map from each pin reference to its grid point. It is not part of the graph. It translates graph-level findings, such as an issue on `"AM1.negative"`, back to grid points so three.js can highlight them.
 
-### Patterns the validator reads from the graph
+### Checks on the graph
 
-| Pattern | Meaning |
-|---|---|
-| A pin in no edge | Floating pin: that lead is connected to nothing |
-| A source's `positive` and `negative` connected | Short circuit |
-| A component's two pins connected to each other | Bypassed component |
-| An ammeter's two pins connected to the two pins of a single resistor or source | The ammeter is in parallel, which is effectively a short across that part |
+The structural checks read connection patterns from the graph and its nets, for example a source whose two pins are connected. They are defined in §6.
 
 ## 3. Task flow
 
@@ -190,7 +185,7 @@ flowchart TD
     F --> L
     L --> U["Learner edits the grid"]
     U --> GG["Grid → graph"]
-    GG --> EV["Evaluator: readings, issues, goal_met"]
+    GG --> EV["Evaluator: status, readings, issues"]
     EV --> U
     EV --> T["Claude tutor: feedback and hints"]
     T --> U
@@ -225,7 +220,7 @@ Every generated task passes the same validator that checks learner boards. All o
 | Stage | Checks |
 |---|---|
 | 1. Format | The §1 format rules hold for the complete board, and `removed_ids`, `decoys` and `target_meter_ids` refer to valid, unique IDs |
-| 2. Solvable | The complete board's graph has no issues (no short, open circuit, bypassed or floating part), and every target meter reads a non-zero value |
+| 2. Solvable | Evaluated without targets, the complete board's graph has a source, no short circuit, a successful solve and **no issues at all** (no open loop, floating, bypassed or overloaded part, no meter misuse). Every target meter sits in the working circuit and reads a non-zero value. |
 | 3. Not already solved | The task grid does **not** meet the targets. Removed parts are not `fixed`, and target meters are not removed. |
 | 4. Not a repeat | The complete board's graph differs from the graphs of the learner's recent tasks: different component types and values, or different connections. |
 
@@ -252,9 +247,10 @@ flowchart LR
     N --> S["Structural checks §6"]
     N --> M["MNA solve §5"]
     M --> R["Readings, rounded §1"]
-    S --> E[Evaluation]
-    R --> E
-    T[targets] --> E
+    S --> ST[Status by precedence]
+    R --> ST
+    T[targets] --> ST
+    ST --> E[Evaluation]
 ```
 
 1. **Validate** the grid against the §1 format rules.
@@ -262,7 +258,7 @@ flowchart LR
 3. **Build nets.** A union-find over the pins in `edges` gives the nets. Each net is one electrical node, and every component sits between the nets of its two pins. A pin that appears in no edge gets its own single-pin net.
 4. **Choose ground.** The net of the `negative` pin of the first `voltage_source`, by `id`, is the reference at 0 V.
 5. **Check structure** (§6), then **solve** (§5), unless a blocking issue makes the circuit unsolvable.
-6. **Report** the meter readings, rounded to resolution, and check them against `targets`: `goal_met` is true when every target is within its tolerance.
+6. **Report** one `status`, the readings of every placed meter (rounded to resolution) and all issues (§6).
 
 ## 5. Solver
 
@@ -277,22 +273,50 @@ A DC **modified nodal analysis (MNA)** over the nets, solved with `numpy.linalg.
 
 - **Signed readings.** Reversed meter probes give negative readings, as on a real multimeter. That is a useful teaching moment, and the tutor sees it.
 - **Floating nets** (not connected to ground through any element) would make the matrix singular. A tiny conductance to ground (gmin = 1e‑12 S) on every net keeps it solvable. Those nets read 0 V and carry no current, and after rounding the residue disappears (§1).
-- **Unsolvable circuits.** Contradictory sources (two sources of different values in parallel) or a loop of sources and ammeters still make the matrix singular. The result is `valid: false`, normally already explained by a `short_circuit` issue.
+- **Unsolvable circuits.** Contradictory sources (two sources of different values in parallel) or a loop of sources and ammeters still make the matrix singular. The result is a `short_circuit` issue, with all readings `null`.
 
-## 6. Structural checks
+## 6. Structural checks and status
 
-These checks read the graph and its nets, and fill `Evaluation.issues`. Each issue lists the pins involved; the backend maps them to grid points for highlighting (§2).
+The evaluator returns one **status**, the **readings** of all placed meters, and a list of **issues**. These are what the UI and the tutor need to show and explain what is happening.
 
-| Code | Detection | Effect |
+### Issues
+
+Each check reads the graph and its nets. Each issue lists the pins involved, which the backend maps to grid points for highlighting (§2).
+
+| Issue | Detection | Status |
 |---|---|---|
-| `no_source` | No `voltage_source` in `components` | `valid: false`; no solve |
-| `short_circuit` | A source's `positive` and `negative` are joined through wires and ammeters only, so there is no resistance between them | `valid: false`; no solve |
-| `bypassed` | A component's two pins are in the same net, so it reads 0 V and carries 0 A | `valid: true` |
-| `floating_component` | A component has a pin that is not connected to any other pin | `valid: true` |
-| `ammeter_parallel` | An ammeter's two nets are exactly the two nets of a resistor, so the ammeter shorts that resistor | `valid: true`; the readings show the effect |
-| `open_circuit` | A source exists but its current is below the ammeter resolution (0.1 mA) | `valid: true` |
+| `short_circuit` | A source's `positive` and `negative` are joined through wires and ammeters only, so there is no resistance between them. Also raised when the solve is singular (contradictory sources). | `short_circuit` |
+| `no_source` | No `voltage_source` in `components` | `no_source` |
+| `overcurrent` | A resistor dissipates more than its power rating: I² · R > `evaluator.resistor_max_power_w` (default 5 W). A real resistor would overheat. | `overcurrent` |
+| `ammeter_parallel` | An ammeter's two nets are exactly the two nets of a resistor, so the ammeter shorts that resistor | `meter_misuse` |
+| `voltmeter_series` | The source current is ~0, and re-solving with a voltmeter replaced by a wire makes current flow: the voltmeter blocks the loop | `meter_misuse` |
+| `open_circuit` | A source exists, but its current is below the ammeter resolution (0.1 mA), and no `voltmeter_series` explains it | `open_circuit` |
+| `floating_part` | A component has a pin that is connected to no other pin | `floating_part` |
+| `bypassed` | A component's two pins are in the same net, so it reads 0 V and carries 0 A | `bypassed` |
 
-A voltmeter placed in series shows up as `open_circuit`, plus a voltmeter reading close to the source voltage. The tutor interprets that combination; it needs no separate code.
+### Status precedence
+
+The status is the most severe one that applies:
+
+`short_circuit` › `no_source` › `overcurrent` › `meter_misuse` › `open_circuit` › `floating_part` › `bypassed` › `misplaced` › `near_target` › `solved`
+
+- `meter_misuse` ranks above `open_circuit` because a voltmeter in series *produces* an open circuit. The more specific cause is the more useful one to report.
+- The first seven statuses describe the circuit's wiring and apply with or without targets, including when the learner explores with meters from the inventory.
+- If none of them applies, the readings are compared with the targets:
+
+| Status | Rule |
+|---|---|
+| `solved` | Every target reading is within its tolerance (§1). |
+| `near_target` | Not solved, but every target is within `evaluator.near_target_ratio` (default 10%) of its value. Lets the tutor say "almost there". |
+| `misplaced` | At least one target is further off, or its meter isn't placed. |
+
+A reversed meter gives a negative reading, so it counts as `misplaced`; the tutor sees the sign and can say so.
+
+### Readings
+
+- **Every placed meter.** Readings cover every voltmeter and ammeter in `components`, not only target meters, so the grid can show a live value on each one.
+- **Rounding.** Readings are rounded to meter resolution (§1).
+- **When unavailable.** They are `null` when the circuit can't be solved (`short_circuit`), and the UI shows "--". With `no_source` they are all `0`.
 
 ## 7. Rendering and interaction (three.js)
 
