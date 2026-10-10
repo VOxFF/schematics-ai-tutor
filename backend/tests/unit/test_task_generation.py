@@ -2,6 +2,10 @@ import asyncio
 import copy
 import json
 
+import pytest
+
+pytestmark = pytest.mark.usefixtures("any_level")
+
 from app.task_generation import generate_task, learner_context
 from tests.conftest import FakeClaude, as_claude_output, load_example, text_response, tool_response
 

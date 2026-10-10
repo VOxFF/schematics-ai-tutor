@@ -1,0 +1,101 @@
+# Curriculum: what Claude generates at each level (docs/schematics.md §3).
+#
+# The skill level counts solved tasks (+1 each). It maps to a curriculum level by `tasks`:
+# levels 1–2 take 2 tasks each, 3–5 take 3, 6–8 take 4. After level 8, tasks stay at level 8.
+#
+# Each level's rules go into the generation prompt and are checked by the backend:
+#   grid       columns / rows ranges; the backend picks the exact size within them
+#   removed    how many wire pieces and parts the learner must place back
+#   decoys     extra inventory parts that aren't needed
+#   targets    number of target meters
+#   variants   per-task overrides, cycled by the task number within the level
+# Ranges are [min, max], inclusive.
+
+levels:
+  - level: 1
+    concept: closed loop
+    goal: Current flows only around a complete loop.
+    tasks: 2
+    grid: { columns: [8, 10], rows: [6, 6] }
+    circuit: one voltage source, one resistor and one meter, all fixed except what is removed
+    decoys: [0, 0]
+    targets: [1, 1]
+    variants:
+      - description: one or two wire pieces are missing
+        removed: { wires: [1, 2], parts: [0, 0] }
+      - description: several elements are missing, e.g. the resistor and a wire, or the battery
+        removed: { wires: [0, 2], parts: [1, 2], total: [2, 3] }
+
+  - level: 2
+    concept: Ohm's law, picking a resistor
+    goal: Current depends on voltage and resistance (I = V / R).
+    tasks: 2
+    grid: { columns: [10, 12], rows: [6, 8] }
+    circuit: a source, one resistor and a meter; the learner picks the resistor
+    removed: { wires: [1, 1], parts: [1, 1] }
+    decoys: [1, 2]
+    targets: [1, 1]
+
+  - level: 3
+    concept: Ohm's law with more choices
+    goal: Reason about which resistance gives the target, among several options.
+    tasks: 3
+    grid: { columns: [10, 12], rows: [6, 8] }
+    circuit: a source, one resistor and a meter
+    removed: { wires: [2, 3], parts: [1, 1] }
+    decoys: [3, 3]
+    targets: [1, 1]
+
+  - level: 4
+    concept: series resistors (voltage divider)
+    goal: Series resistors share the source voltage in proportion to their resistance.
+    tasks: 3
+    grid: { columns: [12, 12], rows: [8, 8] }
+    circuit: a source and two resistors in series, with a voltmeter across one of them
+    removed: { wires: [1, 3], parts: [1, 2] }
+    decoys: [2, 3]
+    targets: [1, 1]
+
+  - level: 5
+    concept: parallel resistors
+    goal: Each parallel branch gets the full voltage; branch currents add up.
+    tasks: 3
+    grid: { columns: [12, 12], rows: [8, 8] }
+    circuit: a source, two resistors in parallel and an ammeter for the total or a branch current
+    removed: { wires: [1, 3], parts: [1, 1] }
+    decoys: [2, 3]
+    targets: [1, 1]
+
+  - level: 6
+    concept: series–parallel combination
+    goal: Combine the series and parallel rules to reach a voltage and a current.
+    tasks: 4
+    grid: { columns: [12, 14], rows: [8, 10] }
+    circuit: a source and three resistors in a series–parallel combination, with a voltmeter and an ammeter
+    removed: { wires: [1, 3], parts: [2, 2] }
+    decoys: [2, 3]
+    targets: [2, 2]
+
+  - level: 7
+    concept: measuring right
+    goal: A voltmeter goes across a part; an ammeter goes in the loop.
+    tasks: 4
+    grid: { columns: [10, 12], rows: [8, 8] }
+    circuit: a working circuit of a source and one or two resistors; the meters are missing
+    removed: { wires: [0, 2], parts: [1, 2], meters: [1, 2] }
+    decoys: [0, 0]
+    targets: [1, 2]
+    removed_targets_allowed: true   # the learner places the target meters themselves
+
+  - level: 8
+    concept: power and safety
+    goal: Too little resistance means too much current and heat.
+    tasks: 4
+    grid: { columns: [10, 12], rows: [6, 8] }
+    circuit: a source, one resistor and an ammeter; some decoy resistors would overheat (more than 5 W)
+    removed: { wires: [1, 2], parts: [1, 1] }
+    decoys: [2, 3]
+    targets: [1, 1]
+
+# Level 9, troubleshooting (find and fix one fault by measuring), needs a format
+# extension for replaced parts and is not generated yet.

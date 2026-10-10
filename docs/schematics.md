@@ -195,7 +195,23 @@ flowchart TD
 ### Progression
 
 - **Skill level.** The backend keeps the learner's skill level, an integer starting at 1, and adds 1 each time a task is solved. Nothing else changes it.
-- **Claude chooses the task.** It receives the skill level and the task history, and picks the next task's concept and complexity itself. The aim is to build on what the learner has done and avoid repeating it. A random variation hint per request keeps tasks different even for identical learners.
+- **Curriculum.** The skill level maps to a **curriculum level** and a task within it ([`backend/data/curriculum.yaml`](../backend/data/curriculum.yaml)). More complex levels get more practice: levels 1–2 take 2 tasks each, levels 3–5 take 3, and levels 6–8 take 4. That is 25 tasks to finish level 8; after that, tasks stay at level 8.
+
+| Level | Concept | Grid | Missing (the learner places it) | Decoys | Targets |
+|---|---|---|---|---|---|
+| 1 | Closed loop | 8–10 × 6 | Task 1: 1–2 wire pieces. Task 2: several elements, e.g. the resistor and a wire, or the battery | 0 | 1 |
+| 2 | Ohm's law: pick the resistor | 10–12 × 6–8 | 1 resistor + 1 wire | 1–2 | 1 |
+| 3 | Ohm's law, more choices | 10–12 × 6–8 | 1 resistor + 2–3 wires | 3 | 1 |
+| 4 | Series resistors (voltage divider) | 12 × 8 | 1–2 resistors + 1–3 wires | 2–3 | 1 |
+| 5 | Parallel resistors | 12 × 8 | 1 branch resistor + 1–3 wires | 2–3 | 1 |
+| 6 | Series–parallel combination | 12–14 × 8–10 | 2 resistors + 1–3 wires | 2–3 | 2 (a voltage and a current) |
+| 7 | Measuring right | 10–12 × 8 | The meters (1–2) and up to 2 wires; the learner places the target meters | 0 | 1–2 |
+| 8 | Power and safety | 10–12 × 6–8 | 1 resistor + 1–2 wires; some decoys would overheat | 2–3 | 1 |
+| 9 | Troubleshooting | — | Find and fix one fault. *Needs a format extension for replaced parts; not generated yet.* | | |
+
+- **Generation follows the level.** The backend picks the grid size within the level's range and sends Claude the level's rules: concept, goal, circuit, what to remove, decoys, targets, and the task's variant. Claude chooses the circuit within those rules; a random variation hint (layout, source voltage, resistor range) keeps tasks different even for identical learners.
+- **The backend checks the fit** (validation stage 1): grid size, number of removed wires, parts and meters, decoys and targets. A task that doesn't fit its level is regenerated like any other failure.
+- **Centered, balanced layout.** The circuit must be centered on the grid: free columns left and right differ by at most one, and so do free rows above and below. The backend checks this. Claude is also asked to prefer symmetric arrangements and to center parts on their wire runs where it can.
 - **Curated levels.** These hand-made levels are the very first task and the fallback when generation fails. Each is tagged with the skill level it suits.
 
 ### Generation: Claude proposes, the backend decides
@@ -222,7 +238,7 @@ Every generated task passes the same validator that checks learner boards. All o
 
 | Stage | Checks |
 |---|---|
-| 1. Format | The §1 format rules hold for the complete board, and `removed_ids`, `decoys` and `target_meter_ids` refer to valid, unique IDs |
+| 1. Format and level | The §1 format rules hold for the complete board; `removed_ids`, `decoys` and `target_meter_ids` refer to valid, unique IDs; the task fits its curriculum level; the circuit is centered |
 | 2. Solvable | Evaluated without targets, the complete board's graph has a source, no short circuit, a successful solve and **no issues at all** (no open loop, floating, bypassed or overloaded part, no meter misuse). Every target meter sits in the working circuit and reads a non-zero value. |
 | 3. Not already solved | The task grid does **not** meet the targets. Removed parts are not `fixed`, and target meters are not removed. |
 | 4. Not a repeat | The complete board's **signature** differs from those of the learner's recent tasks. The signature lists, for each net, the parts touching it (type and value), plus the target meter types. Same parts wired differently (series vs. parallel) count as different; moving parts around the grid does not. |

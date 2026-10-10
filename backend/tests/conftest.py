@@ -86,3 +86,19 @@ def example_level(name="voltage_divider"):
     from app.task_spec import build_level, validate
     spec = load_example(name)
     return build_level(spec, 1, validate(spec)["board"]), spec
+
+
+# A permissive curriculum level the example tasks fit, so generation-loop tests stay about the loop.
+ANY_LEVEL = {
+    "level": 1, "concept": "test", "goal": "test", "circuit": "test", "tasks": 2,
+    "grid": {"columns": [12, 12], "rows": [8, 8]},
+    "removed": {"wires": [0, 30], "parts": [0, 5]}, "decoys": [0, 5], "targets": [1, 2],
+}
+
+
+@pytest.fixture
+def any_level(monkeypatch):
+    import app.task_generation as generation
+    monkeypatch.setattr(generation, "position", lambda skill_level: (ANY_LEVEL, 1))
+    monkeypatch.setattr(generation, "pick_grid", lambda rules: {"columns": 12, "rows": 8})
+    return ANY_LEVEL

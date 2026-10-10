@@ -20,6 +20,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Evaluator design: pipeline, solver with ammeter, structural checks, rendering ([schematics.md](schematics.md#4-evaluation-pipeline))
 - [x] Evaluation result: status, readings of all placed meters, issues ([schematics.md](schematics.md#6-structural-checks-and-status))
 - [x] GUI layout and learner concept of operations ([gui.md](gui.md))
+- [x] Learning trajectory: curriculum levels 1–8 and tasks per level ([schematics.md](schematics.md#progression))
 - [ ] Level design: validate the curated levels by playtesting
 - [x] Workspace rendering decision: three.js
 
@@ -41,6 +42,8 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Skill level and task history (`Progress`)
 - [x] Repeat check against recent tasks (circuit signature)
 - [x] Variety for identical contexts: random variation hints (layout, source voltage, resistor range)
+- [x] Curriculum levels 1–8 (`backend/data/curriculum.yaml`): skill → level and task, rules in the prompt, deterministic level-fit and centering checks
+- [ ] Level 9, troubleshooting: format extension for replaced parts
 - [x] Prompt examples as files (`backend/data/examples/`), validated in tests
 - [x] Tutor chat pipeline: learner message → backend context → Claude → validated `TutorMessage` (no hint ladder)
 - [ ] Tutor reactions on editing pauses

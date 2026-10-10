@@ -222,3 +222,11 @@ test("Next (temporary) records the task, raises the level and fetches the next t
   expect(screen.getByText("Tasks solved: 1")).toBeDefined();
   expect(screen.getByText(/Next task \(after/)).toBeDefined();
 });
+
+test("the header shows the curriculum level and the task within it", () => {
+  const level = { ...LEVEL, curriculum: { level: 2, task: 1, tasks: 2, concept: "Ohm's law" } };
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 3, history: [] }, level, chat: [] }));
+  render(<App />);
+  expect(screen.getByLabelText("Skill level").textContent).toBe("Level 2");
+  expect(screen.getByText("Task 1 of 2")).toBeDefined();
+});

@@ -12,7 +12,7 @@ const WIRE_PALETTE = ["Straight (horizontal)", "Straight (vertical)", "Corner", 
 const shownWhen = (visible) => (visible ? {} : { style: { visibility: "hidden" }, "aria-hidden": true, inert: true });
 
 // Restart Learning asks for confirmation in place of the buttons (no browser popup).
-function Header({ progress, canNext, onNext, onRestart }) {
+function Header({ progress, curriculum, canNext, onNext, onRestart }) {
   const [confirming, setConfirming] = useState(false);
   const confirmButton = useRef(null);
 
@@ -30,8 +30,13 @@ function Header({ progress, canNext, onNext, onRestart }) {
         <div className="title">Schematics AI Tutor</div>
         <div className="header-meta">
           <span className="skill" aria-label="Skill level">
-            Level {progress.skill_level}
+            Level {curriculum?.level ?? progress.skill_level}
           </span>
+          {curriculum && (
+            <span className="muted">
+              Task {curriculum.task} of {curriculum.tasks}
+            </span>
+          )}
           <span className="muted">Tasks solved: {progress.history.length}</span>
         </div>
       </div>
@@ -186,7 +191,13 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
   const tutor = useTutorSession(level, chat, onChat);
   return (
     <div className="tutor">
-      <Header progress={progress} canNext={Boolean(level) && !loading} onNext={onNext} onRestart={onRestart} />
+      <Header
+        progress={progress}
+        curriculum={level?.curriculum}
+        canNext={Boolean(level) && !loading}
+        onNext={onNext}
+        onRestart={onRestart}
+      />
       <TaskPanel level={level} evaluation={tutor.evaluation} />
       <div className="panel workspace">
         <div className="editor-column">

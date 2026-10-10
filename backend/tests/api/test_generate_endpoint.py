@@ -1,5 +1,9 @@
 from fastapi.testclient import TestClient
 
+import pytest
+
+pytestmark = pytest.mark.usefixtures("any_level")
+
 from app.main import References, app, get_claude, get_config, get_references, get_usage_log
 from app.usage_log import UsageLog
 from tests.conftest import FakeClaude, as_claude_output, load_example, text_response
