@@ -19,7 +19,6 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Terminology: "grid" across the docs
 - [ ] Level design and progression
 - [x] Workspace rendering decision: three.js
-- [ ] Hosting decision
 
 ## 2. Backend
 
@@ -51,6 +50,7 @@ The major steps to build the product. A step is checked off when it is complete,
 ## 4. Integration and deployment
 
 - [ ] End-to-end playthrough of all levels
+- [ ] Hosting decision
 - [ ] Deploy backend and frontend
 - [ ] Smoke test on the public URL
 
