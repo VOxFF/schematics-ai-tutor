@@ -11,7 +11,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Contracts: frontend ↔ backend and backend ↔ Claude ([contract.md](contract.md))
 - [x] Gitignore for the Python and React stack
 - [ ] Tutor design: teaching behavior, system prompt, hint ladder content
-- [ ] Domain design: breadboard model, components, netlist mapping, evaluator checks
+- [x] Domain design: breadboard model, components, netlist mapping, evaluator checks ([schematics.md](schematics.md))
 - [ ] Level design and progression
 - [x] Workspace rendering decision: three.js
 - [ ] Hosting decision

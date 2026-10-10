@@ -83,7 +83,7 @@ Every message is a JSON object with a `type` field.
 
 ### Data model
 
-The exact breadboard geometry (hole naming, rails) is pinned down in the domain design. The shapes below fix the contract.
+The exact breadboard geometry (hole naming, rails) is defined in [schematics.md](schematics.md). The shapes below fix the contract.
 
 ```ts
 // A hole on the breadboard, e.g. "a12" (terminal strip) or "top+:5" (rail).
@@ -210,6 +210,5 @@ The order runs from most stable to least stable, so the cached prefix stays vali
 
 ## Open points
 
-- The exact hole naming and rail layout, defined in the domain design
 - The hint ladder's content per level, defined in the tutor design
 - Whether a current goal needs an ammeter component or reads from `Measurement.current`
