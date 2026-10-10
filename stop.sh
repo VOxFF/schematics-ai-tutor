@@ -5,10 +5,11 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 RUN="$ROOT/.run"
 
+# stop_service NAME PATTERN: stop the process in .run/NAME.pid if its command contains PATTERN
+# (a stale PID may now belong to something else).
 stop_service() {
-  local name="$1" pidfile="$RUN/$1.pid"
-  # Only stop a live uvicorn process; a stale PID may now belong to something else.
-  if [ ! -f "$pidfile" ] || ! ps -p "$(cat "$pidfile")" -o command= 2>/dev/null | grep -q uvicorn; then
+  local name="$1" pattern="$2" pidfile="$RUN/$1.pid"
+  if [ ! -f "$pidfile" ] || ! ps -p "$(cat "$pidfile")" -o command= 2>/dev/null | grep -q "$pattern"; then
     echo "$name not running"
     rm -f "$pidfile"
     return
@@ -28,4 +29,5 @@ stop_service() {
   echo "$name stopped"
 }
 
-stop_service backend
+stop_service frontend vite
+stop_service backend uvicorn

@@ -145,7 +145,7 @@ The values above are the defaults, as described in [contract.md](contract.md). T
 | Layer | Choice | Status |
 |---|---|---|
 | Backend | Python, FastAPI + uvicorn | Decided |
-| Frontend | JavaScript + React | Decided |
+| Frontend | JavaScript + React, built with Vite | Decided |
 | Frontend ↔ backend transport | REST + WebSocket | Decided |
 | Workspace rendering | three.js | Decided |
 | Hosting | — | Open |
@@ -161,7 +161,7 @@ schematics-ai-tutor/
 ├── README.md                  project overview and how to run
 ├── LICENSE
 ├── config.yaml                models, knobs, rate limits, logging, pricing (§5)
-├── start.sh                   start the local stack in the background
+├── start.sh                   start the backend and frontend in the background
 ├── stop.sh                    stop it
 ├── check.sh                   integrity checks: docs, config, layout, secrets, tests
 ├── test.sh                    backend tests: unit + api, or live (real Claude)
@@ -205,14 +205,25 @@ schematics-ai-tutor/
 │   │   └── apikey.txt         Anthropic API key (gitignored)
 │   └── .venv/                 Python virtualenv, created by start.sh (gitignored)
 ├── frontend/
-│   └── README.md              placeholder until the React app exists
+│   ├── README.md
+│   ├── package.json           React app; Vite for dev server and build, Vitest for tests
+│   ├── package-lock.json
+│   ├── vite.config.js         dev server on :5173, proxies /api and /ws to the backend
+│   ├── index.html
+│   ├── src/
+│   │   ├── main.jsx           entry point
+│   │   ├── App.jsx            app shell (shows backend connection)
+│   │   ├── App.test.jsx
+│   │   └── index.css
+│   ├── node_modules/          npm packages, installed by start.sh (gitignored)
+│   └── dist/                  production build output (gitignored)
 ├── logs/                      usage and cost logs, one per run (gitignored)
 └── .run/                      PID files and server output from start.sh (gitignored)
 ```
 
 ### Conventions
 
-- **Readable JSON.** JSON files in the repo, and JSON embedded in Claude prompts, are human-readable: indented, short arrays and objects on one line (`[5, 3]`), and arrays longer than 6 elements wrapped 6 per line. `backend/app/jsonfmt.py` implements it, and `./check.sh` enforces it for tracked `.json` files. JSONL logs are the exception: one event per line.
+- **Readable JSON.** JSON files in the repo, and JSON embedded in Claude prompts, are human-readable: indented, short arrays and objects on one line (`[5, 3]`), and arrays longer than 6 elements wrapped 6 per line. `backend/app/jsonfmt.py` implements it, and `./check.sh` enforces it for tracked `.json` files. Exceptions: JSONL logs (one event per line) and files written by tools in their own format (`package.json`, `package-lock.json`).
 
 ## Open decisions
 
