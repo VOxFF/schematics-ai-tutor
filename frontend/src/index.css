@@ -110,8 +110,8 @@ button.large {
 }
 
 .start .path li.current {
-  border-color: var(--accent);
-  background: #eaf2fc;
+  border-color: #4ac26b;
+  background: #eaf7ee; /* light green: where the learner starts */
 }
 
 .start .path .step {
