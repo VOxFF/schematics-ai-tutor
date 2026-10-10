@@ -25,7 +25,8 @@ The major steps to build the product. A step is checked off when it is complete,
 
 ## 2. Backend
 
-- [ ] Scaffold the Python service
+- [x] Scaffold the Python service (FastAPI, `/api/health`, pytest)
+- [x] `start.sh` / `stop.sh` in the repo root
 - [ ] Grid format validation
 - [ ] Grid-to-graph conversion
 - [ ] Circuit solver (voltages and currents)

@@ -135,7 +135,7 @@ The values above are the defaults, as described in [contract.md](contract.md).
 
 | Layer | Choice | Status |
 |---|---|---|
-| Backend | Python | Decided |
+| Backend | Python, FastAPI + uvicorn | Decided |
 | Frontend | JavaScript + React | Decided |
 | Frontend ↔ backend transport | REST + WebSocket | Decided |
 | Workspace rendering | three.js | Decided |

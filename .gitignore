@@ -249,3 +249,6 @@ Thumbs.db
 !.vscode/settings.json
 !.vscode/extensions.json
 *.swp
+
+# Local run state from start.sh
+.run/
