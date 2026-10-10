@@ -65,7 +65,6 @@ flowchart LR
 | Tutor calls per session | 6 per minute (reactions and messages together) | Reactions are skipped silently. A learner message gets `error: rate_limited`, shown as "The tutor needs a moment; try again shortly". |
 | Task generations per session | 1 in flight, 10 per hour | The curated level for the skill level is served |
 | Board updates per session | 20 per second | Extra updates are dropped; only the latest board is evaluated |
-| WebSocket message size | 64 KB | `error: bad_message` |
 | Grid size | at most 30 × 30 points, 40 components, 300 wire pieces | `error: bad_message`. This also bounds solver and validation time. |
 | New sessions per IP | 10 per hour, 3 open at once | The connection is refused |
 | REST requests per IP | 60 per minute | `429` |
@@ -73,6 +72,7 @@ flowchart LR
 
 - **Implementation.** In-memory token buckets in the single backend process. Running several instances would need a shared store such as Redis; that is noted for scale, not built for the prototype.
 - **Configuration.** All limits are settings in `config.yaml` (§5).
+- **Message size.** No fixed limit yet; the grid size caps already bound it indirectly. Typical message sizes will be observed in practice before a limit is set.
 
 ## 5. Configuration
 
@@ -111,7 +111,6 @@ rate_limits:
   tutor_calls_per_session_per_min: 6
   task_generations_per_session_per_hour: 10
   board_updates_per_session_per_sec: 20
-  ws_message_max_kb: 64
   grid_max_points: 30            # per side
   grid_max_components: 40
   grid_max_wires: 300
