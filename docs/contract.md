@@ -114,7 +114,7 @@ interface Board {                // the `grid` document
   components: Component[];
   inventory: InventoryItem[];
   wires: Wire[];
-  targets: Record<string, number>;  // meter id -> target reading (V or A)
+  targets: Record<string, { value: number; tolerance?: number }>;  // meter id -> target (V or A)
 }
 
 interface LevelSummary {
@@ -151,7 +151,7 @@ interface Measurement {
 interface Evaluation {
   valid: boolean;          // false if the circuit can't be solved, e.g. a short
   goal_met: boolean;                     // every target within tolerance
-  readings: Record<string, number>;      // meter id -> reading, for every placed meter
+  readings: Record<string, number>;      // meter id -> reading, rounded to meter resolution
   measurements: Measurement[];
   issues: Issue[];
 }

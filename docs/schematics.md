@@ -21,7 +21,10 @@ A board is one JSON document. The same shape describes a level's starting board 
     [[[1, 3], [1, 2]], [[1, 2], [1, 1]]],
     [[[8, 2], [8, 3]], [[8, 3], [9, 3]], [[7, 3], [8, 3]]]
   ],
-  "targets": { "VM1": 4.0, "AM1": 0.2 }
+  "targets": {
+    "VM1": { "value": 4.0, "tolerance": 0.1 },
+    "AM1": { "value": 0.2 }
+  }
 }
 ```
 
@@ -39,7 +42,7 @@ A board is one JSON document. The same shape describes a level's starting board 
 | `components` | `Component[]` | Parts placed on the grid |
 | `inventory` | `InventoryItem[]` | Parts available to the learner but not placed yet. Placing one moves it into `components` with the same `id`; removing a non-fixed part moves it back. |
 | `wires` | `Wire[]` | Wire pieces on the grid |
-| `targets` | `{ [meterId]: number }` | The level goal: the reading each named meter must show (V for a voltmeter, A for an ammeter) |
+| `targets` | `{ [meterId]: { value, tolerance? } }` | The level goal: the reading each named meter must show, in V for a voltmeter or A for an ammeter. See [Targets and readings](#targets-and-readings). |
 
 ### Components
 
@@ -78,6 +81,28 @@ Pin names by type. The first pin listed is the one `orientation` points to.
 
 The shape is derived from the segments, so the format stores no explicit `type` field.
 
+### Meters
+
+Voltmeters and ammeters can appear in both `components` and `inventory`, depending on the level.
+
+- **On the board:** pre-placed meters, usually `fixed`, are the ones the level's `targets` refer to. The learner must make them read the target values.
+- **In inventory:** free meters for exploration. The learner can place them anywhere to probe voltages and currents and test their own understanding. They need no target, but their readings are shown live.
+
+### Targets and readings
+
+**Display resolution.** Each meter reads with a fixed resolution, like a real multimeter:
+
+| Meter | Resolution |
+|---|---|
+| Voltmeter | 0.01 V |
+| Ammeter | 0.1 mA (0.0001 A) |
+
+**Rounding.** The evaluator rounds every reading to its meter's resolution before reporting it. A tiny solver residue such as 3.2e‑13 A therefore reads exactly `0`, and `-0` is normalized to `0`. The learner never sees meaningless near-zero numbers.
+
+**Tolerance.** A target is met when `|reading − value| ≤ tolerance`.
+- `tolerance` is absolute, in the meter's unit, and optional.
+- If it's omitted, the default is `max(2% × |value|, resolution)`. Using the resolution as a floor keeps a target of `0` reachable.
+
 ### Connectivity
 
 - Points conduct only through wire segments. There are no breadboard strips or rails.
@@ -92,14 +117,11 @@ The backend rejects a document that breaks any of these rules, before any electr
 - `id`s are unique, and every `targets` key names a meter in `components` or `inventory`.
 - Pins match the type's pin names, lie 2 apart in a straight line, and agree with `orientation`.
 - Every wire segment joins orthogonal neighbors, and every wire piece has one of the four shapes.
-- No two component bodies occupy the same point.
+- No two components share a point: neither pins nor bodies may overlap. Components connect only through wires.
 
-### Open points
+### Notes
 
-- **Pin overlap:** may two components share a pin point, which would be a direct connection, or is a wire always required?
-- **Targets:** they carry no tolerance or unit. Should there be a per-level tolerance, or a global default such as ±2%?
-- **Meters in the example:** `VM1` and `AM1` appear only in `targets`. In a real level, are they placed by the learner from `inventory`, or fixed on the board?
-- **Redundant pins:** pin positions are fully determined by the body point and `orientation`. They're stored anyway for readability, and validation checks that they agree.
+- **Redundant pins:** pin positions are fully determined by the body point and `orientation`. Both are kept for now, and validation checks that they agree. This is to be revisited in an optimization step.
 
 ## 2. From board to circuit
 

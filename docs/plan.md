@@ -44,7 +44,11 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Deploy backend and frontend
 - [ ] Smoke test on the public URL
 
-## 5. Submission
+## 5. Polishing
+
+- [ ] Revisit the redundancy of component `orientation` and `pins`
+
+## 6. Submission
 
 - [ ] Written design rationale
 - [ ] Walkthrough video (8 minutes or less)
