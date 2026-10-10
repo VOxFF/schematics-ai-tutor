@@ -12,6 +12,11 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Gitignore for the Python and React stack
 - [ ] Tutor design: teaching behavior, system prompt, hint ladder content
 - [x] Domain design: breadboard model, components, netlist mapping, evaluator checks ([schematics.md](schematics.md))
+- [x] Board data format: the `grid` document ([schematics.md](schematics.md))
+- [x] Graph format: the `graph` document with pin-pair edges ([schematics.md](schematics.md#2-graph-format-the-graph-document))
+- [x] Task flow: generation, validation stages, derivation, grading ([schematics.md](schematics.md#3-task-flow))
+- [ ] Evaluator design: revise `schematics.md` §4–8 for the grid and graph (solver with ammeter, structural checks including ammeter in parallel, rendering)
+- [ ] Terminology: "breadboard" vs. "grid" across the docs
 - [ ] Level design and progression
 - [x] Workspace rendering decision: three.js
 - [ ] Hosting decision
@@ -19,10 +24,14 @@ The major steps to build the product. A step is checked off when it is complete,
 ## 2. Backend
 
 - [ ] Scaffold the Python service
-- [ ] Breadboard-to-netlist conversion
+- [ ] Grid format validation
+- [ ] Grid-to-graph conversion
 - [ ] Circuit solver (voltages and currents)
 - [ ] Structural checks (shorts, open circuits, bypassed components)
-- [ ] Level definitions and goal checking
+- [ ] Meter readings: rounding to resolution, target tolerance check
+- [ ] Curated levels (one per concept) and goal checking
+- [ ] Task generation: Claude call, `validate_grid` tool, derivation, retries and fallback
+- [ ] Background pre-generation of the next task
 - [ ] Tutor service: Claude API integration and prompts
 - [ ] REST endpoints and WebSocket session
 - [ ] Rate limiting and API key handling
@@ -32,8 +41,10 @@ The major steps to build the product. A step is checked off when it is complete,
 
 - [ ] Scaffold the React app
 - [ ] Breadboard rendering
-- [ ] Placing and removing components and wires
-- [ ] Level view: goal, available components, check action
+- [ ] Placing and removing components from inventory
+- [ ] Wire pieces: straight, corner, T and +
+- [ ] Level view: targets, inventory, check action, next task
+- [ ] Live meter readings and tutor focus highlights
 - [ ] Tutor panel
 - [ ] Backend integration
 
@@ -43,7 +54,11 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Deploy backend and frontend
 - [ ] Smoke test on the public URL
 
-## 5. Submission
+## 5. Polishing
+
+- [ ] Revisit the redundancy of component `orientation` and `pins`
+
+## 6. Submission
 
 - [ ] Written design rationale
 - [ ] Walkthrough video (8 minutes or less)

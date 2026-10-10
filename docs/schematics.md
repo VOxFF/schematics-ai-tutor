@@ -1,38 +1,246 @@
 # Schematics
 
-The domain-specific design: the breadboard, the components, how a board becomes a circuit, how the evaluator solves it, and the levels. Everything here is specific to electronics. The domain-independent architecture is in [design.md](design.md), and the data shapes are in [contract.md](contract.md).
+The domain-specific design: the grid and graph formats, the task flow, the components, how a board becomes a circuit, how the evaluator solves it, and the levels. Everything here is specific to electronics. The domain-independent architecture is in [design.md](design.md), and the data shapes are in [contract.md](contract.md).
 
-## 1. Breadboard
+## 1. Board format: the `grid` document
 
-A half-size breadboard with 30 columns.
+A board is one JSON document. The same shape describes a level's starting board and the learner's current board.
 
-| Area | Holes | Hole IDs | Internally connected |
-|---|---|---|---|
-| Upper terminal strips | rows `a`–`e` × columns 1–30 | `a1` … `e30` | The 5 holes `a`–`e` in one column form one strip |
-| Lower terminal strips | rows `f`–`j` × columns 1–30 | `f1` … `j30` | The 5 holes `f`–`j` in one column form one strip |
-| Center trench | — | — | Separates the upper and lower strips; nothing connects across it |
-| Top rails | `+` and `−` × columns 1–30 | `top+:1` … `top-:30` | Each rail is one continuous node |
-| Bottom rails | `+` and `−` × columns 1–30 | `bot+:1` … `bot-:30` | Each rail is one continuous node |
+```json
+{
+  "grid": { "columns": 12, "rows": 8 },
+  "components": [
+    { "id": "V1", "type": "voltage_source", "value": 12, "fixed": true,
+      "orientation": "N", "pins": { "positive": [1, 3], "negative": [1, 5] } },
+    { "id": "R1", "type": "resistor", "value": 20, "fixed": false,
+      "orientation": "W", "pins": { "a": [4, 1], "b": [6, 1] } }
+  ],
+  "inventory": [ { "id": "R3", "type": "resistor", "value": 50 } ],
+  "wires": [
+    [[[3, 1], [4, 1]]],
+    [[[1, 3], [1, 2]], [[1, 2], [1, 1]]],
+    [[[8, 2], [8, 3]], [[8, 3], [9, 3]], [[7, 3], [8, 3]]]
+  ],
+  "targets": {
+    "VM1": { "value": 4.0, "tolerance": 0.1 },
+    "AM1": { "value": 0.2 }
+  }
+}
+```
 
-- **Rails are continuous.** Some real breadboards split the rails in the middle; that can come later as an advanced level.
-- **Top and bottom rails are not connected to each other.** The learner must wire them, a classic beginner mistake.
-- **One lead per hole.** The editor enforces this, and the backend rejects boards that break it.
+The example is abbreviated. A real document must also list `VM1` and `AM1` in `components` or `inventory`, as the validation rules below require.
 
-## 2. Components
+### Coordinates
 
-Every component has exactly two pins.
+- A point is `[col, row]`, the same order as x and y in three.js.
+- Points are 1-based: `col` runs from 1 to `grid.columns`, and `row` from 1 to `grid.rows`.
+- Row 1 is the top row.
 
-| Type | Value | Pins | Electrical model |
-|---|---|---|---|
-| `battery` | Volts (default 9 V) | `pins[0]` = `+`, `pins[1]` = `−` | Ideal voltage source, no internal resistance |
-| `resistor` | Ohms, from the set 100, 220, 330, 470, 1k, 2.2k, 4.7k, 10k | Unpolarized | Ideal resistor |
-| `wire` | — | Unpolarized | Ideal 0 Ω connection; merges two nodes |
-| `voltmeter` | — | `pins[0]` = red probe, `pins[1]` = black probe | Ideal: infinite input resistance, so it doesn't affect the circuit. Reads V(red) − V(black). |
+### Sections
 
-- The resistor values come from the standard E12 series, so learners meet real-world parts.
-- Leads may span any two distinct holes. Unlike a real resistor, there is no minimum lead length.
+| Key | Type | Meaning |
+|---|---|---|
+| `grid` | `{ columns, rows }` | Size of the pin grid |
+| `components` | `Component[]` | Parts placed on the grid |
+| `inventory` | `InventoryItem[]` | Parts available to the learner but not placed yet. Placing one moves it into `components` with the same `id`; removing a non-fixed part moves it back. |
+| `wires` | `Wire[]` | Wire pieces on the grid |
+| `targets` | `{ [meterId]: { value, tolerance? } }` | The level goal: the reading each named meter must show, in V for a voltmeter or A for an ammeter. See [Targets and readings](#targets-and-readings). |
 
-## 3. From board to circuit
+### Components
+
+| Field | Type | Meaning |
+|---|---|---|
+| `id` | string | Unique across `components` and `inventory` |
+| `type` | `"voltage_source"`, `"resistor"`, `"voltmeter"` or `"ammeter"` | Kind of part |
+| `value` | number | Volts for `voltage_source`, ohms for `resistor`; not used for meters |
+| `fixed` | boolean | `true` means the learner cannot move or remove the part |
+| `orientation` | `"N"`, `"E"`, `"S"` or `"W"` | The direction the first pin points, seen from the part's body |
+| `pins` | object | Named pin positions, see below |
+
+Pin names by type. The first pin listed is the one `orientation` points to.
+
+| Type | Pins |
+|---|---|
+| `voltage_source` | `positive`, `negative` |
+| `resistor` | `a`, `b` |
+| `voltmeter` | `positive`, `negative` |
+| `ammeter` | `positive`, `negative` |
+
+**Geometry.** A part spans three points in a straight line, with its pins 2 apart and its body on the middle point. In the example, V1 points `N`, so `positive` [1, 3] lies directly above `negative` [1, 5], with the body at [1, 4].
+
+### Wires
+
+- A wire piece is a list of **segments**.
+- A segment is a pair of points `[[c1, r1], [c2, r2]]` that are orthogonal neighbors (a distance of exactly 1 apart).
+- The segments of one piece must form one of four shapes:
+
+| Shape | Segments | Rule |
+|---|---|---|
+| Straight | 1 | — |
+| Corner | 2 | The two segments are perpendicular and share one point |
+| T-junction | 3 | All three segments share one center point |
+| +-junction | 4 | All four segments share one center point |
+
+The shape is derived from the segments, so the format stores no explicit `type` field.
+
+### Meters
+
+Voltmeters and ammeters can appear in both `components` and `inventory`, depending on the level.
+
+- **On the board:** pre-placed meters, usually `fixed`, are the ones the level's `targets` refer to. The learner must make them read the target values.
+- **In inventory:** free meters for exploration. The learner can place them anywhere to probe voltages and currents and test their own understanding. They need no target, but their readings are shown live.
+
+### Targets and readings
+
+**Display resolution.** Each meter reads with a fixed resolution, like a real multimeter:
+
+| Meter | Resolution |
+|---|---|
+| Voltmeter | 0.01 V |
+| Ammeter | 0.1 mA (0.0001 A) |
+
+**Rounding.** The evaluator rounds every reading to its meter's resolution before reporting it. A tiny solver residue such as 3.2e‑13 A therefore reads exactly `0`, and `-0` is normalized to `0`. The learner never sees meaningless near-zero numbers.
+
+**Tolerance.** A target is met when `|reading − value| ≤ tolerance`.
+- `tolerance` is absolute, in the meter's unit, and optional.
+- If it's omitted, the default is `max(2% × |value|, resolution)`. Using the resolution as a floor keeps a target of `0` reachable.
+
+### Connectivity
+
+- Points conduct only through wire segments. There are no breadboard strips or rails.
+- A component pin connects to whatever wires touch its point.
+- Wire pieces connect to each other wherever their endpoints share a point.
+
+### Format validation
+
+The backend rejects a document that breaks any of these rules, before any electrical evaluation:
+
+- Every point is inside the grid.
+- `id`s are unique, and every `targets` key names a meter in `components` or `inventory`.
+- Pins match the type's pin names, lie 2 apart in a straight line, and agree with `orientation`.
+- Every wire segment joins orthogonal neighbors, and every wire piece has one of the four shapes.
+- No two components share a point: neither pins nor bodies may overlap. Components connect only through wires.
+
+### Notes
+
+- **Redundant pins:** pin positions are fully determined by the body point and `orientation`. Both are kept for now, and validation checks that they agree. This is to be revisited in an optimization step.
+
+## 2. Graph format: the `graph` document
+
+The graph is a distilled version of a grid. It drops all placement information (coordinates, orientation, wire shapes, `fixed`) and keeps only connectivity. The evaluator and Claude work on the graph; only the frontend works on the grid.
+
+```json
+{
+  "components": [
+    { "id": "V1", "type": "voltage_source", "value": 12, "pins": ["positive", "negative"] },
+    { "id": "AM1", "type": "ammeter", "pins": ["positive", "negative"] },
+    { "id": "R1", "type": "resistor", "value": 20, "pins": ["a", "b"] }
+  ],
+  "inventory": [ { "id": "R3", "type": "resistor", "value": 50 } ],
+  "edges": [ ["V1.positive", "AM1.positive"], ["AM1.negative", "R1.a"] ],
+  "targets": { "AM1": { "value": 0.2 } }
+}
+```
+
+### Sections
+
+| Key | Meaning |
+|---|---|
+| `components` | The graph's nodes: every placed component, with `id`, `type`, `value` and its pin names |
+| `inventory` | Copied from the grid: the parts not yet placed |
+| `edges` | Connections, each a pair of pins joined by wires |
+| `targets` | Copied from the grid, in the same format |
+
+A **pin reference** is the string `"<componentId>.<pinName>"`, for example `"R1.a"` or `"V1.positive"`.
+
+The order of edges, and of the two pins within an edge, carries no meaning. Any sorting or normalization, for example to compare the learner's graph with the reference, happens inside the backend and is not part of the format.
+
+### Grid → graph conversion
+
+1. **Union-find over points.** Every wire segment merges its two points. The resulting sets are the electrically connected regions of the grid.
+2. **Pins to groups.** Each component pin joins the set that contains its point. Sets with fewer than two pins are dropped.
+3. **Emit edges:** for each group of connected pins, emit pin-pair edges that link every pin in the group. Two pins give one edge; three pins, as at a T-junction, give two edges.
+4. **Pin location map.** The backend also keeps a map from each pin reference to its grid point. It is not part of the graph. It translates graph-level findings, such as an issue on `"AM1.negative"`, back to grid points so three.js can highlight them.
+
+### Patterns the validator reads from the graph
+
+| Pattern | Meaning |
+|---|---|
+| A pin in no edge | Floating pin: that lead is connected to nothing |
+| A source's `positive` and `negative` connected | Short circuit |
+| A component's two pins connected to each other | Bypassed component |
+| An ammeter's two pins connected to the two pins of a single resistor or source | The ammeter is in parallel, which is effectively a short across that part |
+
+## 3. Task flow
+
+There are two data objects:
+
+- **Grid:** the `grid` document from §1. It is what the learner sees and edits.
+- **Graph:** the `graph` document from §2, the netlist (ratsnest) derived from a grid. The evaluator works only on the graph, never on the grid directly.
+
+```mermaid
+flowchart TD
+    P["Concept + learner progress"] --> G["Claude: generate TaskSpec<br/>(self-checks with validate_grid)"]
+    G --> V{"Backend validation<br/>1. format<br/>2. solvable<br/>3. not already solved"}
+    V -- "fails, 1st time" --> G
+    V -- "fails again" --> F["Curated level<br/>for the concept"]
+    V -- passes --> D["Derive task grid<br/>+ compute targets"]
+    D --> L[Level sent to frontend]
+    F --> L
+    L --> U["Learner edits the grid"]
+    U --> GG["Grid → graph"]
+    GG --> EV["Evaluator: readings, issues, goal_met"]
+    EV --> U
+    EV --> T["Claude tutor: feedback and hints"]
+    T --> U
+```
+
+### Curriculum
+
+- The concept sequence is fixed: closed loop → Ohm's law → series → parallel → measurement.
+- The first task of each concept is a curated level. Claude generates the following tasks within that concept, tailored to the learner's progress and misconceptions.
+- The fixed sequence keeps progression reliable, while generation keeps each task fresh and personal.
+
+### Generation: Claude proposes, the backend decides
+
+Claude returns a `TaskSpec` ([contract.md](contract.md#22-task-generation-call)) with:
+
+- a **complete board:** the solved circuit
+- **removed IDs:** the parts the learner must place
+- **decoys:** extra parts that aren't needed
+- **target meter IDs:** the meters whose readings define the goal
+
+Claude does **not** produce the task grid or any target value. The backend derives both:
+
+1. **Task grid** = the complete board with `removed_ids` taken out.
+2. **Inventory** = the removed parts plus the decoys, shuffled.
+3. **Targets** = the readings of `target_meter_ids` from solving the complete board, rounded to meter resolution. Each tolerance is the default from §1.
+
+### Validation stages
+
+Every generated task passes the same validator that checks learner boards. All of Claude's output is treated as untrusted input.
+
+| Stage | Checks |
+|---|---|
+| 1. Format | The §1 format rules hold for the complete board, and `removed_ids`, `decoys` and `target_meter_ids` refer to valid, unique IDs |
+| 2. Solvable | The complete board's graph has no issues (no short, open circuit, bypassed or floating part), and every target meter reads a non-zero value |
+| 3. Not already solved | The task grid does **not** meet the targets. Removed parts are not `fixed`, and target meters are not removed. |
+
+### Grading
+
+- A task is solved when every target reading is within tolerance on the learner's grid. **It is graded on readings only.**
+- Any layout that meets the targets passes, even if it differs from the complete board.
+- The complete board stays on the server as the tutor's reference. It is never sent to the frontend.
+
+### Latency
+
+- Generation takes seconds to tens of seconds.
+- The backend generates the next task in the background as soon as the current one is delivered.
+- Each concept opens with a curated level, so the learner never waits at the start.
+
+## 4. From board to circuit
+
+> **Pending revision.** Sections 4–8 predate the `grid` format: they assume breadboard strips and rails, and a `battery` component. They will be updated when the evaluator is designed.
 
 ```mermaid
 flowchart LR
@@ -54,7 +262,7 @@ flowchart LR
 2. **Elements.** Every non-wire component becomes an element between the nodes of its two pins.
 3. **Ground.** The node of the battery's `−` pin is the reference, at 0 V.
 
-## 4. Solver
+## 5. Solver
 
 A DC **modified nodal analysis (MNA)** over the netlist, solved with `numpy.linalg.solve`. Nothing beyond DC is in scope.
 
@@ -64,7 +272,7 @@ A DC **modified nodal analysis (MNA)** over the netlist, solved with `numpy.lina
 - Results per element: the voltage across it and the current through it, rounded for display to 3 significant figures.
 - **Goal check:** `|actual − target| ≤ tolerance`.
 
-## 5. Structural checks
+## 6. Structural checks
 
 These run before and alongside the solve, and fill `Evaluation.issues`.
 
@@ -76,7 +284,7 @@ These run before and alongside the solve, and fill `Evaluation.issues`.
 | `floating_component` | A component pin's node connects to nothing else | `true` |
 | `open_circuit` | The battery current is ~0 (below 1 µA) although a source exists | `true` |
 
-## 6. Rendering and interaction (three.js)
+## 7. Rendering and interaction (three.js)
 
 - **Scene graph:** every hole, component and wire is its own scene object, carrying the component `id` for raycast picking.
 - **Placing a part:** drag from the palette, then click two holes. Each pin snaps to the nearest free hole.
@@ -87,7 +295,7 @@ These run before and alongside the solve, and fill `Evaluation.issues`.
   - Each voltmeter's live reading is shown above it, from the latest `evaluation`.
 - **Highlights:** the components and holes in a `TutorMessage.focus` are outlined. Hovering a hole highlights its whole strip, which makes the hidden connections visible.
 
-## 7. Levels (draft)
+## 8. Levels (draft)
 
 Each level teaches one concept and targets known beginner misconceptions. The tutor receives the concept and the misconception list for the current level.
 
@@ -102,5 +310,5 @@ Each level teaches one concept and targets known beginner misconceptions. The tu
 
 ## Open points
 
-- Current goals (levels 3 and 6) read `Measurement.current` directly. The alternative is to add an `ammeter` component, which would teach series measurement and the "ammeter in parallel is a short" mistake, at the cost of one more part.
+- Resolved: there is an `ammeter` component, and current targets are ammeter readings.
 - The level order and exact values are to be validated by playtesting.
