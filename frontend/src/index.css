@@ -1,13 +1,229 @@
 :root {
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --border: #d0d7de;
+  --text: #1f2328;
+  --muted: #656d76;
+  --accent: #0969da;
+  --error: #cf222e;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  color: #1f2328;
-  background: #ffffff;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
 }
 
-.app {
-  padding: 24px;
+button {
+  font: inherit;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  cursor: pointer;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.large {
+  font-size: 1.15rem;
+  padding: 12px 28px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/* Start screen */
+.start {
+  max-width: 640px;
+  margin: 8vh auto;
+  padding: 0 16px;
+}
+
+.start .lead {
+  font-size: 1.2rem;
+}
+
+.start .path {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.start .path li {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+}
+
+.start .path li + li::before {
+  content: "→ ";
+  color: var(--muted);
+}
+
+.start .note {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* Tutor screen: layout from docs/images/gui-layout.png */
+.tutor {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.4fr) minmax(260px, 0.9fr);
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "header task  skill"
+    "work   work  chat";
+  gap: 12px;
+  height: 100vh;
+  padding: 12px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.header {
+  grid-area: header;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.header .title {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.header .actions {
+  display: flex;
+  gap: 8px;
+}
+
+.task {
+  grid-area: task;
+}
+
+.task h2 {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+}
+
+.task p {
+  margin: 0 0 6px;
+}
+
+.targets {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.skill {
+  grid-area: skill;
+  align-self: start;
+  justify-self: end;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.workspace {
+  grid-area: work;
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 12px;
+  min-height: 0;
+}
+
+.editor-column {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 8px;
+  min-height: 0;
+}
+
+.editor {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.json {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.error {
+  color: var(--error);
+}
+
+.hint-bar {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.inventory {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  overflow: auto;
+}
+
+.inventory h3 {
+  margin: 4px 0;
+  font-size: 0.95rem;
+}
+
+.inventory ul {
+  margin: 0 0 12px;
+  padding-left: 18px;
+}
+
+.chat {
+  grid-area: chat;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 8px;
+  min-height: 0;
+}
+
+.chat h3 {
+  margin: 0;
+}
+
+.chat input {
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }
