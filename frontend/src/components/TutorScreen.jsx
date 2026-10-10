@@ -31,10 +31,12 @@ function Header({ progress, onRestart }) {
       {confirming ? (
         <div className="actions confirm" role="alertdialog" aria-label="Confirm restart">
           <span>Your progress will be lost.</span>
-          <button onClick={() => setConfirming(false)}>Cancel</button>
-          <button className="danger" onClick={onRestart} autoFocus>
-            Confirm
-          </button>
+          <div className="confirm-buttons">
+            <button onClick={() => setConfirming(false)}>Cancel</button>
+            <button className="danger" onClick={onRestart} autoFocus>
+              Confirm
+            </button>
+          </div>
         </div>
       ) : (
         <div className="actions">
