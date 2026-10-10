@@ -86,10 +86,10 @@ button.large {
   display: flex;
   align-items: baseline;
   gap: 12px;
-  padding: 6px 16px;
+  padding: 8px 16px; /* ~10% taller than 6px */
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: var(--panel);
+  background: #f4f8fd; /* light blue tint */
   white-space: nowrap;
   overflow: hidden;
 }
@@ -111,6 +111,7 @@ button.large {
 
 .start .path li.current {
   border-color: var(--accent);
+  background: #eaf2fc;
 }
 
 .start .path .step {
