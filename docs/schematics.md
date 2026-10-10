@@ -163,14 +163,9 @@ The order of edges, and of the two pins within an edge, carries no meaning. Any 
 3. **Emit edges:** for each group of connected pins, emit pin-pair edges that link every pin in the group. Two pins give one edge; three pins, as at a T-junction, give two edges.
 4. **Pin location map.** The backend also keeps a map from each pin reference to its grid point. It is not part of the graph. It translates graph-level findings, such as an issue on `"AM1.negative"`, back to grid points so three.js can highlight them.
 
-### Patterns the validator reads from the graph
+### Checks on the graph
 
-| Pattern | Meaning |
-|---|---|
-| A pin in no edge | Floating pin: that lead is connected to nothing |
-| A source's `positive` and `negative` connected | Short circuit |
-| A component's two pins connected to each other | Bypassed component |
-| An ammeter's two pins connected to the two pins of a single resistor or source | The ammeter is in parallel, which is effectively a short across that part |
+The structural checks read connection patterns from the graph and its nets, for example a source whose two pins are connected. They are defined in §6.
 
 ## 3. Task flow
 
