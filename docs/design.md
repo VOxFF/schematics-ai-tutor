@@ -224,6 +224,11 @@ schematics-ai-tutor/
 │   │   ├── components/
 │   │   │   ├── StartScreen.jsx
 │   │   │   └── TutorScreen.jsx  learning screen layout (header, task, editor, inventory, chat)
+│   │   ├── editor/
+│   │   │   ├── GridEditor.jsx three.js renderer, camera fit, label layer
+│   │   │   ├── scene.js       scene graph: one node per component and wire
+│   │   │   ├── colorCode.js   resistor 4-band color code
+│   │   │   └── theme.js       editor colors and grid spacing
 │   │   └── lib/
 │   │       ├── api.js         backend calls
 │   │       ├── session.js     localStorage session

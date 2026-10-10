@@ -2,6 +2,7 @@
 // received task JSON until the grid editor exists.
 
 import { useEffect, useRef, useState } from "react";
+import GridEditor from "../editor/GridEditor.jsx";
 import { readableJson } from "../lib/jsonfmt.js";
 import { useTutorSession } from "../lib/tutorSession.js";
 
@@ -76,7 +77,8 @@ function TaskPanel({ level, evaluation }) {
   );
 }
 
-function Editor({ level, loading, error, startError, onRetry }) {
+function Editor({ level, evaluation, loading, error, startError, onRetry }) {
+  const [showJson, setShowJson] = useState(false);
   let body;
   if (loading) body = <p className="muted">Generating task… this can take about half a minute.</p>;
   else if (startError)
@@ -94,7 +96,19 @@ function Editor({ level, loading, error, startError, onRetry }) {
         <button onClick={onRetry}>Try again</button>
       </div>
     );
-  else body = <pre className="json">{readableJson(level)}</pre>;
+  else if (level)
+    body = (
+      <>
+        {showJson ? (
+          <pre className="json">{readableJson(level)}</pre>
+        ) : (
+          <GridEditor board={level.board} readings={evaluation?.readings} />
+        )}
+        <button className="json-toggle" onClick={() => setShowJson((v) => !v)}>
+          {showJson ? "Grid" : "JSON"}
+        </button>
+      </>
+    );
   return (
     <section className="editor" aria-label="Editor">
       {body}
@@ -175,7 +189,14 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
       <TaskPanel level={level} evaluation={tutor.evaluation} />
       <div className="panel workspace">
         <div className="editor-column">
-          <Editor level={level} loading={loading} error={error} startError={tutor.startError} onRetry={onRetry} />
+          <Editor
+            level={level}
+            evaluation={tutor.evaluation}
+            loading={loading}
+            error={error}
+            startError={tutor.startError}
+            onRetry={onRetry}
+          />
           <div className="hint-bar">Click or drag an element on the grid, or drag one from the inventory</div>
         </div>
         <Inventory level={level} />

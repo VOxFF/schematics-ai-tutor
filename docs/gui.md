@@ -66,7 +66,7 @@ The sketch shows placement only; its values are placeholders.
 
 ## 4. Grid
 
-Rendered with three.js in an orthographic, top-down view. Every grid point, component and wire piece is its own scene object, carrying its `id` (or point) for raycast picking.
+Rendered with three.js in an orthographic, top-down view (`frontend/src/editor/`). Every component and wire piece is its own scene node, a `THREE.Group` named by its `id` with `userData.kind`, ready for raycast picking and highlights. Grid points are one instanced mesh. Labels and readings are HTML overlays (`CSS2DRenderer`), so text stays crisp at any zoom. A small **JSON** toggle in the corner shows the raw task for debugging.
 
 **Symbols.** Components are drawn as flat schematic symbols, each labeled with its `id` and value:
 
@@ -86,6 +86,8 @@ Rendered with three.js in an orthographic, top-down view. Every grid point, comp
   | 4 | Tolerance: always gold (±5%) |
 
   Examples: 20 Ω = red, black, black, gold; 60 Ω = blue, black, black, gold; 120 Ω = brown, red, brown, gold.
+
+  The bands always read left to right (horizontal parts) or top to bottom (vertical parts), with the gold band last, whatever the part's orientation.
 - **Solved.** When the status becomes `solved`, a big green checkmark appears over the grid and **Next** is enabled. The checkmark is a non-blocking overlay: semi-transparent and centered, and it ignores clicks, so the learner can still observe the readings and read the tutor's praise in the chat. Refinements are in polishing: fading out, and reacting when the solution is broken again.
 - Meters show `--` when the reading is `null`.
 - `fixed` parts show a small lock and cannot be moved.
