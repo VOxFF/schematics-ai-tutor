@@ -285,15 +285,15 @@ The order runs from most stable to least stable, so the cached prefix stays vali
 2. **One user turn per call.** Each call is self-contained; there is no multi-turn conversation. The turn contains:
    - `<level>`: concept, targets and intro text
    - `<reference>`: the reference solution's `graph` when available, so hints can point toward a solution without revealing it
-   - `<history>`: the last few tutor and learner chat turns, for continuity
-   - `<snapshots>`: every `Snapshot` (grid, graph, evaluation) recorded since the previous call, up to the last 10. They show Claude what the learner did and how the circuit changed. The evaluations are the only source of electrical values.
+   - `<history>`: the last `tutor.history_turns` tutor and learner chat turns, for continuity
+   - `<snapshots>`: every `Snapshot` (grid, graph, evaluation) recorded since the previous call, up to the last `tutor.max_snapshots`. They show Claude what the learner did and how the circuit changed. The evaluations are the only source of electrical values.
    - `<request>`: either `trigger: "reaction"`, or the learner's `action`, the next allowed hint level and `learner_text`
 
 #### Response handling
 
 - Parse the structured output into `TutorMessage`.
 - Stream `chat.text` from the partial JSON to the client as `tutor.delta`. Send the parsed `TutorMessage` as `tutor.message`.
-- Enforce `hint_level` server-side: the session tracks the highest hint given. Claude may go at most one level higher, and anything beyond that is clamped.
+- Enforce `meta.hint_level` server-side: the session tracks the highest hint given. Claude may go at most one level higher, and anything beyond that is clamped.
 - Check every highlight against the latest snapshot: the component ID exists, the wire ID exists, and the point is inside the grid. Drop any that fail.
 - The returned `evaluation` always comes from the evaluator, never from Claude.
 

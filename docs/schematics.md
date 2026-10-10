@@ -71,7 +71,7 @@ Pin names by type. The first pin listed is the one `orientation` points to.
 ### Wires
 
 - A wire piece is an object with an `id` and a list of `segments`.
-- **Wire IDs.** A wire gets a unique ID (`W1`, `W2`, …) when it is placed on the grid. The editor assigns the next number after the highest existing wire number. A removed wire's ID is therefore never taken by an older wire, and IDs stay stable while other wires are added or removed.
+- **Wire IDs.** A wire gets a unique ID (`W1`, `W2`, …) when it is placed on the grid. The editor assigns the next number after the highest existing wire number. A new wire therefore never collides with an existing one, and existing IDs never change when other wires are added or removed.
 - A segment is a pair of points `[[c1, r1], [c2, r2]]` that are orthogonal neighbors (a distance of exactly 1 apart).
 - The segments of one piece must form one of four shapes:
 
