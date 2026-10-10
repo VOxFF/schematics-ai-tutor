@@ -67,7 +67,8 @@ async def generate(
         raise HTTPException(503, "Claude is not configured: set ANTHROPIC_API_KEY or backend/keys/apikey.txt")
     result = await generate_task(claude, config, usage_log, skill_level=body.skill_level, history=body.history)
     if result.level is None:
-        raise HTTPException(502, {"message": "Task generation failed", "attempts": result.attempts, "errors": result.errors})
+        message = f"Sorry, I couldn't create a valid task after {result.attempts} attempts. Please try again."
+        raise HTTPException(502, {"message": message, "attempts": result.attempts, "errors": result.errors})
     return {
         "level": result.level,
         "difficulty": result.spec["difficulty"],

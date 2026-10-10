@@ -35,7 +35,9 @@ def test_generate_failure_is_502_with_errors(config):
     fake = FakeClaude([text_response(bad), text_response(bad)])
     response = client_with(fake, config).post("/api/tasks/generate", json={})
     assert response.status_code == 502
-    assert response.json()["detail"]["attempts"] == 2
+    detail = response.json()["detail"]
+    assert detail["attempts"] == 2
+    assert detail["message"] == "Sorry, I couldn't create a valid task after 2 attempts. Please try again."
 
 
 def teardown_function():

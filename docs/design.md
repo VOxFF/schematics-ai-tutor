@@ -108,8 +108,8 @@ claude:
     effort: high
     max_tokens: 16000
     timeout_s: 120
-    max_validate_calls: 5
-    max_attempts: 2
+    max_validate_calls: 5        # validate_grid tool calls per attempt
+    max_attempts: 2              # failed attempts before giving up and telling the learner
 
 tutor:
   idle_threshold_ms: 1500
@@ -190,7 +190,10 @@ schematics-ai-tutor/
 │   │   ├── config.py          loads the root config.yaml
 │   │   ├── usage_log.py       per-run usage and cost log
 │   │   ├── grid.py            grid format validation
-│   │   ├── task_spec.py       TaskSpec schema, format checks, task-grid derivation
+│   │   ├── graph.py           grid → graph conversion, nets
+│   │   ├── solver.py          DC modified nodal analysis
+│   │   ├── evaluate.py        status, readings and issues
+│   │   ├── task_spec.py       TaskSpec schema, validation stages, targets, task-grid derivation
 │   │   ├── task_generation.py Claude task generation with the validate_grid tool
 │   │   └── jsonfmt.py         readable JSON formatting
 │   ├── data/

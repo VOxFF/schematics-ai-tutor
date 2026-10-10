@@ -216,7 +216,7 @@ Claude does **not** produce the task grid or any target value. The backend deriv
 
 ### Validation stages
 
-> **Build status.** Stage 1 (format) is implemented. Stages 2–4 need the evaluator and come with it.
+> **Build status.** All four stages are implemented, and target values are computed by solving the complete board. Stage 3 also checks that the complete board is exactly the task board plus the removed elements. After `claude.task_generation.max_attempts` failed attempts, generation gives up and the learner is told it couldn't create a task.
 
 Every generated task passes the same validator that checks learner boards. All of Claude's output is treated as untrusted input.
 
@@ -225,7 +225,7 @@ Every generated task passes the same validator that checks learner boards. All o
 | 1. Format | The §1 format rules hold for the complete board, and `removed_ids`, `decoys` and `target_meter_ids` refer to valid, unique IDs |
 | 2. Solvable | Evaluated without targets, the complete board's graph has a source, no short circuit, a successful solve and **no issues at all** (no open loop, floating, bypassed or overloaded part, no meter misuse). Every target meter sits in the working circuit and reads a non-zero value. |
 | 3. Not already solved | The task grid does **not** meet the targets. Removed parts are not `fixed`, and target meters are not removed. |
-| 4. Not a repeat | The complete board's graph differs from the graphs of the learner's recent tasks: different component types and values, or different connections. |
+| 4. Not a repeat | The complete board's **signature** differs from those of the learner's recent tasks. The signature lists, for each net, the parts touching it (type and value), plus the target meter types. Same parts wired differently (series vs. parallel) count as different; moving parts around the grid does not. |
 
 ### Grading
 

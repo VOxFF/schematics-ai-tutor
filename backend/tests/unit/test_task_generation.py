@@ -21,7 +21,7 @@ def test_valid_answer_becomes_a_level(config, usage_log):
     result = run(client, config, usage_log)
     assert result.errors == []
     assert result.attempts == 1
-    assert result.level["board"]["targets"] == {"VM1": {"value": None}}
+    assert result.level["board"]["targets"] == {"VM1": {"value": 4.0}}  # computed, not from Claude
     request = client.requests[0]
     assert request["model"] == config["claude"]["task_generation"]["model"]
     assert request["tools"][0]["name"] == "validate_grid"
@@ -80,3 +80,13 @@ def test_learner_context_splits_recent_and_older():
     context = learner_context(4, copy.deepcopy(history), {"columns": 12, "rows": 8}, recent=10)
     assert len(context["recent_tasks"]) == 10
     assert context["older_tasks"] == {"count": 2, "concepts": ["c0", "c1"]}
+
+
+def test_repeat_of_history_is_regenerated(config, usage_log):
+    from app.task_spec import signature
+    spec = load_example()
+    other = load_example("parallel_paths")
+    client = FakeClaude([text_response(as_claude_output(spec)), text_response(as_claude_output(other))])
+    result = run(client, config, usage_log, history=[{"concept": "voltage divider", "signature": signature(spec)}])
+    assert result.attempts == 2 and result.spec["title"] == "Parallel paths"
+    assert result.level["signature"] == signature(other)
