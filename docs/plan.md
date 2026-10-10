@@ -83,6 +83,9 @@ Built after the core workflow runs end to end.
 
 - [ ] Solved checkmark fades out after ~2 s and leaves a small green check in the Task / Targets panel
 - [ ] If the learner breaks a solved circuit, the checkmark disappears and Next is disabled again
+- [ ] Status display on the learning screen (e.g. a colored badge in the Task / Targets panel)
+- [ ] Event log for measuring success: task started/solved, status changes, tutor calls, misconception labels
+- [ ] State the supported devices (desktop: mouse and keyboard)
 - [ ] Revisit the redundancy of component `orientation` and `pins`
 - [ ] Compact reaction context: one-line action descriptions and evaluation deltas instead of full snapshots, and a `dangling_wire` issue for spatial missteps
 - [ ] Append-only multi-turn tutor conversation, so earlier turns are served from the prompt cache
