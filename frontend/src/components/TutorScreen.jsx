@@ -91,7 +91,14 @@ function TaskPanel({ level, evaluation }) {
 function Editor({ level, evaluation, loading, error, startError, onRetry }) {
   const [showJson, setShowJson] = useState(false);
   let body;
-  if (loading) body = <p className="muted">Generating task… this can take about half a minute.</p>;
+  if (loading)
+    body = (
+      <div className="editor-wait" role="status">
+        <div className="spinner" aria-hidden="true" />
+        <p>Generating your task…</p>
+        <p className="muted">This can take about half a minute.</p>
+      </div>
+    );
   else if (startError)
     body = (
       <div className="error">

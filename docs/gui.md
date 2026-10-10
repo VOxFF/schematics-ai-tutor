@@ -49,6 +49,8 @@ The **Restart Learning** button in the header:
 
 The sketch shows placement only; its values are placeholders.
 
+**Waiting for a task.** While a task is generated (about half a minute), a spinner with "Generating your task…" is shown over the editor.
+
 **Stable layout.** The top row (header and Task / Targets) has a fixed height, so nothing jumps while a task loads. The header's column fits its content and never shrinks, so its buttons always stay on one line.
 
 | Region | Contents | Source of data |

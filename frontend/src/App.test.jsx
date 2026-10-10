@@ -66,7 +66,9 @@ test("a new learner sees the start screen, then gets a task", async () => {
   expect(screen.getByRole("button", { name: "Start Learning" })).toBeDefined();
 
   fireEvent.click(screen.getByRole("button", { name: "Start Learning" }));
+  expect(screen.getByRole("status").textContent).toContain("Generating your task"); // wait animation
   expect(await screen.findByRole("heading", { name: "Share the voltage" })).toBeDefined();
+  expect(screen.queryByRole("status")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "JSON" })); // the grid needs WebGL; the JSON view doesn't
   expect(screen.getByLabelText("Editor").textContent).toContain('"id": "gen-1234"');
   expect(screen.getByLabelText("Skill level").textContent).toBe("Level 1");
