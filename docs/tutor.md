@@ -36,6 +36,8 @@ If the status hasn't changed since the last reaction, the reply is a single shor
 
 ## 3. Hint ladder
 
+> **Later phase.** The hint ladder is built after the core workflow runs end to end ([plan.md](plan.md#5-learning-depth)). Until then, the tutor helps through reactions and free chat only.
+
 Hints are given **only when the learner asks**, one level at a time. The backend enforces the order, and the ladder resets with each task.
 
 | Level | Purpose | Highlights | Example (voltage divider, VM1 must read 4 V) |

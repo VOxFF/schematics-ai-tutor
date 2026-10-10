@@ -36,7 +36,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Skill level and task history (`Progress`)
 - [ ] Repeat check against recent task graphs
 - [ ] Prompt examples as files, validated in tests
-- [ ] Tutor service: Claude API integration and prompts
+- [ ] Tutor service, simple first: reactions and free chat, without the hint ladder
 - [ ] Snapshot recording and idle-triggered reactions
 - [ ] Circuit summary line for the tutor
 - [ ] Location-talk backstop with regeneration and fallback messages
@@ -53,7 +53,6 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Wire pieces: straight, corner, T and +
 - [ ] Level view: targets, inventory, check action, next task
 - [ ] Live meter readings and tutor highlights (components, wires, points)
-- [ ] Optional: predict, then measure (hide a new meter's reading until the learner predicts)
 - [ ] Tutor panel
 - [ ] Backend integration
 
@@ -64,7 +63,15 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Deploy backend and frontend
 - [ ] Smoke test on the public URL
 
-## 5. Polishing
+## 5. Learning depth
+
+Built after the core workflow runs end to end.
+
+- [ ] Hint ladder: three levels, server-side enforcement, hint button in the UI
+- [ ] Offer a hint after stalled reactions
+- [ ] Optional: predict, then measure (hide a new meter's reading until the learner predicts)
+
+## 6. Polishing
 
 - [ ] Revisit the redundancy of component `orientation` and `pins`
 - [ ] Compact reaction context: one-line action descriptions and evaluation deltas instead of full snapshots, and a `dangling_wire` issue for spatial missteps
@@ -74,7 +81,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Tune the idle threshold for reactions
 - [ ] Choose the model for reactions (Opus 5.5 at low effort vs. Haiku 5.5) by measuring cost and quality; switched in `config.yaml`
 
-## 6. Submission
+## 7. Submission
 
 - [ ] Written design rationale
 - [ ] Walkthrough video (8 minutes or less)

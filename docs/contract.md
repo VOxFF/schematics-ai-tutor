@@ -29,9 +29,9 @@ sequenceDiagram
     BE-->>FE: tutor.message
     FE->>BE: tutor.request (action, learner_text)
     BE-->>FE: tutor.started
-    BE->>C: level + board + evaluation + learner input (stream)
-    C-->>BE: TutorMessage (structured JSON, streamed)
-    BE-->>FE: tutor.delta … (text chunks)
+    BE->>C: level + summary + snapshots + learner input
+    C-->>BE: TutorMessage (structured JSON)
+    Note over BE: validate (backstop, highlights, hint level)
     BE-->>FE: tutor.message (final TutorMessage)
     FE->>BE: task.next
     BE-->>FE: task.ready (pre-generated task)
@@ -44,7 +44,7 @@ The frontend and backend talk over two channels:
 | Channel | Used for | Why |
 |---|---|---|
 | **REST** (JSON over HTTP, under `/api`) | Static, cacheable resources: the curated levels | Simple, cacheable, debuggable |
-| **WebSocket** (`/ws/session`) | The interactive learning session: task delivery, board updates, live evaluation, tutor reactions and requests, streamed tutor replies | Live meter readings on every edit without per-request overhead; the server can push tutor reactions unprompted; replies stream in as Claude writes them |
+| **WebSocket** (`/ws/session`) | The interactive learning session: task delivery, board updates, live evaluation, tutor reactions and requests, validated tutor replies | Live meter readings on every edit without per-request overhead; the server can push tutor reactions unprompted |
 
 ### REST endpoints
 
@@ -88,8 +88,7 @@ Every message is a JSON object with a `type` field.
 | `task.generating` | — | Sent when `task.next` arrives before the pre-generated task is ready |
 | `evaluation` | `seq`, `evaluation: Evaluation` | The client ignores any `seq` older than the last one it applied |
 | `tutor.started` | `request_id`, `trigger` (`"reaction"` or `"request"`) | The UI shows "tutor is thinking". Reactions get a server-generated `request_id`. |
-| `tutor.delta` | `request_id`, `text` | An incremental chunk of `TutorMessage.chat.text`, for live display |
-| `tutor.message` | `request_id`, `evaluation`, `message: TutorMessage` | Final and authoritative; replaces the streamed text |
+| `tutor.message` | `request_id`, `evaluation`, `message: TutorMessage` | The complete reply, sent only after the backend has validated it |
 | `error` | `code`, `message`, `request_id?` | Codes: `bad_message`, `unknown_level`, `rate_limited`, `tutor_unavailable`. Generation failures never surface: they fall back to a curated level. |
 
 **Rules**
@@ -278,7 +277,7 @@ The backend makes two kinds of Claude calls: **tutoring** (2.1) and **task gener
 | Setting | Value | Why |
 |---|---|---|
 | SDK | Official `anthropic` Python SDK | |
-| Endpoint | Messages API, streamed; one call per reaction or `tutor.request` | Not an agent loop; streaming feeds `tutor.delta` |
+| Endpoint | Messages API; one call per reaction or `tutor.request` | Not an agent loop. Everything goes through the backend: it receives Claude's complete reply, validates it, and only then sends it to the browser. Nothing is streamed to the browser. |
 | Model | `claude-opus-5-5`, configured separately for reactions and requests | Current default model; reactions may switch to a cheaper model by config |
 | Effort | `output_config.effort: "low"`, set explicitly | Interactive latency; tune upward if feedback quality is weak |
 | Output | Structured output: `output_config.format` with the `TutorMessage` JSON schema | Guaranteed parseable responses for the UI |
@@ -303,14 +302,13 @@ The order runs from most stable to least stable, so the cached prefix stays vali
 #### Response handling
 
 - Parse the structured output into `TutorMessage`.
-- Stream `chat.text` from the partial JSON to the client as `tutor.delta`. Send the parsed `TutorMessage` as `tutor.message`.
 - **Location-talk backstop** ([tutor.md](tutor.md#6-guardrails-physics-not-placement)): scan `chat.text` for coordinates, pin references and the words "row", "column" and "point".
   - On a match, regenerate once with the problem named.
   - If it fails again, send a safe generic message for the status.
-  - Streamed `tutor.delta` text may already have been shown; the final `tutor.message` replaces it.
 - Enforce `meta.hint_level` server-side: the session tracks the highest hint given. Claude may go at most one level higher, and anything beyond that is clamped.
 - Check every highlight against the latest snapshot: the component ID exists, the wire ID exists, and the point is inside the grid. Drop any that fail.
 - The returned `evaluation` always comes from the evaluator, never from Claude.
+- Only then send the validated `TutorMessage` to the browser as `tutor.message`.
 
 ### 2.2 Task generation call
 
