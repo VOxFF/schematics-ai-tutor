@@ -67,7 +67,7 @@ One connection is one learning session, and it can span several tasks.
   - the latest board, the conversation history and the hint level reached
   - the learner's `Progress`: skill level and task history
   - the pre-generated next task
-- **Reconnect.** The client keeps the current `Level`, its board, the conversation history and its `Progress`. On reconnect it sends them with `session.start`, so the server stays free of storage. Progress therefore lives in one browser, which is accepted for the prototype. If the reconnect lands on a different instance, the reference board is lost. Grading is unaffected because it uses readings only; the tutor just works without the reference.
+- **Reconnect.** The client keeps the current `Level`, its board, the conversation history and its `Progress`, plus the chat, all in `localStorage` ([gui.md](gui.md#session-persistence)), so a reload or a later visit resumes. On reconnect it sends them with `session.start`, so the server stays free of storage. Progress therefore lives in one browser, which is accepted for the prototype. If the reconnect lands on a different instance, the reference board is lost. Grading is unaffected because it uses readings only; the tutor just works without the reference.
 
 Every message is a JSON object with a `type` field.
 
@@ -77,8 +77,9 @@ Every message is a JSON object with a `type` field.
 |---|---|---|
 | `session.start` | `progress?`, `level?`, `board?`, `history?` | Starts a session (the server sends `task.ready` with the curated level for the skill level) or resumes one (`level` given). The server also replies with `evaluation`. |
 | `task.next` | — | Asks for the next task, usually after the current one is solved |
+| `summary.request` | — | Bonus: asks for the learner's skill summary (Learning Path screen) |
 | `board.update` | `seq`, `board` | Sent on each finished edit (a part dropped, a wire piece placed or removed). The server records a snapshot, re-evaluates and replies with `evaluation` carrying the same `seq`. |
-| `tutor.request` | `request_id`, `action` (`"check"`, `"hint"` or `"message"`), `learner_text?` | Runs the evaluator and then Claude on the latest board. `"hint"` arrives with the hint ladder, in the learning-depth phase ([plan.md](plan.md#5-learning-depth)). |
+| `tutor.request` | `request_id`, `action` (`"message"`, or `"hint"` later), `learner_text?` | Runs the evaluator and then Claude on the latest board. `"hint"` arrives with the hint ladder, in the learning-depth phase ([plan.md](plan.md#5-learning-depth)). |
 
 **Server → client**
 
@@ -86,10 +87,11 @@ Every message is a JSON object with a `type` field.
 |---|---|---|
 | `task.ready` | `level: Level`, `source` (`"curated"` or `"generated"`), `progress: Progress` | A new task. The client replaces its board with `level.board` and stores `progress`. |
 | `task.generating` | — | Sent when `task.next` arrives before the pre-generated task is ready |
+| `summary.ready` | `summary: SkillSummary` or `error` | Bonus: the reply to `summary.request` |
 | `evaluation` | `seq`, `evaluation: Evaluation` | The client ignores any `seq` older than the last one it applied |
 | `tutor.started` | `request_id`, `trigger` (`"reaction"` or `"request"`) | The UI shows "tutor is thinking". Reactions get a server-generated `request_id`. |
 | `tutor.message` | `request_id`, `evaluation`, `message: TutorMessage` | The complete reply, sent only after the backend has validated it |
-| `error` | `code`, `message`, `request_id?` | Codes: `bad_message`, `unknown_level`, `rate_limited`, `tutor_unavailable`. Generation failures never surface: they fall back to a curated level. |
+| `error` | `code`, `message`, `request_id?` | Codes: `bad_message`, `unknown_level`, `rate_limited`, `tutor_unavailable`. Limits are in [design.md](design.md#4-security-and-operations). Generation failures never surface: they fall back to a curated level. |
 
 **Rules**
 
@@ -159,6 +161,7 @@ interface TaskSummary {          // one line of task history
   difficulty: number;            // 1–5, from the TaskSpec
   hints_used: number;
   misconceptions: Misconception[];  // fixed tutor labels (tutor.md §5)
+  final_grid?: Board;            // bonus: the solved grid, for read-only review
 }
 
 interface Progress {
@@ -268,7 +271,7 @@ interface Highlight {
 
 ## 2. Backend ↔ Claude API
 
-The backend makes two kinds of Claude calls: **tutoring** (2.1) and **task generation** (2.2). Models, effort and limits are read from `backend/config.yaml` ([design.md](design.md#5-configuration)); the values below are the defaults.
+The backend makes three kinds of Claude calls: **tutoring** (2.1), **task generation** (2.2) and, as a bonus, the **skill summary** (2.3). Models, effort and limits are read from `backend/config.yaml` ([design.md](design.md#5-configuration)); the values below are the defaults.
 
 ### 2.1 Tutor call
 
@@ -397,3 +400,21 @@ Claude never supplies target values. The backend computes them by solving `compl
 1. If the final `TaskSpec` fails backend validation, including the repeat check, the call is retried once with the errors appended, for at most 2 calls in total.
 2. If it still fails, the backend serves the curated level for the learner's skill level.
 3. Every failure is logged with its errors, to improve the prompt.
+
+### 2.3 Skill summary call (bonus)
+
+Produces the Learning Path screen's summary ([gui.md](gui.md#9-learning-path-screen-bonus)).
+
+- **Model and effort:** from `claude.skill_summary` in `config.yaml`.
+- **Input:** the `Progress` history only: concepts, difficulty, hints used and misconception labels per task. No grids, no chat text.
+- **Output:** structured output with this schema:
+
+```ts
+interface SkillSummary {
+  strengths: string[];           // learner-facing, plain language
+  needs_attention: string[];
+  trends: string[];
+}
+```
+
+- **Caching and limits:** the backend caches the summary per session until the next task is solved, and the call counts toward the per-session tutor rate limit.

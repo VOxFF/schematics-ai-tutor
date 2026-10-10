@@ -124,7 +124,7 @@ Hints: at most 4. Plain words; explain any term the first time.
 Input: <level> (concept, targets, intro), <reference> (solution graph, never
 reveal it), <summary> (one-line circuit description), <snapshots> (recent
 graphs and evaluations; the grid is for highlight references only), <history>,
-<request> (a reaction, or the learner's check / hint / message).
+<request> (a reaction, or the learner's message / hint).
 
 On a reaction, respond to the status: safety first for short_circuit and
 overcurrent; question the misconception for meter_misuse; ask about the path
