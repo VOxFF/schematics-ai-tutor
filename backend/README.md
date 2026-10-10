@@ -19,5 +19,19 @@ cp .env.example .env    # optional; or put the key in backend/keys/apikey.txt
 ## Test
 
 ```sh
-backend/.venv/bin/pytest -q backend
+./test.sh            # unit + api (offline; Claude is faked)
+./test.sh live       # live Claude task generation; costs money
+```
+
+| Tier | Folder | Claude |
+|---|---|---|
+| unit | `tests/unit/` | not used |
+| api | `tests/api/` | fake client |
+| live | `tests/live/` | real API, opt-in |
+
+## Try task generation
+
+```sh
+curl -s -X POST http://127.0.0.1:8000/api/tasks/generate \
+  -H 'content-type: application/json' -d '{"skill_level": 2}'
 ```

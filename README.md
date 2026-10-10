@@ -19,6 +19,13 @@ A Claude-based tutor for learning electric circuits and schematics on an interac
 
 Server output goes to `.run/backend.log`. Usage and cost logs go to `logs/run-<timestamp>.jsonl` (toggle `logs.enabled` in [`config.yaml`](config.yaml)). Details are in [backend/README.md](backend/README.md).
 
+## Tests
+
+```sh
+./test.sh            # unit + api tests: offline, free
+./test.sh live       # real Claude calls: cost money (LIVE_TASKS=N for more)
+```
+
 ## Checks
 
 ```sh

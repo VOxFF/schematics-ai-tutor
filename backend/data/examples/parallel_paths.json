@@ -1,0 +1,432 @@
+{
+  "concept": "parallel circuits",
+  "title": "Parallel paths",
+  "intro": "Add a second resistor next to R1 so the ammeter shows twice the current.",
+  "complete_board": {
+    "grid": {
+      "columns": 12,
+      "rows": 8
+    },
+    "components": [
+      {
+        "id": "V1",
+        "type": "voltage_source",
+        "fixed": true,
+        "orientation": "N",
+        "pins": {
+          "positive": [
+            2,
+            4
+          ],
+          "negative": [
+            2,
+            6
+          ]
+        },
+        "value": 12
+      },
+      {
+        "id": "R1",
+        "type": "resistor",
+        "fixed": true,
+        "orientation": "W",
+        "pins": {
+          "a": [
+            5,
+            3
+          ],
+          "b": [
+            7,
+            3
+          ]
+        },
+        "value": 60
+      },
+      {
+        "id": "R2",
+        "type": "resistor",
+        "fixed": false,
+        "orientation": "W",
+        "pins": {
+          "a": [
+            5,
+            5
+          ],
+          "b": [
+            7,
+            5
+          ]
+        },
+        "value": 60
+      },
+      {
+        "id": "AM1",
+        "type": "ammeter",
+        "fixed": true,
+        "orientation": "N",
+        "pins": {
+          "positive": [
+            9,
+            4
+          ],
+          "negative": [
+            9,
+            6
+          ]
+        }
+      }
+    ],
+    "wires": [
+      {
+        "id": "W1",
+        "segments": [
+          [
+            [
+              2,
+              4
+            ],
+            [
+              2,
+              3
+            ]
+          ]
+        ]
+      },
+      {
+        "id": "W2",
+        "segments": [
+          [
+            [
+              2,
+              3
+            ],
+            [
+              3,
+              3
+            ]
+          ]
+        ]
+      },
+      {
+        "id": "W3",
+        "segments": [
+          [
+            [
+              3,
+              3
+            ],
+            [
+              4,
+              3
+            ]
+          ]
+        ]
+      },
+      {
+        "id": "W4",
+        "segments": [
+          [
+            [
+              4,
+              3
+            ],
+            [
+              5,
+              3
+            ]
+          ]
+        ]
+      },
+      {
+        "id": "W5",
+        "segments": [
+          [
+            [
+              4,
+              3
+            ],
+            [
+              4,
+              4
+            ]
+          ]
+        ]
+      },
+      {
+        "id": "W6",
+        "segments": [
+          [
+            [
+              4,
+              4
+            ],
+            [
+              4,
+              5
+            ]
+          ]
+        ]
+      },
+      {
+        "id": "W7",
+        "segments": [
+          [
+            [
+              4,
+              5
+            ],
+            [
+              5,
+              5
+            ]
+          ]
+        ]
+      },
+      {
+        "id": "W8",
+        "segments": [
+          [
+            [
+              7,
+              3
+            ],
+            [
+              8,
+              3
+            ]
+          ]
+        ]
+      },
+      {
+        "id": "W9",
+        "segments": [
+          [
+            [
+              8,
+              3
+            ],
+            [
+              9,
+              3
+            ]
+          ]
+        ]
+      },
+      {
+        "id": "W10",
+        "segments": [
+          [
+            [
+              9,
+              3
+            ],
+            [
+              9,
+              4
+            ]
+          ]
+        ]
+      },
+      {
+        "id": "W11",
+        "segments": [
+          [
+            [
+              8,
+              3
+            ],
+            [
+              8,
+              4
+            ]
+          ]
+        ]
+      },
+      {
+        "id": "W12",
+        "segments": [
+          [
+            [
+              8,
+              4
+            ],
+            [
+              8,
+              5
+            ]
+          ]
+        ]
+      },
+      {
+        "id": "W13",
+        "segments": [
+          [
+            [
+              8,
+              5
+            ],
+            [
+              7,
+              5
+            ]
+          ]
+        ]
+      },
+      {
+        "id": "W14",
+        "segments": [
+          [
+            [
+              9,
+              6
+            ],
+            [
+              9,
+              7
+            ]
+          ]
+        ]
+      },
+      {
+        "id": "W15",
+        "segments": [
+          [
+            [
+              9,
+              7
+            ],
+            [
+              8,
+              7
+            ]
+          ]
+        ]
+      },
+      {
+        "id": "W16",
+        "segments": [
+          [
+            [
+              8,
+              7
+            ],
+            [
+              7,
+              7
+            ]
+          ]
+        ]
+      },
+      {
+        "id": "W17",
+        "segments": [
+          [
+            [
+              7,
+              7
+            ],
+            [
+              6,
+              7
+            ]
+          ]
+        ]
+      },
+      {
+        "id": "W18",
+        "segments": [
+          [
+            [
+              6,
+              7
+            ],
+            [
+              5,
+              7
+            ]
+          ]
+        ]
+      },
+      {
+        "id": "W19",
+        "segments": [
+          [
+            [
+              5,
+              7
+            ],
+            [
+              4,
+              7
+            ]
+          ]
+        ]
+      },
+      {
+        "id": "W20",
+        "segments": [
+          [
+            [
+              4,
+              7
+            ],
+            [
+              3,
+              7
+            ]
+          ]
+        ]
+      },
+      {
+        "id": "W21",
+        "segments": [
+          [
+            [
+              3,
+              7
+            ],
+            [
+              2,
+              7
+            ]
+          ]
+        ]
+      },
+      {
+        "id": "W22",
+        "segments": [
+          [
+            [
+              2,
+              7
+            ],
+            [
+              2,
+              6
+            ]
+          ]
+        ]
+      }
+    ]
+  },
+  "removed_ids": [
+    "R2"
+  ],
+  "decoys": [
+    {
+      "id": "R3",
+      "type": "resistor",
+      "value": 30
+    },
+    {
+      "id": "R4",
+      "type": "resistor",
+      "value": 120
+    }
+  ],
+  "target_meter_ids": [
+    "AM1"
+  ],
+  "difficulty": 5,
+  "rationale": "Series and measurement are mastered; parallel branches challenge the 'more resistors, less current' belief."
+}
