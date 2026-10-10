@@ -12,7 +12,7 @@ const WIRE_PALETTE = ["Straight (horizontal)", "Straight (vertical)", "Corner", 
 const shownWhen = (visible) => (visible ? {} : { style: { visibility: "hidden" }, "aria-hidden": true, inert: true });
 
 // Restart Learning asks for confirmation in place of the buttons (no browser popup).
-function Header({ progress, onRestart }) {
+function Header({ progress, canNext, onNext, onRestart }) {
   const [confirming, setConfirming] = useState(false);
   const confirmButton = useRef(null);
 
@@ -39,7 +39,8 @@ function Header({ progress, onRestart }) {
       <div className="actions-slot">
         <div className="actions" {...shownWhen(!confirming)}>
           <button onClick={() => setConfirming(true)}>Restart Learning</button>
-          <button className="primary" disabled title="Enabled when the task is solved">
+          {/* TEMPORARY: always enabled; will require status `solved`. */}
+          <button className="primary" disabled={!canNext} onClick={onNext} title="Temporary: counts the task as solved">
             Next
           </button>
         </div>
@@ -179,13 +180,13 @@ function Chat({ chat, connected, thinking, onSend }) {
   );
 }
 
-export default function TutorScreen({ session, loading, error, onRestart, onRetry, onChat }) {
+export default function TutorScreen({ session, loading, error, onRestart, onRetry, onChat, onNext }) {
   const { progress, level } = session;
   const chat = session.chat ?? [];
   const tutor = useTutorSession(level, chat, onChat);
   return (
     <div className="tutor">
-      <Header progress={progress} onRestart={onRestart} />
+      <Header progress={progress} canNext={Boolean(level) && !loading} onNext={onNext} onRestart={onRestart} />
       <TaskPanel level={level} evaluation={tutor.evaluation} />
       <div className="panel workspace">
         <div className="editor-column">

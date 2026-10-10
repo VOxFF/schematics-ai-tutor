@@ -90,3 +90,19 @@ def test_repeat_of_history_is_regenerated(config, usage_log):
     result = run(client, config, usage_log, history=[{"concept": "voltage divider", "signature": signature(spec)}])
     assert result.attempts == 2 and result.spec["title"] == "Parallel paths"
     assert result.level["signature"] == signature(other)
+
+
+def test_identical_contexts_get_different_variations():
+    import random
+    from app.task_generation import variation
+    rng = random.Random(1)
+    variations = {tuple(variation(rng).items()) for _ in range(10)}
+    assert len(variations) > 1
+
+
+def test_prompt_carries_variation_and_level_has_shape(config, usage_log):
+    client = FakeClaude([text_response(as_claude_output(load_example()))])
+    result = run(client, config, usage_log)
+    prompt = client.requests[0]["messages"][0]["content"]
+    assert '"variation"' in prompt and '"layout"' in prompt
+    assert result.level["shape"] == "V + 2R + VM" and result.level["difficulty"] == 3

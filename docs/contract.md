@@ -185,6 +185,8 @@ interface LevelSummary {
 interface Level extends LevelSummary {
   intro: string;                 // learner-facing task text
   board: Board;                  // the starting board; fixed parts, inventory and targets included
+  difficulty?: number;           // generated levels: 1–5, from the TaskSpec
+  shape?: string;                // generated levels: parts summary, e.g. "V + 2R + VM"
   signature?: string;            // generated levels: circuit fingerprint, kept in TaskSummary
 }
 
@@ -365,12 +367,15 @@ The prompt has two parts: **task context**, which is the same for every request 
     { "title": "Find the current", "concept": "Ohm's law", "shape": "V + R + AM",
       "difficulty": 2, "hints_used": 2, "misconceptions": ["bigger_r_more_current"] }
   ],
-  "older_tasks": { "count": 1, "concepts": ["closed circuit"] }
+  "older_tasks": { "count": 1, "concepts": ["closed circuit"] },
+  "variation": { "seed": 4821, "layout": "put the voltage source on the right edge",
+                 "source": "use a 9 V source", "resistors": "use resistors between 47 and 220 Ω" }
 }
 ```
 
 - `recent_tasks` holds the last 10 solved tasks as one-line summaries, not full grids, so the prompt stays small. Anything older is summarized in `older_tasks`.
 - The backend picks the grid size.
+- **`variation`** is chosen at random per request (a layout, a source voltage and a resistor range), so identical learner contexts, such as every fresh start at skill level 1, still get different tasks. The rules tell Claude never to copy the examples' layouts or values.
 - **No learner free text.** Only structured data the system produced is included: statistics and the tutor's misconception labels. Chat text never reaches the generation prompt, which closes off prompt injection from the chat.
 
 #### Tool: `validate_grid`

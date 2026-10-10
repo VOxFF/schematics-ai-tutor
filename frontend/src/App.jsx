@@ -47,6 +47,29 @@ export default function App() {
     setSession(null);
   };
 
+  // TEMPORARY (until the editor reports `solved`): Next counts the current task as solved,
+  // records it in the history, raises the skill level and fetches the next task.
+  const next = () => {
+    const { level, progress } = session;
+    const summary = {
+      title: level.title,
+      concept: level.concept,
+      shape: level.shape ?? "",
+      difficulty: level.difficulty ?? progress.skill_level,
+      hints_used: 0,
+      misconceptions: [],
+      signature: level.signature ?? "",
+    };
+    const advanced = {
+      ...session,
+      progress: { skill_level: progress.skill_level + 1, history: [...progress.history, summary] },
+      level: null, // the resume effect fetches the next task
+      chat: [...(session.chat ?? []), { role: "notice", text: `Next task (after “${level.title}”)` }],
+    };
+    saveSession(advanced);
+    setSession(advanced);
+  };
+
   const setChat = useCallback((chat) => {
     setSession((current) => {
       const next = { ...current, chat };
@@ -64,6 +87,7 @@ export default function App() {
       onRestart={restart}
       onRetry={() => fetchTask(session)}
       onChat={setChat}
+      onNext={next}
     />
   );
 }

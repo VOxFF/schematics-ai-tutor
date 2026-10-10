@@ -245,6 +245,17 @@ def build_level(spec: dict, skill_level: int, board: dict | None = None) -> dict
         "concept": spec["concept"],
         "intro": spec["intro"],
         "board": board or derive_task_board(spec),
-        # Stored in the learner's history (TaskSummary.signature) for the repeat check.
+        "difficulty": spec["difficulty"],
+        # Stored in the learner's history (TaskSummary) for the next generation and the repeat check.
+        "shape": shape(spec),
         "signature": signature(spec),
     }
+
+
+def shape(spec: dict) -> str:
+    """Short parts summary of the complete circuit, e.g. "V + 2R + VM"."""
+    short = {"voltage_source": "V", "resistor": "R", "voltmeter": "VM", "ammeter": "AM"}
+    counts: dict[str, int] = {}
+    for c in spec["complete_board"]["components"]:
+        counts[short[c["type"]]] = counts.get(short[c["type"]], 0) + 1
+    return " + ".join(f"{n if n > 1 else ''}{key}" for key, n in counts.items())

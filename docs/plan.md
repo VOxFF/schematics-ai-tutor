@@ -40,6 +40,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Background pre-generation of the next task
 - [ ] Skill level and task history (`Progress`)
 - [x] Repeat check against recent tasks (circuit signature)
+- [x] Variety for identical contexts: random variation hints (layout, source voltage, resistor range)
 - [x] Prompt examples as files (`backend/data/examples/`), validated in tests
 - [x] Tutor chat pipeline: learner message → backend context → Claude → validated `TutorMessage` (no hint ladder)
 - [ ] Tutor reactions on editing pauses
@@ -70,7 +71,8 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Skill level badge in the header; chat spans the full height
 - [x] Visual style: neutral chrome, one accent, meaning colors as CSS variables
 - [x] Header: tasks solved, Restart Learning (confirm, wipe, start screen)
-- [ ] Next button enabled when the status is `solved` (needs the evaluator)
+- [x] TEMPORARY: Next always enabled; counts the task as solved, records it in the history, raises the skill level, fetches the next task
+- [ ] Next enabled only when the status is `solved` (replaces the temporary behavior)
 - [x] Session persistence in `localStorage`: progress and level; resume on reload
 - [x] Persist the chat
 - [ ] Persist the edited grid (with the editor)

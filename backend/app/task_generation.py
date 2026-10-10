@@ -6,6 +6,7 @@ retries once with the errors, and derives the learner's task grid.
 """
 
 import json
+import random
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -39,6 +40,9 @@ learner's starting grid and computes all target values itself.
 Task rules
 - Choose the concept and complexity from the learner context: build on what the
   learner has done, raise difficulty gradually, and never repeat a recent task.
+- Follow the context's `variation` hints (layout, source voltage, resistor range) so that tasks differ
+  even for identical learners. Never copy the examples' layouts or values; they only
+  show the format.
 - Keep circuits small: one voltage source, at most 4 resistors, 1-2 meters.
 - The complete board must be a working circuit with no problems: a closed loop, no
   short circuit, no floating or bypassed parts, no meter misuse, and no resistor
@@ -84,13 +88,45 @@ def system_prompt(examples: list[dict]) -> str:
     return SYSTEM_RULES + "\n".join(dumps(e) for e in examples)
 
 
-def learner_context(skill_level: int, history: list[dict], grid: dict, recent: int) -> dict:
+# Variation hints: identical learner contexts (e.g. every fresh start) still get different tasks.
+LAYOUT_HINTS = [
+    "put the voltage source on the left edge",
+    "put the voltage source on the right edge",
+    "put the voltage source along the top",
+    "put the voltage source along the bottom",
+    "place the circuit in the upper half of the grid",
+    "place the circuit in the lower half of the grid",
+    "use a tall, narrow loop",
+    "use a wide, flat loop",
+]
+SOURCE_HINTS = ["use a 6 V source", "use a 9 V source", "use a 12 V source", "use a 5 V source"]
+RESISTOR_HINTS = [
+    "use resistors between 10 and 47 Ω",
+    "use resistors between 47 and 220 Ω",
+    "use resistors between 220 Ω and 1 kΩ",
+    "use resistors of 1 kΩ or more",
+]
+
+
+def variation(rng: random.Random | None = None) -> dict:
+    rng = rng or random.Random()
+    return {
+        "seed": rng.randrange(10_000),
+        "layout": rng.choice(LAYOUT_HINTS),
+        "source": rng.choice(SOURCE_HINTS),
+        "resistors": rng.choice(RESISTOR_HINTS),
+    }
+
+
+def learner_context(skill_level: int, history: list[dict], grid: dict, recent: int,
+                    rng: random.Random | None = None) -> dict:
     recent_tasks, older = history[-recent:], history[:-recent] if len(history) > recent else []
     return {
         "skill_level": skill_level,
         "grid": grid,
         "recent_tasks": recent_tasks,
         "older_tasks": {"count": len(older), "concepts": sorted({t.get("concept", "") for t in older})},
+        "variation": variation(rng),
     }
 
 

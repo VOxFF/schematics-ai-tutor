@@ -382,6 +382,13 @@ button.danger {
   max-width: 90%;
 }
 
+.chat .notice-message {
+  align-self: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
 .chat .error-message {
   padding: 8px 10px;
   border-radius: 8px;
