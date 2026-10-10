@@ -18,7 +18,6 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Task flow: generation, validation stages, derivation, grading ([schematics.md](schematics.md#3-task-flow))
 - [x] Task generation input: task context, learner context, skill level ([contract.md](contract.md#22-task-generation-call))
 - [x] Evaluator design: pipeline, solver with ammeter, structural checks, rendering ([schematics.md](schematics.md#4-evaluation-pipeline))
-- [x] Terminology: "grid" across the docs
 - [ ] Level design: validate the curated levels by playtesting
 - [x] Workspace rendering decision: three.js
 
