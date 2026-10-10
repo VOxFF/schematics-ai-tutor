@@ -243,7 +243,7 @@ The backend makes two kinds of Claude calls: **tutoring** (2.1) and **task gener
 | Output | Structured output: `output_config.format` with the `TutorMessage` JSON schema | Guaranteed parseable responses for the UI |
 | `max_tokens` | 16000 | Must cover thinking plus the response; not a quality lever |
 | Refusals | Server-side `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`); check `stop_reason` before reading content | Recommended default for this model |
-| Caching | `cache_control` on the static system prompt, plus top-level automatic caching on the append-only conversation | The system prompt is identical across requests, and each call only appends to the conversation, so earlier turns are read from cache. Below the minimum cacheable size it simply won't cache, which is harmless. |
+| Caching | `cache_control` on the static system prompt | It is identical across all requests. Below the minimum cacheable size it simply won't cache, which is harmless. |
 | Timeout and retries | SDK defaults (2 retries), 30 s request timeout | On failure, send `error: tutor_unavailable` |
 
 #### Prompt layout
@@ -260,10 +260,10 @@ The order runs from most stable to least stable, so the cached prefix stays vali
      - **feedback** otherwise
    - write in plain language for beginners
    - set `focus` to the relevant parts
-2. **First user turn of the task (stable, cached):**
+2. **One user turn per call.** Each call is self-contained; there is no multi-turn conversation. The turn contains:
    - `<level>`: concept, targets and intro text
    - `<reference>`: the reference solution's `graph` when available, so hints can point toward a solution without revealing it
-3. **Append-only turns.** One user turn per Claude call, each followed by the assistant's `TutorMessage`. Earlier turns are never edited. A user turn contains:
+   - `<history>`: the last few tutor and learner chat turns, for continuity
    - `<snapshots>`: every `Snapshot` (grid, graph, evaluation) recorded since the previous call, up to the last 10. They show Claude what the learner did and how the circuit changed. The evaluations are the only source of electrical values.
    - `<request>`: either `trigger: "reaction"`, or the learner's `action`, the next allowed hint level and `learner_text`
 

@@ -64,6 +64,7 @@ The major steps to build the product. A step is checked off when it is complete,
 
 - [ ] Revisit the redundancy of component `orientation` and `pins`
 - [ ] Compact reaction context: one-line action descriptions and evaluation deltas instead of full snapshots, and a `dangling_wire` issue for spatial missteps
+- [ ] Append-only multi-turn tutor conversation, so earlier turns are served from the prompt cache
 - [ ] Experiment: let Claude stay silent on neutral moves
 - [ ] Tune the idle threshold for reactions
 - [ ] Choose the model for reactions (Opus 5.5 at low effort vs. Haiku 5.5) by measuring cost and quality
