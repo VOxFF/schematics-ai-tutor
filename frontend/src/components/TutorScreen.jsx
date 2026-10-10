@@ -8,7 +8,7 @@ const WIRE_PALETTE = ["Straight (horizontal)", "Straight (vertical)", "Corner", 
 function Header({ progress, onRestart }) {
   return (
     <header className="panel header">
-      <div>
+      <div className="header-info">
         <div className="title">Schematics AI Tutor</div>
         <div className="header-meta">
           <span className="skill" aria-label="Skill level">

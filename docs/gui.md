@@ -207,6 +207,25 @@ A bonus feature, built after everything else ([plan.md](plan.md#7-bonus)). It gi
 
 **Navigation:** a **Learning Path** button in the header opens the screen, and a **Back to tutor** button returns to the learning screen unchanged.
 
-## 10. Open points
+## 10. Visual style
+
+**Neutral chrome, color for meaning.** Panels are white with thin grey borders on an off-white page, so color is reserved for what it means: tutor highlights, selection, status and readings. The grid's work area is a faint paper tint with a subtle dot lattice, like a workbench.
+
+| Role | Color | Used for |
+|---|---|---|
+| Page / panels | `#f6f7f9` / `#ffffff`, borders `#d0d7de` | Layout |
+| Canvas | `#fbfaf6` with `#d8d4c8` dots | The grid's work area |
+| Accent | `#0969da`, tint `#eef4fc` | Primary actions (Start, Next), the level badge, selection, tutor chat bubbles |
+| Success | `#1a7f37`, border `#4ac26b`, tint `#eaf7ee` | Solved, tutor `success`, the current learning-path step |
+| Attention | `#bf8700`, tint `#fff8e1` | Tutor `attention` |
+| Error | `#cf222e`, tint `#ffebe9` | Tutor `error`, invalid drops, errors |
+| Locked / disabled | `#8c959f` | Locked path steps, disabled controls |
+
+- **One accent** marks actions, so the next step always looks like the next step.
+- **Never color alone.** Meaning colors are paired with a shape or motion (pulse, icon, outline), so red/green colorblind learners lose nothing.
+- **Contrast:** text meets WCAG AA; muted grey is only for secondary text.
+- The colors are CSS variables in `frontend/src/index.css`, so the scheme can be tuned in one place.
+
+## 11. Open points
 
 - Where the overall status is shown, e.g. a badge in the Task / Targets panel or on the hint bar. The sketch has no dedicated place for it.
