@@ -83,61 +83,63 @@ Every message is a JSON object with a `type` field.
 
 ### Data model
 
-The exact breadboard geometry (hole naming, rails) is defined in [schematics.md](schematics.md). The shapes below fix the contract.
+The board format (the `grid` document) and its validation rules are defined in [schematics.md](schematics.md#1-board-format-the-grid-document). The shapes below fix the contract.
 
 ```ts
-// A hole on the breadboard, e.g. "a12" (terminal strip) or "top+:5" (rail).
-type HoleId = string;
+type Point = [number, number];   // [col, row], 1-based, row 1 at the top
 
-type ComponentType = "battery" | "resistor" | "wire" | "voltmeter";
+type ComponentType = "voltage_source" | "resistor" | "voltmeter" | "ammeter";
+type Orientation = "N" | "E" | "S" | "W";
 
 interface Component {
-  id: string;              // unique within the board
+  id: string;
   type: ComponentType;
-  pins: [HoleId, HoleId];  // for battery and voltmeter, pins[0] is "+"
-  value?: number;          // ohms for resistor, volts for battery
+  value?: number;                // volts for voltage_source, ohms for resistor
+  fixed: boolean;                // the learner cannot move or remove it
+  orientation: Orientation;      // direction of the first pin
+  pins: Record<string, Point>;   // positive/negative, or a/b for a resistor
 }
 
-interface Board {
+interface InventoryItem {
+  id: string;
+  type: ComponentType;
+  value?: number;
+}
+
+type Segment = [Point, Point];   // orthogonal neighbors
+type Wire = Segment[];           // straight (1), corner (2), T (3), + (4)
+
+interface Board {                // the `grid` document
+  grid: { columns: number; rows: number };
   components: Component[];
-}
-
-interface Goal {
-  kind: "voltage" | "current";
-  target: number;
-  tolerance: number;       // absolute, in unit
-  unit: "V" | "A";
-  // Where the goal is measured: the reading of a specific meter, or between two holes.
-  at: { component_id: string } | { between: [HoleId, HoleId] };
-  description: string;     // learner-facing, e.g. "Get 3 V across R2"
+  inventory: InventoryItem[];
+  wires: Wire[];
+  targets: Record<string, number>;  // meter id -> target reading (V or A)
 }
 
 interface LevelSummary {
   id: string;
   order: number;
   title: string;
-  concept: string;         // e.g. "Series resistors"
+  concept: string;               // e.g. "Series resistors"
 }
 
 interface Level extends LevelSummary {
-  intro: string;                     // learner-facing task text
-  initial_board: Board;
-  locked_component_ids: string[];    // parts the learner cannot move or remove
-  palette: { type: ComponentType; values?: number[] }[];  // parts the learner may add
-  goal: Goal;
+  intro: string;                 // learner-facing task text
+  board: Board;                  // the starting board; fixed parts, inventory and targets included
 }
 
 type IssueCode =
   | "short_circuit"        // source terminals connected with ~0 Ω
   | "open_circuit"         // no closed loop through the source
-  | "same_strip"           // both leads of a component in one strip (bypassed)
+  | "bypassed"             // both pins of a component on the same node
   | "floating_component"   // a lead not connected to anything
   | "no_source";
 
 interface Issue {
   code: IssueCode;
   component_ids: string[];
-  holes: HoleId[];
+  points: Point[];
 }
 
 interface Measurement {
@@ -148,8 +150,8 @@ interface Measurement {
 
 interface Evaluation {
   valid: boolean;          // false if the circuit can't be solved, e.g. a short
-  goal_met: boolean;
-  goal_actual: number | null;
+  goal_met: boolean;                     // every target within tolerance
+  readings: Record<string, number>;      // meter id -> reading, for every placed meter
   measurements: Measurement[];
   issues: Issue[];
 }
@@ -163,7 +165,7 @@ interface TutorMessage {
   kind: "feedback" | "hint" | "question" | "praise";
   text: string;                    // learner-facing, plain language
   hint_level: 0 | 1 | 2 | 3;       // 0 if this isn't a hint
-  focus: { component_ids: string[]; holes: HoleId[] };  // what three.js should highlight
+  focus: { component_ids: string[]; points: Point[] };  // what three.js should highlight
   misconception: string | null;    // internal label, e.g. "current is used up"; not shown
 }
 ```
@@ -195,7 +197,7 @@ The order runs from most stable to least stable, so the cached prefix stays vali
    - write in plain language for beginners
    - set `focus` to the relevant parts
 2. **Messages.** The session's history turns as alternating user and assistant text, then the current user turn with tagged JSON blocks:
-   - `<level>`: concept, goal and intro text
+   - `<level>`: concept, targets and intro text
    - `<board>`: the learner's components
    - `<evaluation>`: the evaluator's result, which is the only source of electrical values
    - `<request>`: the `action`, the next allowed hint level and `learner_text`
@@ -211,4 +213,3 @@ The order runs from most stable to least stable, so the cached prefix stays vali
 ## Open points
 
 - The hint ladder's content per level, defined in the tutor design
-- Whether a current goal needs an ammeter component or reads from `Measurement.current`

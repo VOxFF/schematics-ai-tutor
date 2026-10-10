@@ -1,38 +1,109 @@
 # Schematics
 
-The domain-specific design: the breadboard, the components, how a board becomes a circuit, how the evaluator solves it, and the levels. Everything here is specific to electronics. The domain-independent architecture is in [design.md](design.md), and the data shapes are in [contract.md](contract.md).
+The domain-specific design: the board format, the components, how a board becomes a circuit, how the evaluator solves it, and the levels. Everything here is specific to electronics. The domain-independent architecture is in [design.md](design.md), and the data shapes are in [contract.md](contract.md).
 
-## 1. Breadboard
+## 1. Board format: the `grid` document
 
-A half-size breadboard with 30 columns.
+A board is one JSON document. The same shape describes a level's starting board and the learner's current board.
 
-| Area | Holes | Hole IDs | Internally connected |
-|---|---|---|---|
-| Upper terminal strips | rows `a`–`e` × columns 1–30 | `a1` … `e30` | The 5 holes `a`–`e` in one column form one strip |
-| Lower terminal strips | rows `f`–`j` × columns 1–30 | `f1` … `j30` | The 5 holes `f`–`j` in one column form one strip |
-| Center trench | — | — | Separates the upper and lower strips; nothing connects across it |
-| Top rails | `+` and `−` × columns 1–30 | `top+:1` … `top-:30` | Each rail is one continuous node |
-| Bottom rails | `+` and `−` × columns 1–30 | `bot+:1` … `bot-:30` | Each rail is one continuous node |
+```json
+{
+  "grid": { "columns": 12, "rows": 8 },
+  "components": [
+    { "id": "V1", "type": "voltage_source", "value": 12, "fixed": true,
+      "orientation": "N", "pins": { "positive": [1, 3], "negative": [1, 5] } },
+    { "id": "R1", "type": "resistor", "value": 20, "fixed": false,
+      "orientation": "W", "pins": { "a": [4, 1], "b": [6, 1] } }
+  ],
+  "inventory": [ { "id": "R3", "type": "resistor", "value": 50 } ],
+  "wires": [
+    [[[3, 1], [4, 1]]],
+    [[[1, 3], [1, 2]], [[1, 2], [1, 1]]],
+    [[[8, 2], [8, 3]], [[8, 3], [9, 3]], [[7, 3], [8, 3]]]
+  ],
+  "targets": { "VM1": 4.0, "AM1": 0.2 }
+}
+```
 
-- **Rails are continuous.** Some real breadboards split the rails in the middle; that can come later as an advanced level.
-- **Top and bottom rails are not connected to each other.** The learner must wire them, a classic beginner mistake.
-- **One lead per hole.** The editor enforces this, and the backend rejects boards that break it.
+### Coordinates
 
-## 2. Components
+- A point is `[col, row]`, the same order as x and y in three.js.
+- Points are 1-based: `col` runs from 1 to `grid.columns`, and `row` from 1 to `grid.rows`.
+- Row 1 is the top row.
 
-Every component has exactly two pins.
+### Sections
 
-| Type | Value | Pins | Electrical model |
-|---|---|---|---|
-| `battery` | Volts (default 9 V) | `pins[0]` = `+`, `pins[1]` = `−` | Ideal voltage source, no internal resistance |
-| `resistor` | Ohms, from the set 100, 220, 330, 470, 1k, 2.2k, 4.7k, 10k | Unpolarized | Ideal resistor |
-| `wire` | — | Unpolarized | Ideal 0 Ω connection; merges two nodes |
-| `voltmeter` | — | `pins[0]` = red probe, `pins[1]` = black probe | Ideal: infinite input resistance, so it doesn't affect the circuit. Reads V(red) − V(black). |
+| Key | Type | Meaning |
+|---|---|---|
+| `grid` | `{ columns, rows }` | Size of the pin grid |
+| `components` | `Component[]` | Parts placed on the grid |
+| `inventory` | `InventoryItem[]` | Parts available to the learner but not placed yet. Placing one moves it into `components` with the same `id`; removing a non-fixed part moves it back. |
+| `wires` | `Wire[]` | Wire pieces on the grid |
+| `targets` | `{ [meterId]: number }` | The level goal: the reading each named meter must show (V for a voltmeter, A for an ammeter) |
 
-- The resistor values come from the standard E12 series, so learners meet real-world parts.
-- Leads may span any two distinct holes. Unlike a real resistor, there is no minimum lead length.
+### Components
 
-## 3. From board to circuit
+| Field | Type | Meaning |
+|---|---|---|
+| `id` | string | Unique across `components` and `inventory` |
+| `type` | `"voltage_source"`, `"resistor"`, `"voltmeter"` or `"ammeter"` | Kind of part |
+| `value` | number | Volts for `voltage_source`, ohms for `resistor`; not used for meters |
+| `fixed` | boolean | `true` means the learner cannot move or remove the part |
+| `orientation` | `"N"`, `"E"`, `"S"` or `"W"` | The direction the first pin points, seen from the part's body |
+| `pins` | object | Named pin positions, see below |
+
+Pin names by type. The first pin listed is the one `orientation` points to.
+
+| Type | Pins |
+|---|---|
+| `voltage_source` | `positive`, `negative` |
+| `resistor` | `a`, `b` |
+| `voltmeter` | `positive`, `negative` |
+| `ammeter` | `positive`, `negative` |
+
+**Geometry.** A part spans three points in a straight line, with its pins 2 apart and its body on the middle point. In the example, V1 points `N`, so `positive` [1, 3] lies directly above `negative` [1, 5], with the body at [1, 4].
+
+### Wires
+
+- A wire piece is a list of **segments**.
+- A segment is a pair of points `[[c1, r1], [c2, r2]]` that are orthogonal neighbors (a distance of exactly 1 apart).
+- The segments of one piece must form one of four shapes:
+
+| Shape | Segments | Rule |
+|---|---|---|
+| Straight | 1 | — |
+| Corner | 2 | The two segments are perpendicular and share one point |
+| T-junction | 3 | All three segments share one center point |
+| +-junction | 4 | All four segments share one center point |
+
+The shape is derived from the segments, so the format stores no explicit `type` field.
+
+### Connectivity
+
+- Points conduct only through wire segments. There are no breadboard strips or rails.
+- A component pin connects to whatever wires touch its point.
+- Wire pieces connect to each other wherever their endpoints share a point.
+
+### Format validation
+
+The backend rejects a document that breaks any of these rules, before any electrical evaluation:
+
+- Every point is inside the grid.
+- `id`s are unique, and every `targets` key names a meter in `components` or `inventory`.
+- Pins match the type's pin names, lie 2 apart in a straight line, and agree with `orientation`.
+- Every wire segment joins orthogonal neighbors, and every wire piece has one of the four shapes.
+- No two component bodies occupy the same point.
+
+### Open points
+
+- **Pin overlap:** may two components share a pin point, which would be a direct connection, or is a wire always required?
+- **Targets:** they carry no tolerance or unit. Should there be a per-level tolerance, or a global default such as ±2%?
+- **Meters in the example:** `VM1` and `AM1` appear only in `targets`. In a real level, are they placed by the learner from `inventory`, or fixed on the board?
+- **Redundant pins:** pin positions are fully determined by the body point and `orientation`. They're stored anyway for readability, and validation checks that they agree.
+
+## 2. From board to circuit
+
+> **Pending revision.** Sections 2–6 predate the `grid` format: they assume breadboard strips and rails, and a `battery` component. They will be updated when the evaluator is designed.
 
 ```mermaid
 flowchart LR
@@ -54,7 +125,7 @@ flowchart LR
 2. **Elements.** Every non-wire component becomes an element between the nodes of its two pins.
 3. **Ground.** The node of the battery's `−` pin is the reference, at 0 V.
 
-## 4. Solver
+## 3. Solver
 
 A DC **modified nodal analysis (MNA)** over the netlist, solved with `numpy.linalg.solve`. Nothing beyond DC is in scope.
 
@@ -64,7 +135,7 @@ A DC **modified nodal analysis (MNA)** over the netlist, solved with `numpy.lina
 - Results per element: the voltage across it and the current through it, rounded for display to 3 significant figures.
 - **Goal check:** `|actual − target| ≤ tolerance`.
 
-## 5. Structural checks
+## 4. Structural checks
 
 These run before and alongside the solve, and fill `Evaluation.issues`.
 
@@ -76,7 +147,7 @@ These run before and alongside the solve, and fill `Evaluation.issues`.
 | `floating_component` | A component pin's node connects to nothing else | `true` |
 | `open_circuit` | The battery current is ~0 (below 1 µA) although a source exists | `true` |
 
-## 6. Rendering and interaction (three.js)
+## 5. Rendering and interaction (three.js)
 
 - **Scene graph:** every hole, component and wire is its own scene object, carrying the component `id` for raycast picking.
 - **Placing a part:** drag from the palette, then click two holes. Each pin snaps to the nearest free hole.
@@ -87,7 +158,7 @@ These run before and alongside the solve, and fill `Evaluation.issues`.
   - Each voltmeter's live reading is shown above it, from the latest `evaluation`.
 - **Highlights:** the components and holes in a `TutorMessage.focus` are outlined. Hovering a hole highlights its whole strip, which makes the hidden connections visible.
 
-## 7. Levels (draft)
+## 6. Levels (draft)
 
 Each level teaches one concept and targets known beginner misconceptions. The tutor receives the concept and the misconception list for the current level.
 
@@ -102,5 +173,5 @@ Each level teaches one concept and targets known beginner misconceptions. The tu
 
 ## Open points
 
-- Current goals (levels 3 and 6) read `Measurement.current` directly. The alternative is to add an `ammeter` component, which would teach series measurement and the "ammeter in parallel is a short" mistake, at the cost of one more part.
+- Resolved: there is an `ammeter` component, and current targets are ammeter readings.
 - The level order and exact values are to be validated by playtesting.
