@@ -68,9 +68,14 @@ function TaskPanel({ level, evaluation }) {
   const readings = evaluation?.readings ?? {};
   return (
     <section className="panel task" aria-label="Task and targets">
-      <h2>{level?.title ?? "Task"}</h2>
-      <p>{level?.intro ?? "…"}</p>
-      {targets.length > 0 && (
+      {/* Text scrolls when long; targets keep their own column. */}
+      <div className="task-text">
+        <h2>{level?.title ?? "Task"}</h2>
+        <p>{level?.intro ?? "Your next task is on its way…"}</p>
+      </div>
+      <div className="task-targets" aria-label="Targets">
+        <h3>Targets</h3>
+        {targets.length === 0 && <p className="muted">--</p>}
         <ul className="targets">
           {targets.map(([meter, target]) => (
             <li key={meter}>
@@ -78,7 +83,7 @@ function TaskPanel({ level, evaluation }) {
             </li>
           ))}
         </ul>
-      )}
+      </div>
     </section>
   );
 }
