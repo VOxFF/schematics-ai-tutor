@@ -67,6 +67,7 @@ test("restart learning asks in place, then wipes the session and returns to the 
   expect(screen.getByText("Your progress will be lost.")).toBeDefined();
   expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Restart Learning" })).toBeNull();
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: "Confirm" }));
 
   fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
   expect(screen.getByRole("button", { name: "Start Learning" })).toBeDefined();

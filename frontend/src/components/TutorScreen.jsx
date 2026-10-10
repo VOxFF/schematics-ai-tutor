@@ -1,17 +1,22 @@
 // Learning (tutor) screen layout from the sketch (docs/gui.md §2). The editor shows the
 // received task JSON until the grid editor exists.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { readableJson } from "../lib/jsonfmt.js";
 
 const WIRE_PALETTE = ["Straight (horizontal)", "Straight (vertical)", "Corner", "T", "+"];
 
+// Hidden but still taking space: invisible, unreachable by keyboard and screen readers.
+const shownWhen = (visible) => (visible ? {} : { style: { visibility: "hidden" }, "aria-hidden": true, inert: true });
+
 // Restart Learning asks for confirmation in place of the buttons (no browser popup).
 function Header({ progress, onRestart }) {
   const [confirming, setConfirming] = useState(false);
+  const confirmButton = useRef(null);
 
   useEffect(() => {
     if (!confirming) return undefined;
+    confirmButton.current?.focus();
     const cancelOnEsc = (e) => e.key === "Escape" && setConfirming(false);
     window.addEventListener("keydown", cancelOnEsc);
     return () => window.removeEventListener("keydown", cancelOnEsc);
@@ -28,24 +33,24 @@ function Header({ progress, onRestart }) {
           <span className="muted">Tasks solved: {progress.history.length}</span>
         </div>
       </div>
-      {confirming ? (
-        <div className="actions confirm" role="alertdialog" aria-label="Confirm restart">
-          <span>Your progress will be lost.</span>
-          <div className="confirm-buttons">
-            <button onClick={() => setConfirming(false)}>Cancel</button>
-            <button className="danger" onClick={onRestart} autoFocus>
-              Confirm
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="actions">
+      {/* Both states share one grid cell, so the header never changes size when switching. */}
+      <div className="actions-slot">
+        <div className="actions" {...shownWhen(!confirming)}>
           <button onClick={() => setConfirming(true)}>Restart Learning</button>
           <button className="primary" disabled title="Enabled when the task is solved">
             Next
           </button>
         </div>
-      )}
+        <div className="actions confirm" role="alertdialog" aria-label="Confirm restart" {...shownWhen(confirming)}>
+          <span>Your progress will be lost.</span>
+          <div className="confirm-buttons">
+            <button onClick={() => setConfirming(false)}>Cancel</button>
+            <button ref={confirmButton} className="danger" onClick={onRestart}>
+              Confirm
+            </button>
+          </div>
+        </div>
+      </div>
     </header>
   );
 }

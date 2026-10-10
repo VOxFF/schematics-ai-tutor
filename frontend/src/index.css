@@ -203,6 +203,16 @@ button.large {
   gap: 8px;
 }
 
+.actions-slot {
+  display: grid;
+}
+
+.actions-slot > * {
+  grid-area: 1 / 1;
+  justify-self: end;
+  align-self: center;
+}
+
 /* Warning above its buttons. */
 .header .confirm {
   flex-direction: column;
