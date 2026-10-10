@@ -49,8 +49,12 @@ def wire_shape(segments: list) -> str | None:
     return "T" if len(segs) == 3 else "plus"
 
 
-def validate_grid(grid: dict) -> list[str]:
-    """Return the list of format errors; empty when the grid is valid."""
+def validate_grid(grid: dict, allow_null_targets: bool = False) -> list[str]:
+    """Return the list of format errors; empty when the grid is valid.
+
+    `allow_null_targets` accepts targets whose value is still null, as in boards saved by
+    learners before target values were computed; such a target simply can't be met.
+    """
     errors: list[str] = []
     try:
         columns, rows = grid["grid"]["columns"], grid["grid"]["rows"]
@@ -150,7 +154,11 @@ def validate_grid(grid: dict) -> list[str]:
     for meter_id, target in grid.get("targets", {}).items():
         if meter_id not in meter_ids:
             errors.append(f"target {meter_id}: not a meter in components or inventory")
-        if not isinstance(target, dict) or not isinstance(target.get("value"), (int, float)):
+        if not isinstance(target, dict):
+            errors.append(f"target {meter_id}: must be an object")
+        elif target.get("value") is None and allow_null_targets:
+            continue
+        elif not isinstance(target.get("value"), (int, float)):
             errors.append(f"target {meter_id}: needs a numeric value")
         elif "tolerance" in target and not (
             isinstance(target["tolerance"], (int, float)) and target["tolerance"] >= 0

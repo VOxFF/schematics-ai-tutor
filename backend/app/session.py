@@ -44,20 +44,21 @@ class Session:
     def _evaluate(self) -> dict:
         return evaluate(self.board, self.config.get("evaluator"))
 
-    async def _set_board(self, board) -> bool:
-        errors = validate_grid(board) if isinstance(board, dict) else ["board must be an object"]
+    async def _set_board(self, board, code: str = "bad_message") -> bool:
+        errors = validate_grid(board, allow_null_targets=True) if isinstance(board, dict) else ["board must be an object"]
         if errors:
-            await self.error("bad_message", "; ".join(errors[:5]))
+            await self.error(code, "; ".join(errors[:5]))
             return False
         self.board = board
         return True
 
     async def start(self, message: dict) -> None:
         level = message.get("level")
-        if not isinstance(level, dict) or "board" not in level:
-            await self.error("bad_message", "session.start needs a level")
+        # session_rejected tells the client its saved task can't be resumed (e.g. after an update).
+        if not isinstance(level, dict) or not isinstance(level.get("board"), dict):
+            await self.error("session_rejected", "session.start needs a level with a board")
             return
-        if not await self._set_board(message.get("board") or level["board"]):
+        if not await self._set_board(message.get("board") or level["board"], code="session_rejected"):
             return
         self.level = level
         self.history = [t for t in message.get("history", []) if isinstance(t, dict)]
@@ -66,7 +67,7 @@ class Session:
 
     async def update(self, message: dict) -> None:
         if self.level is None:
-            await self.error("bad_message", "send session.start first")
+            await self.error("no_session", "send session.start first")
             return
         if await self._set_board(message.get("board")):
             await self.send({"type": "evaluation", "seq": message.get("seq", 0), "evaluation": self._evaluate()})
@@ -82,7 +83,8 @@ class Session:
         request_id = message.get("request_id") or uuid.uuid4().hex[:8]
         text = str(message.get("learner_text") or "").strip()
         if self.level is None:
-            await self.error("bad_message", "send session.start first", request_id)
+            # The server lost or never had the session (e.g. it restarted); the client resends session.start.
+            await self.error("no_session", "send session.start first", request_id)
         elif message.get("action") != "message" or not text:
             await self.error("bad_message", "tutor.request needs action 'message' and learner_text", request_id)
         elif self.claude is None:

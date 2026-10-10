@@ -76,9 +76,17 @@ function TaskPanel({ level, evaluation }) {
   );
 }
 
-function Editor({ level, loading, error, onRetry }) {
+function Editor({ level, loading, error, startError, onRetry }) {
   let body;
   if (loading) body = <p className="muted">Generating task… this can take about half a minute.</p>;
+  else if (startError)
+    body = (
+      <div className="error">
+        <p>This saved task can't be resumed, probably after an update. Your progress and chat are kept.</p>
+        <p className="muted">{startError}</p>
+        <button onClick={onRetry}>Get a new task</button>
+      </div>
+    );
   else if (error)
     body = (
       <div className="error">
@@ -167,7 +175,7 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
       <TaskPanel level={level} evaluation={tutor.evaluation} />
       <div className="panel workspace">
         <div className="editor-column">
-          <Editor level={level} loading={loading} error={error} onRetry={onRetry} />
+          <Editor level={level} loading={loading} error={error} startError={tutor.startError} onRetry={onRetry} />
           <div className="hint-bar">Click or drag an element on the grid, or drag one from the inventory</div>
         </div>
         <Inventory level={level} />

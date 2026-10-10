@@ -42,15 +42,32 @@ def test_chat_round_trip(config):
     assert "<reference>" in context and "none" not in context.split("<reference>")[1][:10]
 
 
-def test_request_before_start_and_bad_messages(config):
+def test_request_before_start_is_no_session(config):
     client, level = connect(config, FakeClaude([]))
     with client.websocket_connect("/ws/session") as ws:
-        ws.send_json({"type": "tutor.request", "action": "message", "learner_text": "hi"})
-        assert ws.receive_json()["code"] == "bad_message"
+        ws.send_json({"type": "tutor.request", "request_id": "r1", "action": "message", "learner_text": "hi"})
+        error = ws.receive_json()
+        assert error["code"] == "no_session" and error["request_id"] == "r1"
         ws.send_json({"type": "nonsense"})
         assert ws.receive_json()["code"] == "bad_message"
+
+
+def test_unresumable_board_is_session_rejected(config):
+    client, level = connect(config, FakeClaude([]))
+    with client.websocket_connect("/ws/session") as ws:
         ws.send_json({"type": "session.start", "level": {**level, "board": {"grid": {}}}})
-        assert ws.receive_json()["code"] == "bad_message"
+        assert ws.receive_json()["code"] == "session_rejected"
+
+
+def test_saved_board_with_null_targets_resumes(config):
+    """Boards saved before targets were computed still start a session (regression)."""
+    client, level = connect(config, FakeClaude([]))
+    old = {**level, "board": {**level["board"], "targets": {"VM1": {"value": None}}}}
+    with client.websocket_connect("/ws/session") as ws:
+        ws.send_json({"type": "session.start", "level": old})
+        reply = ws.receive_json()
+        assert reply["type"] == "evaluation"
+        assert reply["evaluation"]["status"] == "meter_misuse"
 
 
 def test_no_claude_means_tutor_unavailable(config):
