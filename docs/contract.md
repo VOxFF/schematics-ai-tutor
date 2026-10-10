@@ -67,7 +67,7 @@ One connection is one learning session, and it can span several tasks.
   - the latest board, the conversation history and the hint level reached
   - the learner's `Progress`: skill level and task history
   - the pre-generated next task
-- **Reconnect.** The client keeps the current `Level`, its board, the conversation history and its `Progress` (in `localStorage`, so a returning learner resumes). On reconnect it sends them with `session.start`, so the server stays free of storage. Progress therefore lives in one browser, which is accepted for the prototype. If the reconnect lands on a different instance, the reference board is lost. Grading is unaffected because it uses readings only; the tutor just works without the reference.
+- **Reconnect.** The client keeps the current `Level`, its board, the conversation history and its `Progress`, plus the chat, all in `localStorage` ([gui.md](gui.md#session-persistence)), so a reload or a later visit resumes. On reconnect it sends them with `session.start`, so the server stays free of storage. Progress therefore lives in one browser, which is accepted for the prototype. If the reconnect lands on a different instance, the reference board is lost. Grading is unaffected because it uses readings only; the tutor just works without the reference.
 
 Every message is a JSON object with a `type` field.
 

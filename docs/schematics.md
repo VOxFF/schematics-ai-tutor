@@ -320,7 +320,7 @@ A reversed meter gives a negative reading, so it counts as `misplaced`; the tuto
 
 ## 7. Rendering and interaction
 
-The grid's rendering, symbols, interaction and highlights are defined in [gui.md](gui.md#3-grid).
+The grid's rendering, symbols, interaction and highlights are defined in [gui.md](gui.md#4-grid).
 
 ## 8. Curated levels (draft)
 
