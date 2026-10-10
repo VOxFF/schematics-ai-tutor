@@ -39,6 +39,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Tutor service: Claude API integration and prompts
 - [ ] Snapshot recording and idle-triggered reactions
 - [ ] REST endpoints and WebSocket session
+- [ ] Configuration loader for `config.yaml`
 - [ ] Rate limiting and API key handling
 - [ ] Tests for the evaluator
 
@@ -67,7 +68,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Append-only multi-turn tutor conversation, so earlier turns are served from the prompt cache
 - [ ] Experiment: let Claude stay silent on neutral moves
 - [ ] Tune the idle threshold for reactions
-- [ ] Choose the model for reactions (Opus 5.5 at low effort vs. Haiku 5.5) by measuring cost and quality
+- [ ] Choose the model for reactions (Opus 5.5 at low effort vs. Haiku 5.5) by measuring cost and quality; switched in `config.yaml`
 
 ## 6. Submission
 

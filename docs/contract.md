@@ -96,7 +96,7 @@ Every message is a JSON object with a `type` field.
 
 - The server starts generating the next task in the background as soon as a task is delivered, so `task.next` is usually instant.
 - The client sends `board.update` only on finished edits. Dragging stays local to three.js until the drop.
-- **Reactions.** The server starts an idle timer on every `board.update`. When editing pauses for at least the **idle threshold** (initially 1.5 s), the server calls Claude with the snapshots recorded since the previous Claude call.
+- **Reactions.** The server starts an idle timer on every `board.update`. When editing pauses for at least the **idle threshold** (`tutor.idle_threshold_ms`, default 1.5 s), the server calls Claude with the snapshots recorded since the previous Claude call.
   - A burst of quick edits, each within a split second of the last, produces one reaction, not one per edit.
   - If edits arrive while a reaction is running, they wait for the next pause.
 - An explicit `tutor.request` cancels the pending idle timer and takes priority. Its call also includes the unsent snapshots.
@@ -228,7 +228,7 @@ interface TutorMessage {
 
 ## 2. Backend ↔ Claude API
 
-The backend makes two kinds of Claude calls: **tutoring** (2.1) and **task generation** (2.2).
+The backend makes two kinds of Claude calls: **tutoring** (2.1) and **task generation** (2.2). Models, effort and limits are read from `backend/config.yaml` ([design.md](design.md#5-configuration)); the values below are the defaults.
 
 ### 2.1 Tutor call
 
@@ -238,7 +238,7 @@ The backend makes two kinds of Claude calls: **tutoring** (2.1) and **task gener
 |---|---|---|
 | SDK | Official `anthropic` Python SDK | |
 | Endpoint | Messages API, streamed; one call per reaction or `tutor.request` | Not an agent loop; streaming feeds `tutor.delta` |
-| Model | `claude-opus-5-5` | Current default model |
+| Model | `claude-opus-5-5`, configured separately for reactions and requests | Current default model; reactions may switch to a cheaper model by config |
 | Effort | `output_config.effort: "low"`, set explicitly | Interactive latency; tune upward if feedback quality is weak |
 | Output | Structured output: `output_config.format` with the `TutorMessage` JSON schema | Guaranteed parseable responses for the UI |
 | `max_tokens` | 16000 | Must cover thinking plus the response; not a quality lever |
