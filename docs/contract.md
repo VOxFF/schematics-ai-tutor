@@ -179,13 +179,24 @@ interface Level extends LevelSummary {
   board: Board;                  // the starting board; fixed parts, inventory and targets included
 }
 
-type IssueCode =                 // detection rules: schematics.md §6
-  | "no_source"
-  | "short_circuit"              // source pins joined through wires/ammeters only
-  | "bypassed"                   // both pins of a component in the same net
-  | "floating_component"         // a pin connected to no other pin
-  | "ammeter_parallel"           // an ammeter across a resistor
-  | "open_circuit";              // source current below ammeter resolution
+// One overall status: the most severe finding wins. Detection and precedence:
+// schematics.md §6.
+type Status =
+  | "short_circuit"              // a source is shorted; readings unavailable
+  | "no_source"                  // no voltage source; nothing can flow
+  | "overcurrent"                // a resistor dissipates more than its power rating
+  | "meter_misuse"               // ammeter across a part, or voltmeter blocking the loop
+  | "open_circuit"               // the loop isn't closed; no current flows
+  | "floating_part"              // a part has a lead connected to nothing
+  | "bypassed"                   // a part's pins are joined, so it does nothing
+  | "misplaced"                  // circuit works, but a target is off by more than near_target_ratio
+  | "near_target"                // every target within near_target_ratio, one outside tolerance
+  | "solved";                    // every target within tolerance
+
+type IssueCode =
+  | "short_circuit" | "no_source" | "overcurrent"
+  | "ammeter_parallel" | "voltmeter_series"     // both map to status "meter_misuse"
+  | "open_circuit" | "floating_part" | "bypassed";
 
 interface Issue {
   code: IssueCode;
@@ -194,18 +205,13 @@ interface Issue {
   points: Point[];               // the same pins mapped to grid points, for highlighting
 }
 
-interface Measurement {
-  component_id: string;    // meters and resistors
-  voltage: number;         // V across the component
-  current: number;         // A through the component
-}
-
 interface Evaluation {
-  valid: boolean;          // false if the circuit can't be solved, e.g. a short
-  goal_met: boolean;                     // every target within tolerance
-  readings: Record<string, number>;      // meter id -> reading, rounded to meter resolution
-  measurements: Measurement[];
-  issues: Issue[];
+  status: Status;
+  // Every placed voltmeter and ammeter, not only target meters, rounded to
+  // meter resolution. null when it can't be computed (short circuit); the UI
+  // shows "--".
+  readings: Record<string, number | null>;
+  issues: Issue[];               // every finding, not only the one behind `status`
 }
 
 interface ChatTurn {

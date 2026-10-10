@@ -91,6 +91,10 @@ tutor:
 
 task_generation:
   recent_tasks: 10
+
+evaluator:
+  near_target_ratio: 0.10      # "near_target" when within 10% of every target
+  resistor_max_power_w: 5      # above this, a resistor is "overcurrent"
 ```
 
 The values above are the defaults, as described in [contract.md](contract.md).
