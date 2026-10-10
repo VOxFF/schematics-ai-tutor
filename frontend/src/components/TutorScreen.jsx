@@ -3,6 +3,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { readableJson } from "../lib/jsonfmt.js";
+import { useTutorSession } from "../lib/tutorSession.js";
 
 const WIRE_PALETTE = ["Straight (horizontal)", "Straight (vertical)", "Corner", "T", "+"];
 
@@ -55,8 +56,9 @@ function Header({ progress, onRestart }) {
   );
 }
 
-function TaskPanel({ level }) {
+function TaskPanel({ level, evaluation }) {
   const targets = Object.entries(level?.board?.targets ?? {});
+  const readings = evaluation?.readings ?? {};
   return (
     <section className="panel task" aria-label="Task and targets">
       <h2>{level?.title ?? "Task"}</h2>
@@ -65,7 +67,7 @@ function TaskPanel({ level }) {
         <ul className="targets">
           {targets.map(([meter, target]) => (
             <li key={meter}>
-              {meter}: <span className="muted">--</span> → {target.value ?? "pending"}
+              {meter}: <span className="muted">{readings[meter] ?? "--"}</span> → {target.value ?? "pending"}
             </li>
           ))}
         </ul>
@@ -74,9 +76,17 @@ function TaskPanel({ level }) {
   );
 }
 
-function Editor({ level, loading, error, onRetry }) {
+function Editor({ level, loading, error, startError, onRetry }) {
   let body;
   if (loading) body = <p className="muted">Generating task… this can take about half a minute.</p>;
+  else if (startError)
+    body = (
+      <div className="error">
+        <p>This saved task can't be resumed, probably after an update. Your progress and chat are kept.</p>
+        <p className="muted">{startError}</p>
+        <button onClick={onRetry}>Get a new task</button>
+      </div>
+    );
   else if (error)
     body = (
       <div className="error">
@@ -116,30 +126,61 @@ function Inventory({ level }) {
   );
 }
 
-function Chat() {
+function Chat({ chat, connected, thinking, onSend }) {
+  const [draft, setDraft] = useState("");
+  const end = useRef(null);
+
+  useEffect(() => {
+    end.current?.scrollIntoView?.({ block: "end" });
+  }, [chat.length, thinking]);
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (onSend(draft)) setDraft("");
+  };
+
   return (
     <aside className="panel chat" aria-label="Chat">
       <h3>Tutor</h3>
-      <div className="messages muted">The tutor will talk to you here.</div>
-      <input placeholder="Ask the tutor…" disabled />
+      <div className="messages" role="log" aria-live="polite">
+        {chat.length === 0 && <p className="muted">Ask the tutor anything about circuits or this task.</p>}
+        {chat.map((m, i) => (
+          <div key={i} className={`${m.role}-message`}>
+            {m.text}
+          </div>
+        ))}
+        {thinking && <div className="muted thinking">Tutor is thinking…</div>}
+        <div ref={end} />
+      </div>
+      <form onSubmit={submit}>
+        <input
+          aria-label="Message to the tutor"
+          placeholder={connected ? "Ask the tutor…" : "Connecting…"}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          disabled={!connected || thinking}
+        />
+      </form>
     </aside>
   );
 }
 
-export default function TutorScreen({ session, loading, error, onRestart, onRetry }) {
+export default function TutorScreen({ session, loading, error, onRestart, onRetry, onChat }) {
   const { progress, level } = session;
+  const chat = session.chat ?? [];
+  const tutor = useTutorSession(level, chat, onChat);
   return (
     <div className="tutor">
       <Header progress={progress} onRestart={onRestart} />
-      <TaskPanel level={level} />
+      <TaskPanel level={level} evaluation={tutor.evaluation} />
       <div className="panel workspace">
         <div className="editor-column">
-          <Editor level={level} loading={loading} error={error} onRetry={onRetry} />
+          <Editor level={level} loading={loading} error={error} startError={tutor.startError} onRetry={onRetry} />
           <div className="hint-bar">Click or drag an element on the grid, or drag one from the inventory</div>
         </div>
         <Inventory level={level} />
       </div>
-      <Chat />
+      <Chat chat={chat} connected={tutor.connected} thinking={tutor.thinking} onSend={tutor.send} />
     </div>
   );
 }

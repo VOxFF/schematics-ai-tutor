@@ -41,11 +41,13 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Skill level and task history (`Progress`)
 - [x] Repeat check against recent tasks (circuit signature)
 - [x] Prompt examples as files (`backend/data/examples/`), validated in tests
-- [ ] Tutor service, simple first: reactions and free chat, without the hint ladder
+- [x] Tutor chat pipeline: learner message → backend context → Claude → validated `TutorMessage` (no hint ladder)
+- [ ] Tutor reactions on editing pauses
 - [ ] Snapshot recording and idle-triggered reactions
-- [ ] Circuit summary line for the tutor
-- [ ] Location-talk backstop with regeneration and fallback messages
-- [ ] REST endpoints and WebSocket session
+- [x] Circuit summary line for the tutor
+- [x] Location-talk backstop with regeneration and fallback messages
+- [x] WebSocket session: `session.start`, `board.update`, `tutor.request` (message), per-session rate limit
+- [ ] WebSocket task delivery (`task.next`, `task.ready`) and reactions
 - [x] Configuration loader for the root `config.yaml`
 - [x] Usage and cost log per backend run (`logs/`, on/off in `config.yaml`)
 - [x] Integrity checks: `./check.sh` locally and in GitHub Actions on every PR
@@ -69,9 +71,10 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Header: tasks solved, Restart Learning (confirm, wipe, start screen)
 - [ ] Next button enabled when the status is `solved` (needs the evaluator)
 - [x] Session persistence in `localStorage`: progress and level; resume on reload
-- [ ] Persist the grid and the chat too (with the editor and the tutor)
+- [x] Persist the chat
+- [ ] Persist the edited grid (with the editor)
 - [ ] Live meter readings and tutor highlights (components, wires, points)
-- [ ] Tutor panel
+- [x] Tutor panel: chat bubbles, thinking indicator, errors; live readings in the Task panel
 - [ ] Backend integration
 
 ## 4. Integration and deployment

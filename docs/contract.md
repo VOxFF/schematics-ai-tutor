@@ -63,6 +63,8 @@ Errors: `404` for an unknown level, `429` when the rate limit is exceeded.
 
 ### WebSocket session
 
+> **Build status.** Implemented: `session.start`, `board.update` → `evaluation`, `tutor.request` with `action: "message"` → `tutor.started` → `tutor.message`, and `error`. The server keeps generated levels' reference solutions in memory by level ID for the tutor. Until the editor sends edits, the tutor context carries the current snapshot only, not a list. Still to come: `task.next` / `task.ready`, reactions, and `hint`.
+
 One connection is one learning session, and it can span several tasks.
 
 - **Server state.** The server keeps the session state in memory for the life of the connection:
@@ -94,7 +96,7 @@ Every message is a JSON object with a `type` field.
 | `evaluation` | `seq`, `evaluation: Evaluation` | The client ignores any `seq` older than the last one it applied |
 | `tutor.started` | `request_id`, `trigger` (`"reaction"` or `"request"`) | The UI shows "tutor is thinking". Reactions get a server-generated `request_id`. |
 | `tutor.message` | `request_id`, `evaluation`, `message: TutorMessage` | The complete reply, sent only after the backend has validated it |
-| `error` | `code`, `message`, `request_id?` | Codes: `bad_message`, `unknown_level`, `rate_limited`, `tutor_unavailable`. Limits are in [design.md](design.md#4-security-and-operations). Generation failures never surface: they fall back to a curated level. |
+| `error` | `code`, `message`, `request_id?` | Codes: `bad_message`, `unknown_level`, `rate_limited`, `tutor_unavailable`, `no_session` (a request arrived before `session.start`, e.g. after a server restart: the client re-sends `session.start` and repeats the request), `session_rejected` (the saved level or board can't be resumed: the client offers a new task). Limits are in [design.md](design.md#4-security-and-operations). Generation failures never surface: they fall back to a curated level. |
 
 **Rules**
 
@@ -287,10 +289,10 @@ The backend makes three kinds of Claude calls: **tutoring** (2.1), **task genera
 | SDK | Official `anthropic` Python SDK | |
 | Endpoint | Messages API; one call per reaction or `tutor.request` | Not an agent loop. Everything goes through the backend: it receives Claude's complete reply, validates it, and only then sends it to the browser. Nothing is streamed to the browser. |
 | Model | `claude-opus-5-5`, configured separately for reactions and requests | Current default model; reactions may switch to a cheaper model by config |
-| Effort | `output_config.effort: "low"`, set explicitly | Interactive latency; tune upward if feedback quality is weak |
+| Effort | Set explicitly from `config.yaml`: `low` for reactions, `medium` for learner requests | Reactions are frequent and need low latency; requests are rarer and matter more |
 | Output | Structured output: `output_config.format` with the `TutorMessage` JSON schema | Guaranteed parseable responses for the UI |
 | `max_tokens` | 16000 | Must cover thinking plus the response; not a quality lever |
-| Refusals | Server-side `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`); check `stop_reason` before reading content | Recommended default for this model |
+| Refusals | Check `stop_reason` before reading content. Today a refusal gets the safe generic message for the status; server-side `fallbacks` are a plan item. | The learner always gets a reply |
 | Caching | `cache_control` on the static system prompt | It is identical across all requests. Below the minimum cacheable size it simply won't cache, which is harmless. |
 | Timeout and retries | SDK defaults (2 retries), 30 s request timeout | On failure, send `error: tutor_unavailable` |
 
@@ -298,13 +300,13 @@ The backend makes three kinds of Claude calls: **tutoring** (2.1), **task genera
 
 The order runs from most stable to least stable, so the cached prefix stays valid.
 
-1. **System prompt (static, cached).** The tutor's role, principles, reactions by status, hint ladder and guardrails. The draft is in [tutor.md](tutor.md#8-system-prompt-draft).
+1. **System prompt (static, cached).** The tutor's role, principles, free-chat rules, guardrails and the output rules. The live text is `SYSTEM_PROMPT` in `backend/app/tutor.py`; the design draft is in [tutor.md](tutor.md#8-system-prompt-draft).
 2. **One user turn per call.** Each call is self-contained; there is no multi-turn conversation. The turn contains:
    - `<level>`: concept, targets and intro text
    - `<reference>`: the reference solution's `graph` when available, so hints can point toward a solution without revealing it
-   - `<summary>`: a one-line circuit description written by the backend, e.g. `V1 → R1 → (gap) → V1; VM1 across R1; status open_circuit`
+   - `<summary>`: a one-line circuit description written by the backend, e.g. `parts: V1 12 V, R1 40 Ω, VM1; status: meter_misuse; readings: VM1=12.0`
    - `<history>`: the last `tutor.history_turns` tutor and learner chat turns, for continuity
-   - `<snapshots>`: every `Snapshot` (grid, graph, evaluation) recorded since the previous call, up to the last `tutor.max_snapshots`. Each grid is labeled "for highlight references only". They show Claude what the learner did and how the circuit changed. The evaluations are the only source of electrical values.
+   - `<snapshots>` (today `<snapshot>`, the current board only, until the editor sends edits): every `Snapshot` (grid, graph, evaluation) recorded since the previous call, up to the last `tutor.max_snapshots`. Each grid is labeled "for highlight references only". They show Claude what the learner did and how the circuit changed. The evaluations are the only source of electrical values.
    - `<request>`: either `trigger: "reaction"`, or the learner's `action`, the next allowed hint level and `learner_text`
 
 #### Response handling
@@ -313,7 +315,8 @@ The order runs from most stable to least stable, so the cached prefix stays vali
 - **Location-talk backstop** ([tutor.md](tutor.md#6-guardrails-physics-not-placement)): scan `chat.text` for coordinates, pin references and the words "row", "column" and "point".
   - On a match, regenerate once with the problem named.
   - If it fails again, send a safe generic message for the status.
-- Enforce `meta.hint_level` server-side: the session tracks the highest hint given. Claude may go at most one level higher, and anything beyond that is clamped.
+- Enforce `meta.hint_level` server-side: the session tracks the highest hint given. Claude may go at most one level higher, and anything beyond that is clamped. Until the hint ladder exists, it is always set to 0.
+- **Highlight wire format.** In Claude's structured output, each highlight has `component`, `wire` and `point` fields, with the unused ones `null`, plus `style`. The backend converts each into a `Highlight` (`{ target, style }`).
 - Check every highlight against the latest snapshot: the component ID exists, the wire ID exists, and the point is inside the grid. Drop any that fail.
 - The returned `evaluation` always comes from the evaluator, never from Claude.
 - Only then send the validated `TutorMessage` to the browser as `tutor.message`.

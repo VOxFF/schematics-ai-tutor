@@ -2,7 +2,7 @@
 
 const KEY = "schematics-tutor.session";
 
-export const newSession = () => ({ progress: { skill_level: 1, history: [] }, level: null });
+export const newSession = () => ({ progress: { skill_level: 1, history: [] }, level: null, chat: [] });
 
 export function loadSession() {
   try {

@@ -53,7 +53,8 @@ flowchart LR
 - **Backend:** Python. It owns the evaluator and all Claude API calls.
 - **Task flow:** Claude proposes a task. The evaluator validates it and computes its targets, and the frontend receives the resulting task. Details are in [schematics.md](schematics.md#3-task-flow).
 - **Request flow:** the frontend sends the learner's work. The backend runs the evaluator, passes its result together with the task context to Claude, and returns both the verdict and the tutor message.
-- **Transport:** REST for static resources (curated levels), and one WebSocket per learning session for the interactive loop: live evaluation on every board edit and validated tutor messages. Details are in [contract.md](contract.md).
+- **Reference solutions stay on the server.** When a task is generated, the backend keeps its complete board in memory by level ID (bounded). The tutor uses it as `<reference>`; the browser only ever receives the task board.
+- **Transport:** REST for resources and task generation (`/api/levels`, `/api/tasks/generate`), and one WebSocket per learning session for the interactive loop: live evaluation on every board edit and validated tutor messages. Details are in [contract.md](contract.md).
 
 ## 4. Security and operations
 
@@ -195,6 +196,8 @@ schematics-ai-tutor/
 │   │   ├── evaluate.py        status, readings and issues
 │   │   ├── task_spec.py       TaskSpec schema, validation stages, targets, task-grid derivation
 │   │   ├── task_generation.py Claude task generation with the validate_grid tool
+│   │   ├── tutor.py           tutor call: context, TutorMessage schema, backstop
+│   │   ├── session.py         WebSocket learning session
 │   │   └── jsonfmt.py         readable JSON formatting
 │   ├── data/
 │   │   └── examples/          example TaskSpecs for the generation prompt
@@ -224,6 +227,7 @@ schematics-ai-tutor/
 │   │   └── lib/
 │   │       ├── api.js         backend calls
 │   │       ├── session.js     localStorage session
+│   │       ├── tutorSession.js WebSocket session hook (chat, live evaluation)
 │   │       └── jsonfmt.js     readable JSON, same rules as the backend formatter
 │   ├── node_modules/          npm packages, installed by start.sh (gitignored)
 │   └── dist/                  production build output (gitignored)
