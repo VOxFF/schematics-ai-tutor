@@ -145,8 +145,8 @@ button.large {
   grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.4fr) minmax(260px, 0.9fr);
   grid-template-rows: auto 1fr;
   grid-template-areas:
-    "header task  skill"
-    "work   work  chat";
+    "header task chat"
+    "work   work chat";
   gap: 12px;
   height: 100vh;
   padding: 12px;
@@ -195,15 +195,20 @@ button.large {
   padding-left: 18px;
 }
 
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
 .skill {
-  grid-area: skill;
-  align-self: start;
-  justify-self: end;
-  padding: 6px 14px;
+  padding: 2px 10px;
   border-radius: 999px;
   background: var(--accent);
   color: #fff;
   font-weight: 600;
+  font-size: 0.9rem;
 }
 
 .workspace {

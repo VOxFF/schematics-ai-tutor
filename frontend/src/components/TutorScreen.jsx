@@ -10,7 +10,12 @@ function Header({ progress, onRestart }) {
     <header className="panel header">
       <div>
         <div className="title">Schematics AI Tutor</div>
-        <div className="muted">Tasks solved: {progress.history.length}</div>
+        <div className="header-meta">
+          <span className="skill" aria-label="Skill level">
+            Level {progress.skill_level}
+          </span>
+          <span className="muted">Tasks solved: {progress.history.length}</span>
+        </div>
       </div>
       <div className="actions">
         <button onClick={onRestart}>Restart Learning</button>
@@ -99,9 +104,6 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
     <div className="tutor">
       <Header progress={progress} onRestart={onRestart} />
       <TaskPanel level={level} />
-      <div className="skill" aria-label="Skill level">
-        Level {progress.skill_level}
-      </div>
       <div className="panel workspace">
         <div className="editor-column">
           <Editor level={level} loading={loading} error={error} onRetry={onRetry} />
