@@ -212,9 +212,16 @@ schematics-ai-tutor/
 │   ├── index.html
 │   ├── src/
 │   │   ├── main.jsx           entry point
-│   │   ├── App.jsx            app shell (shows backend connection)
+│   │   ├── App.jsx            screen switching, session, task fetching
 │   │   ├── App.test.jsx
-│   │   └── index.css
+│   │   ├── index.css          layout and styles
+│   │   ├── components/
+│   │   │   ├── StartScreen.jsx
+│   │   │   └── TutorScreen.jsx  learning screen layout (header, task, editor, inventory, chat)
+│   │   └── lib/
+│   │       ├── api.js         backend calls
+│   │       ├── session.js     localStorage session
+│   │       └── jsonfmt.js     readable JSON, same rules as the backend formatter
 │   ├── node_modules/          npm packages, installed by start.sh (gitignored)
 │   └── dist/                  production build output (gitignored)
 ├── logs/                      usage and cost logs, one per run (gitignored)

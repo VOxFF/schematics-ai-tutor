@@ -1,13 +1,393 @@
 :root {
+  /* Neutral chrome (docs/gui.md §10): color is reserved for meaning. */
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --border: #d0d7de;
+  --text: #1f2328;
+  --muted: #656d76;
+  --canvas: #fbfaf6; /* grid work area: faint paper tint */
+  --canvas-dot: #d8d4c8;
+
+  /* One accent for actions and selection. */
+  --accent: #0969da;
+  --accent-tint: #eef4fc;
+
+  /* Meaning colors, never decoration. */
+  --success: #1a7f37;
+  --success-border: #4ac26b;
+  --success-tint: #eaf7ee;
+  --attention: #bf8700;
+  --attention-tint: #fff8e1;
+  --error: #cf222e;
+  --error-tint: #ffebe9;
+  --locked: #8c959f;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  color: #1f2328;
-  background: #ffffff;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
 }
 
-.app {
-  padding: 24px;
+button {
+  font: inherit;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  cursor: pointer;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.large {
+  font-size: 1.15rem;
+  padding: 12px 28px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/* Start screen */
+.start {
+  max-width: 680px;
+  margin: 6vh auto;
+  padding: 0 16px;
+}
+
+.start-card {
+  padding: 32px 36px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel);
+  box-shadow: 0 4px 24px rgba(31, 35, 40, 0.06);
+}
+
+.start h1 {
+  margin-top: 0;
+}
+
+.start .lead {
+  font-size: 1.2rem;
+  text-align: justify;
+  hyphens: auto;
+}
+
+.start .path {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+/* One column of equal-width pills: title, then what the learner discovers, on one line. */
+.start .path li {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 16px; /* ~10% taller than 6px */
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--accent-tint);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.start .path .icon {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  align-self: center;
+}
+
+.start .path .bolt {
+  color: var(--attention);
+}
+
+.start .path .lock {
+  color: var(--locked);
+}
+
+.start .path li.current {
+  border-color: var(--success-border);
+  background: var(--success-tint); /* where the learner starts */
+}
+
+.start .path .step {
+  flex: 0 0 150px;
+  font-weight: 600;
+}
+
+.start .path .discovery {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+}
+
+.start-action {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+/* Below the card, bottom-left. */
+.start .note {
+  margin: 10px 4px 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+  font-style: italic;
+}
+
+/* Tutor screen: layout from docs/images/gui-layout.png */
+.tutor {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.4fr) minmax(260px, 0.9fr);
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "header task chat"
+    "work   work chat";
+  gap: 12px;
+  height: 100vh;
+  padding: 12px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.header {
+  grid-area: header;
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* buttons on the box's horizontal midline */
+  gap: 12px;
+}
+
+/* Title at the top, level and tasks solved at the bottom. */
+.header-info {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-self: stretch;
+  gap: 10px;
+}
+
+.header .title {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.header .actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.actions-slot {
+  display: grid;
+}
+
+.actions-slot > * {
+  grid-area: 1 / 1;
+  justify-self: stretch; /* both groups take the slot's full width */
+  align-self: center;
+}
+
+/* Warning above its buttons. */
+.header .confirm {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  text-align: right;
+}
+
+.header .confirm span {
+  color: var(--error);
+  font-weight: 600;
+}
+
+.confirm-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+/* Cancel and Confirm share the same total width as Restart Learning and Next. */
+.confirm-buttons > button {
+  flex: 1;
+}
+
+button.danger {
+  background: var(--error);
+  border-color: var(--error);
+  color: #fff;
+}
+
+.task {
+  grid-area: task;
+}
+
+/* Top boxes share the start screen's green, so the two screens feel connected. */
+.header,
+.task {
+  background: var(--success-tint);
+  border-color: var(--success-border);
+}
+
+.task h2 {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+}
+
+.task p {
+  margin: 0 0 6px;
+}
+
+.targets {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap; /* never squeeze the level badge or the count */
+}
+
+.skill {
+  flex-shrink: 0;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.workspace {
+  grid-area: work;
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 12px;
+  min-height: 0;
+}
+
+.editor-column {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 8px;
+  min-height: 0;
+}
+
+.editor {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  overflow: auto;
+  min-height: 0;
+  /* Workbench: paper tint with a subtle dot lattice. */
+  background-color: var(--canvas);
+  background-image: radial-gradient(var(--canvas-dot) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.json {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.error {
+  color: var(--error);
+}
+
+.hint-bar {
+  border-radius: 6px;
+  padding: 6px 10px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.inventory {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  overflow: auto;
+}
+
+.inventory h3 {
+  margin: 4px 0;
+  font-size: 0.95rem;
+}
+
+.inventory ul {
+  margin: 0 0 12px;
+  padding-left: 18px;
+}
+
+.chat {
+  grid-area: chat;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 8px;
+  min-height: 0;
+}
+
+.chat h3 {
+  margin: 0;
+}
+
+.chat input {
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.chat .messages {
+  overflow: auto;
+}
+
+/* Tutor messages on a light accent tint, learner messages neutral (when the chat exists). */
+.chat .tutor-message {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--accent-tint);
+}
+
+.chat .learner-message {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.chat input:focus,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.task .targets li {
+  font-variant-numeric: tabular-nums;
 }
