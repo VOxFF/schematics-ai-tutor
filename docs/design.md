@@ -90,6 +90,11 @@ claude:
     effort: medium             # rarer than reactions and matter more
     max_tokens: 16000
     timeout_s: 30
+  skill_summary:               # bonus: Learning Path screen
+    model: claude-opus-5-5
+    effort: low
+    max_tokens: 16000
+    timeout_s: 30
   task_generation:
     model: claude-opus-5-5
     effort: high
