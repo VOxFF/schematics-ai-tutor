@@ -34,6 +34,9 @@ def test_generate_tasks(config, tmp_path):
         summary = {"ok": r.level is not None, "attempts": r.attempts, "errors": r.errors[:3]}
         if r.spec:
             summary.update(title=r.spec["title"], concept=r.spec["concept"], difficulty=r.spec["difficulty"])
+        if r.level:
+            summary["targets"] = r.level["board"]["targets"]
+            summary["inventory"] = [f"{i['id']} {i.get('value', '')}" for i in r.level["board"]["inventory"]]
         print(json.dumps(summary))
     print(f"pass rate: {len(passed)}/{count}; cost so far: ${usage_log.totals['cost_usd']:.4f}")
     assert passed, "no generated task passed the format checks"

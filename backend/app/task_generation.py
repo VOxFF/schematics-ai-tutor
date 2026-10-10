@@ -13,7 +13,7 @@ from pathlib import Path
 import anthropic
 
 from .jsonfmt import dumps
-from .task_spec import TASK_SPEC_SCHEMA, build_level, check_format, normalize
+from .task_spec import TASK_SPEC_SCHEMA, build_level, normalize, validate
 from .usage_log import UsageLog
 
 EXAMPLES_DIR = Path(__file__).resolve().parents[1] / "data" / "examples"
@@ -21,9 +21,10 @@ EXAMPLES_DIR = Path(__file__).resolve().parents[1] / "data" / "examples"
 VALIDATE_TOOL = {
     "name": "validate_grid",
     "description": (
-        "Check a draft TaskSpec against the grid format rules before answering. "
-        "Returns ok and a list of errors. Call it with your full draft; fix every "
-        "error and call it again until ok is true."
+        "Check a draft TaskSpec before answering: grid format, whether the complete board is a "
+        "working circuit, and whether removing the listed parts leaves an unsolved task. Returns "
+        "ok, a list of errors, and the meter readings of the complete board. Call it with your "
+        "full draft; fix every error and call it again until ok is true."
     ),
     "input_schema": TASK_SPEC_SCHEMA,
 }
@@ -39,6 +40,9 @@ Task rules
 - Choose the concept and complexity from the learner context: build on what the
   learner has done, raise difficulty gradually, and never repeat a recent task.
 - Keep circuits small: one voltage source, at most 4 resistors, 1-2 meters.
+- The complete board must be a working circuit with no problems: a closed loop, no
+  short circuit, no floating or bypassed parts, no meter misuse, and no resistor
+  dissipating more than 5 W. Every target meter must read a non-zero value.
 - The removed parts must matter: without them the task is not solved.
 - Never compute or state target values; the backend computes them.
 - Resistor values have at most two significant digits (e.g. 20, 60, 120, 4700).
@@ -90,9 +94,9 @@ def learner_context(skill_level: int, history: list[dict], grid: dict, recent: i
     }
 
 
-def tool_result(draft: dict, grid_limits: dict) -> str:
-    errors = check_format(normalize(draft), grid_limits)
-    return json.dumps({"ok": not errors, "errors": errors})
+def tool_result(draft: dict, grid_limits: dict, settings: dict) -> str:
+    result = validate(normalize(draft), grid_limits, settings)
+    return json.dumps({"ok": not result["errors"], "errors": result["errors"], "readings": result["readings"]})
 
 
 @dataclass
@@ -121,6 +125,7 @@ async def generate_task(
     settings = config["claude"]["task_generation"]
     generation = config.get("task_generation", {})
     limits = config.get("rate_limits", {})
+    evaluator = config.get("evaluator", {})
     system = [{"type": "text", "text": system_prompt(load_examples()), "cache_control": {"type": "ephemeral"}}]
     context = learner_context(skill_level, history, generation.get("grid", {"columns": 12, "rows": 8}),
                               generation.get("recent_tasks", 10))
@@ -134,13 +139,16 @@ async def generate_task(
         if feedback:
             content += "\n\nYour previous proposal was rejected. Fix these errors:\n- " + "\n- ".join(feedback)
         messages = [{"role": "user", "content": content}]
-        spec, failure = await _run_conversation(client, settings, system, messages, limits, usage_log, session_id, attempt)
+        spec, failure = await _run_conversation(client, settings, system, messages, (limits, evaluator), usage_log,
+                                                session_id, attempt)
         if spec is None:
             feedback = [failure]
             continue
-        errors = check_format(spec, limits)
+        validation = validate(spec, limits, evaluator)
+        errors = validation["errors"]
         if not errors:
-            result.spec, result.level, result.errors = spec, build_level(spec, skill_level), []
+            result.spec, result.errors = spec, []
+            result.level = build_level(spec, skill_level, validation["board"])
             usage_log.event("task_generated", session_id=session_id, attempts=attempt,
                             concept=spec["concept"], difficulty=spec["difficulty"])
             return result
@@ -150,7 +158,7 @@ async def generate_task(
     return result
 
 
-async def _run_conversation(client, settings, system, messages, limits, usage_log, session_id, attempt):
+async def _run_conversation(client, settings, system, messages, checks, usage_log, session_id, attempt):
     """One generation conversation, with validate_grid tool turns. Returns (spec, failure reason)."""
     max_validate = settings.get("max_validate_calls", 5)
     validate_calls = 0
@@ -188,7 +196,7 @@ async def _run_conversation(client, settings, system, messages, limits, usage_lo
                 if validate_calls > max_validate:
                     text = json.dumps({"ok": False, "errors": ["Validation limit reached. Give your final answer now."]})
                 else:
-                    text = tool_result(block.input, limits)
+                    text = tool_result(block.input, *checks)
                 results.append({"type": "tool_result", "tool_use_id": block.id, "content": text})
             messages.append({"role": "user", "content": results})
             continue

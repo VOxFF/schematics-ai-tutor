@@ -21,7 +21,7 @@ def test_valid_answer_becomes_a_level(config, usage_log):
     result = run(client, config, usage_log)
     assert result.errors == []
     assert result.attempts == 1
-    assert result.level["board"]["targets"] == {"VM1": {"value": None}}
+    assert result.level["board"]["targets"] == {"VM1": {"value": 4.0}}  # computed, not from Claude
     request = client.requests[0]
     assert request["model"] == config["claude"]["task_generation"]["model"]
     assert request["tools"][0]["name"] == "validate_grid"

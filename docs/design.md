@@ -190,7 +190,10 @@ schematics-ai-tutor/
 │   │   ├── config.py          loads the root config.yaml
 │   │   ├── usage_log.py       per-run usage and cost log
 │   │   ├── grid.py            grid format validation
-│   │   ├── task_spec.py       TaskSpec schema, format checks, task-grid derivation
+│   │   ├── graph.py           grid → graph conversion, nets
+│   │   ├── solver.py          DC modified nodal analysis
+│   │   ├── evaluate.py        status, readings and issues
+│   │   ├── task_spec.py       TaskSpec schema, validation stages, targets, task-grid derivation
 │   │   ├── task_generation.py Claude task generation with the validate_grid tool
 │   │   └── jsonfmt.py         readable JSON formatting
 │   ├── data/

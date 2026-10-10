@@ -28,13 +28,14 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Scaffold the Python service (FastAPI, `/api/health`, pytest)
 - [x] `start.sh` / `stop.sh` in the repo root
 - [x] Grid format validation
-- [ ] Grid-to-graph conversion
-- [ ] Circuit solver (voltages and currents)
-- [ ] Structural checks and status precedence
-- [ ] Meter readings: rounding to resolution, target tolerance check
+- [x] Grid-to-graph conversion
+- [x] Circuit solver (voltages and currents)
+- [x] Structural checks and status precedence
+- [x] Meter readings: rounding to resolution, target tolerance check
 - [ ] Curated levels (tagged by skill level) and goal checking
 - [x] Task generation pipeline: Claude call with the `validate_grid` tool (format checks), structured `TaskSpec`, retry with errors, task-grid derivation, `POST /api/tasks/generate`
-- [ ] Task generation: electrical validation stages, target values, curated fallback (with the evaluator)
+- [x] Task generation: electrical validation (working circuit, reconstruction from the task board, not already solved) and computed target values
+- [ ] Curated fallback level when generation fails
 - [ ] Server-side refusal fallbacks for Claude calls
 - [ ] Background pre-generation of the next task
 - [ ] Skill level and task history (`Progress`)
@@ -50,7 +51,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Integrity checks: `./check.sh` locally and in GitHub Actions on every PR
 - [ ] Rate limiting (per session, per IP, global Claude budget) and API key handling
 - [x] Test suite tiers: `unit`, `api` (fake Claude), `live` (real Claude, opt-in); `./test.sh`
-- [ ] Tests for the evaluator
+- [x] Tests for the evaluator
 
 ## 3. Frontend
 

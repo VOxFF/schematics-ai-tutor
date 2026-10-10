@@ -1,13 +1,13 @@
 """TaskSpec: Claude's task proposal (docs/contract.md §2.2).
 
 This module holds the JSON schema used for Claude's structured output, the
-normalization of that output, the format checks, and the derivation of the
-learner's task grid. Electrical checks (solvability, target values) belong to
-the evaluator and are not done here.
+normalization of that output, the validation stages (docs/schematics.md §3),
+target computation, and the derivation of the learner's task grid.
 """
 
 import uuid
 
+from .evaluate import RESOLUTION, evaluate
 from .grid import METER_TYPES, PIN_NAMES, validate_grid
 
 COMPONENT_TYPES = sorted(PIN_NAMES)
@@ -116,8 +116,11 @@ def check_format(spec: dict, grid_limits: dict | None = None) -> list[str]:
     return errors
 
 
-def derive_task_board(spec: dict) -> dict:
-    """The learner's starting grid: removed parts go to the inventory, removed wires disappear."""
+def derive_task_board(spec: dict, targets: dict | None = None) -> dict:
+    """The learner's starting grid: removed parts go to the inventory, removed wires disappear.
+
+    `targets` are the computed target values; without them, values are null.
+    """
     board = spec["complete_board"]
     removed = set(spec.get("removed_ids", []))
     components = [c for c in board["components"] if c["id"] not in removed]
@@ -130,12 +133,83 @@ def derive_task_board(spec: dict) -> dict:
         "components": components,
         "inventory": sorted(inventory, key=lambda item: item["id"]),
         "wires": [w for w in board["wires"] if w["id"] not in removed],
-        # Target values are computed by the evaluator (next step); until then they are null.
-        "targets": {mid: {"value": None} for mid in spec["target_meter_ids"]},
+        "targets": targets or {mid: {"value": None} for mid in spec["target_meter_ids"]},
     }
 
 
-def build_level(spec: dict, skill_level: int) -> dict:
+def complete_grid(spec: dict) -> dict:
+    return {**spec["complete_board"], "inventory": [], "targets": {}}
+
+
+def check_solved_board(spec: dict, settings: dict | None = None) -> tuple[list[str], dict]:
+    """Stage 2: the complete board is a working circuit; returns (errors, target values)."""
+    result = evaluate(complete_grid(spec), settings)
+    errors = []
+    if result["issues"]:
+        problems = ", ".join(f"{i['code']} ({', '.join(i['component_ids']) or 'circuit'})" for i in result["issues"])
+        errors.append(f"complete board is not a working circuit: {problems}")
+    types = {c["id"]: c["type"] for c in spec["complete_board"]["components"]}
+    targets = {}
+    for mid in spec["target_meter_ids"]:
+        reading = result["readings"].get(mid)
+        if reading is None or abs(reading) < RESOLUTION[types[mid]]:
+            errors.append(f"target meter {mid} reads {reading}; a target must read a non-zero value")
+        else:
+            targets[mid] = {"value": reading}
+    return errors, targets
+
+
+def check_reconstruction(spec: dict, task_board: dict) -> list[str]:
+    """Stage 3a: the complete board is exactly the task board plus the removed elements."""
+    errors = []
+    complete = spec["complete_board"]
+    removed = set(spec["removed_ids"])
+    task_components = {c["id"]: c for c in task_board["components"]}
+    task_wires = {w["id"]: w for w in task_board["wires"]}
+    inventory = {i["id"]: i for i in task_board["inventory"]}
+    for c in complete["components"]:
+        if c["id"] in removed:
+            item = inventory.get(c["id"])
+            if item is None or item["type"] != c["type"] or item.get("value") != c.get("value"):
+                errors.append(f"removed part {c['id']} is not in the inventory with the same type and value")
+        elif task_components.get(c["id"]) != c:
+            errors.append(f"part {c['id']} differs between the task board and the complete board")
+    for w in complete["wires"]:
+        if w["id"] not in removed and task_wires.get(w["id"]) != w:
+            errors.append(f"wire {w['id']} differs between the task board and the complete board")
+    complete_ids = {c["id"] for c in complete["components"]} | {w["id"] for w in complete["wires"]}
+    extra = (set(task_components) | set(task_wires)) - complete_ids
+    if extra:
+        errors.append(f"task board has elements not in the complete board: {sorted(extra)}")
+    return errors
+
+
+def check_not_solved(task_board: dict, settings: dict | None = None) -> list[str]:
+    """Stage 3b: the task board alone must not meet the targets."""
+    if evaluate(task_board, settings)["status"] == "solved":
+        return ["the task is already solved without the removed parts; remove something that matters"]
+    return []
+
+
+def validate(spec: dict, grid_limits: dict | None = None, settings: dict | None = None) -> dict:
+    """All validation stages for a normalized TaskSpec.
+
+    Returns {"errors", "readings", "targets", "board"}; `board` is the learner's task grid
+    with computed targets, present only when there are no errors.
+    """
+    errors = check_format(spec, grid_limits)
+    if errors:
+        return {"errors": errors, "readings": {}, "targets": {}, "board": None}
+    readings = evaluate(complete_grid(spec), settings)["readings"]
+    errors, targets = check_solved_board(spec, settings)
+    if errors:
+        return {"errors": errors, "readings": readings, "targets": {}, "board": None}
+    board = derive_task_board(spec, targets)
+    errors = check_reconstruction(spec, board) + check_not_solved(board, settings)
+    return {"errors": errors, "readings": readings, "targets": targets, "board": None if errors else board}
+
+
+def build_level(spec: dict, skill_level: int, board: dict | None = None) -> dict:
     """A `Level` for the frontend (docs/contract.md, data model)."""
     return {
         "id": f"gen-{uuid.uuid4().hex[:8]}",
@@ -143,5 +217,5 @@ def build_level(spec: dict, skill_level: int) -> dict:
         "title": spec["title"],
         "concept": spec["concept"],
         "intro": spec["intro"],
-        "board": derive_task_board(spec),
+        "board": board or derive_task_board(spec),
     }
