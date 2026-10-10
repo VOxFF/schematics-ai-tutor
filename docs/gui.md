@@ -75,10 +75,19 @@ Rendered with three.js in an orthographic, top-down view. Every grid point, comp
 | Component | Symbol | Label |
 |---|---|---|
 | `voltage_source` | Battery symbol (long and short plates); `positive` side marked | `V1 12 V` |
-| `resistor` | Rectangle | `R1 20 Ω` |
+| `resistor` | Rectangle with its 4 color bands | `R1 20 Ω`, always shown |
 | `ammeter` | Circle with **A** | Live reading above it, e.g. `0.200 A` |
 | `voltmeter` | Circle with **V** | Live reading above it, e.g. `4.00 V` |
 
+- **Resistor color bands.** Every resistor, on the grid and in the inventory, shows the standard 4-band color code for its value. The value label is always shown next to it, so the learner absorbs the code just by seeing both. There is no legend.
+
+  | Band | Meaning |
+  |---|---|
+  | 1, 2 | Digits: black 0, brown 1, red 2, orange 3, yellow 4, green 5, blue 6, violet 7, grey 8, white 9 |
+  | 3 | Multiplier: ×10ⁿ with the same colors (black ×1 … blue ×1M), gold ×0.1, silver ×0.01 |
+  | 4 | Tolerance: always gold (±5%) |
+
+  Examples: 20 Ω = red, black, black, gold; 60 Ω = blue, black, black, gold; 120 Ω = brown, red, brown, gold.
 - Meters show `--` when the reading is `null`.
 - `fixed` parts show a small lock and cannot be moved.
 

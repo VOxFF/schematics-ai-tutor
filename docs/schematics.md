@@ -121,6 +121,7 @@ The backend rejects a document that breaks any of these rules, before any electr
 - Pins match the type's pin names, lie 2 apart in a straight line, and agree with `orientation`.
 - Every wire segment joins orthogonal neighbors, and every wire piece has one of the four shapes.
 - No two components share a point: neither pins nor bodies may overlap. Components connect only through wires.
+- Resistor values have at most two significant digits (e.g. 20, 60, 120, 4700), so they can be drawn as a 4-band color code (two digits and a multiplier, from ×0.01 to ×1M). This keeps generated values realistic.
 
 ### Notes
 
