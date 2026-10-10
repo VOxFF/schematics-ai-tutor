@@ -15,6 +15,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Board data format: the `grid` document ([schematics.md](schematics.md))
 - [x] Graph format: the `graph` document with pin-pair edges ([schematics.md](schematics.md#2-graph-format-the-graph-document))
 - [x] Task flow: generation, validation stages, derivation, grading ([schematics.md](schematics.md#3-task-flow))
+- [x] Task generation input: task context, learner context, skill level ([contract.md](contract.md#22-task-generation-call))
 - [ ] Evaluator design: revise `schematics.md` §4–8 for the grid and graph (solver with ammeter, structural checks including ammeter in parallel, rendering)
 - [x] Terminology: "grid" across the docs
 - [ ] Level design and progression
@@ -28,9 +29,12 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Circuit solver (voltages and currents)
 - [ ] Structural checks (shorts, open circuits, bypassed components)
 - [ ] Meter readings: rounding to resolution, target tolerance check
-- [ ] Curated levels (one per concept) and goal checking
+- [ ] Curated levels (tagged by skill level) and goal checking
 - [ ] Task generation: Claude call, `validate_grid` tool, derivation, retries and fallback
 - [ ] Background pre-generation of the next task
+- [ ] Skill level and task history (`Progress`)
+- [ ] Repeat check against recent task graphs
+- [ ] Prompt examples as files, validated in tests
 - [ ] Tutor service: Claude API integration and prompts
 - [ ] REST endpoints and WebSocket session
 - [ ] Rate limiting and API key handling

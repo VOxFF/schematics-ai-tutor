@@ -180,10 +180,10 @@ There are two data objects:
 
 ```mermaid
 flowchart TD
-    P["Concept + learner progress"] --> G["Claude: generate TaskSpec<br/>(self-checks with validate_grid)"]
-    G --> V{"Backend validation<br/>1. format<br/>2. solvable<br/>3. not already solved"}
+    P["Skill level + task history"] --> G["Claude: generate TaskSpec<br/>(self-checks with validate_grid)"]
+    G --> V{"Backend validation<br/>1. format<br/>2. solvable<br/>3. not already solved<br/>4. not a repeat"}
     V -- "fails, 1st time" --> G
-    V -- "fails again" --> F["Curated level<br/>for the concept"]
+    V -- "fails again" --> F["Curated level<br/>for the skill level"]
     V -- passes --> D["Derive task grid<br/>+ compute targets"]
     D --> L[Level sent to frontend]
     F --> L
@@ -195,11 +195,11 @@ flowchart TD
     T --> U
 ```
 
-### Curriculum
+### Progression
 
-- The concept sequence is fixed: closed loop → Ohm's law → series → parallel → measurement.
-- The first task of each concept is a curated level. Claude generates the following tasks within that concept, tailored to the learner's progress and misconceptions.
-- The fixed sequence keeps progression reliable, while generation keeps each task fresh and personal.
+- **Skill level.** The backend keeps the learner's skill level, an integer starting at 1, and adds 1 each time a task is solved. Nothing else changes it.
+- **Claude chooses the task.** It receives the skill level and the task history, and picks the next task's concept and complexity itself. The aim is to build on what the learner has done and avoid repeating it.
+- **Curated levels.** These hand-made levels are the very first task and the fallback when generation fails. Each is tagged with the skill level it suits.
 
 ### Generation: Claude proposes, the backend decides
 
@@ -209,6 +209,7 @@ Claude returns a `TaskSpec` ([contract.md](contract.md#22-task-generation-call))
 - **removed IDs:** the parts the learner must place
 - **decoys:** extra parts that aren't needed
 - **target meter IDs:** the meters whose readings define the goal
+- **difficulty** (1–5) and a one-sentence **rationale** for why the task suits this learner
 
 Claude does **not** produce the task grid or any target value. The backend derives both:
 
@@ -225,6 +226,7 @@ Every generated task passes the same validator that checks learner boards. All o
 | 1. Format | The §1 format rules hold for the complete board, and `removed_ids`, `decoys` and `target_meter_ids` refer to valid, unique IDs |
 | 2. Solvable | The complete board's graph has no issues (no short, open circuit, bypassed or floating part), and every target meter reads a non-zero value |
 | 3. Not already solved | The task grid does **not** meet the targets. Removed parts are not `fixed`, and target meters are not removed. |
+| 4. Not a repeat | The complete board's graph differs from the graphs of the learner's recent tasks: different component types and values, or different connections. |
 
 ### Grading
 
@@ -236,7 +238,7 @@ Every generated task passes the same validator that checks learner boards. All o
 
 - Generation takes seconds to tens of seconds.
 - The backend generates the next task in the background as soon as the current one is delivered.
-- Each concept opens with a curated level, so the learner never waits at the start.
+- The very first task is a curated level, so the learner never waits at the start.
 
 ## 4. From board to circuit
 

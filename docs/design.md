@@ -38,7 +38,7 @@ flowchart LR
     end
     C[(Claude API)]
 
-    TG -- "concept + progress" --> C
+    TG -- "skill level + task history" --> C
     C -- "task proposal" --> TG
     TG -- "validate + compute targets" --> E
     TG -- "task" --> W

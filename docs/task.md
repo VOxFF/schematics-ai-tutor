@@ -17,7 +17,7 @@ The goal is understanding, not task completion. The learner should leave able to
 | Learner | Builds circuits on the grid and responds to the tutor |
 | Grid editor | Lets the learner place and remove components and wires; produces the grid |
 | Evaluator | Deterministic. Converts the layout to a netlist, computes voltages and currents, and checks them against the level goal |
-| Claude task generator | Proposes new tasks for the current concept, tailored to the learner. The evaluator validates each proposal and computes its targets. |
+| Claude task generator | Proposes the next task, choosing its concept and complexity from the learner's skill level and task history. The evaluator validates each proposal and computes its targets. |
 | Claude tutor | Reads the level, the learner's circuit and the evaluator's results, then gives feedback, hints and an assessment of the learner's direction |
 
 ### Operating principles
@@ -28,7 +28,7 @@ The goal is understanding, not task completion. The learner should leave able to
 
 ### Levels
 
-The learning path is a fixed sequence of concepts that grow in complexity, starting with basic circuits. Each concept opens with a curated level, and Claude generates further levels within it. Each level defines:
+The learner has a skill level that starts at 1 and goes up by one with each solved task. The first task is curated. After that, Claude generates each task, choosing its concept and complexity from the skill level and the history of solved tasks. Each level defines:
 
 - a starting grid (empty or partially built)
 - the available components (resistors, voltmeters, wires, power source)
@@ -42,7 +42,7 @@ The learning path is a fixed sequence of concepts that grow in complexity, start
 3. On every edit, the evaluator builds the netlist and computes the values, and meter readings update live. It reports whether the goal is met, along with structural issues such as shorts, open circuits and bypassed components.
 4. When the learner asks for a check or a hint, or writes a message, the evaluator runs again on the server.
 5. Claude receives the level, the circuit and the evaluator results, and responds with feedback and, if needed, a hint.
-6. The learner revises and repeats from step 2, or moves to the next level when the goal is met. That level was pre-generated in the background.
+6. The learner revises and repeats from step 2, or moves on when the goal is met: the skill level goes up by one, and the next task is served. That level was pre-generated in the background.
 
 ## Major constraints
 
