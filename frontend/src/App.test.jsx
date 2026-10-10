@@ -73,9 +73,11 @@ test("a failed generation shows the error and a retry button", async () => {
   expect(screen.getByRole("button", { name: "Try again" })).toBeDefined();
 });
 
-test("the start screen shows eight learning path steps with what each teaches", () => {
+test("the start screen shows eight learning path steps, the first current and the rest locked", () => {
   render(<App />);
   const steps = screen.getAllByRole("listitem").filter((li) => li.querySelector(".step"));
   expect(steps).toHaveLength(8);
   expect(steps[0].textContent).toBe("Closed LoopCurrent flows only around a complete loop");
+  expect(steps[0].querySelector(".bolt")).not.toBeNull();
+  expect(steps.slice(1).every((li) => li.querySelector(".lock"))).toBe(true);
 });

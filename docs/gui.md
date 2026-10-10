@@ -16,13 +16,11 @@ The app has three screens: the **start screen**, the **learning screen** (the tu
 
 One static screen, with no sign-up and no backend call:
 
-1. **What it is:** "Learn how electric circuits work by building them. An AI tutor watches and helps you think."
-2. **How it works,** as three short bullet points without a heading:
-   - build circuits on the grid
-   - see live meter readings
-   - get nudges and questions from the tutor, never the answer
-3. **Your Learning Path:** 8 steps in one column of pills, each with a one-line note on what the learner discovers: Closed Loop, Measuring Voltage, Measuring Current, Ohm's Law, Series Circuits, Parallel Circuits, Power and Safety, Troubleshooting. Tasks adapt to the learner, so it is shown as a typical path, not a fixed sequence.
-4. **One large, centered Start Learning button.**
+1. **What it is:** "Learn electronics by building real circuits, experimenting with components, and discovering how electricity works — with an AI tutor guiding you along the way."
+2. **Your Learning Path:** 8 steps in one column of pills, each with a one-line note on what the learner discovers: Closed Loop, Measuring Voltage, Measuring Current, Ohm's Law, Series Circuits, Parallel Circuits, Power and Safety, Troubleshooting. The first step has a lightning icon (where the learner starts); the rest have a lock icon. Tasks adapt to the learner, so it is shown as a typical path, not a fixed sequence.
+3. **One large, centered Start Learning button.**
+
+Everything sits in one light card with rounded corners.
 
 It also sets expectations about agency up front: the tutor asks rather than tells. That prevents "why won't it just tell me?" frustration, and it gives reviewers opening the URL cold the context in seconds.
 
