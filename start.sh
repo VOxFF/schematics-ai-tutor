@@ -15,8 +15,19 @@ if [ -f "$ROOT/.env" ]; then
 fi
 BACKEND_PORT="${BACKEND_PORT:-8000}"
 
+# Fall back to the gitignored key file when the key isn't set (see backend/keys/README.md).
+KEY_FILE="$ROOT/backend/keys/apikey.txt"
+if [ -z "${ANTHROPIC_API_KEY:-}" ] && [ -f "$KEY_FILE" ]; then
+  ANTHROPIC_API_KEY="$(tr -d '[:space:]' < "$KEY_FILE")"
+  export ANTHROPIC_API_KEY
+fi
+if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
+  echo "warning: ANTHROPIC_API_KEY is not set; Claude features will be unavailable" >&2
+fi
+
+# True when the PID file points at a live uvicorn process (guards against stale, reused PIDs).
 is_running() {
-  [ -f "$1" ] && kill -0 "$(cat "$1")" 2>/dev/null
+  [ -f "$1" ] && ps -p "$(cat "$1")" -o command= 2>/dev/null | grep -q uvicorn
 }
 
 start_backend() {

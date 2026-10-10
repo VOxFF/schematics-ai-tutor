@@ -7,7 +7,7 @@ Deterministic circuit evaluator and Claude API integration, as a FastAPI service
 From the repo root:
 
 ```sh
-cp .env.example .env    # once; add ANTHROPIC_API_KEY
+cp .env.example .env    # optional; or put the key in backend/keys/apikey.txt
 ./start.sh              # creates backend/.venv, installs, starts on :8000
 ./stop.sh
 ```

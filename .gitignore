@@ -252,3 +252,7 @@ Thumbs.db
 
 # Local run state from start.sh
 .run/
+
+# Local API keys (only the README is tracked)
+backend/keys/*
+!backend/keys/README.md

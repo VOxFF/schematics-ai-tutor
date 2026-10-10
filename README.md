@@ -11,7 +11,7 @@ A Claude-based tutor for learning electric circuits and schematics on an interac
 ## Run locally
 
 ```sh
-cp .env.example .env    # once; add ANTHROPIC_API_KEY
+# API key: backend/keys/apikey.txt (gitignored), or ANTHROPIC_API_KEY in .env
 ./start.sh              # starts the backend in the background
 ./stop.sh
 ```

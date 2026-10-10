@@ -7,7 +7,8 @@ RUN="$ROOT/.run"
 
 stop_service() {
   local name="$1" pidfile="$RUN/$1.pid"
-  if [ ! -f "$pidfile" ] || ! kill -0 "$(cat "$pidfile")" 2>/dev/null; then
+  # Only stop a live uvicorn process; a stale PID may now belong to something else.
+  if [ ! -f "$pidfile" ] || ! ps -p "$(cat "$pidfile")" -o command= 2>/dev/null | grep -q uvicorn; then
     echo "$name not running"
     rm -f "$pidfile"
     return
