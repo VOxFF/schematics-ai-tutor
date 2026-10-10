@@ -1,6 +1,6 @@
 # Design
 
-Major design decisions for the system as a whole. For the product, its workflow and its constraints, see [task.md](task.md). Domain-specific design (circuits, breadboard, levels) is in [schematics.md](schematics.md).
+Major design decisions for the system as a whole. For the product, its workflow and its constraints, see [task.md](task.md). Domain-specific design (circuits, the grid, levels) is in [schematics.md](schematics.md).
 
 ## 1. Separate ground truth from tutoring
 
@@ -38,7 +38,7 @@ flowchart LR
     end
     C[(Claude API)]
 
-    TG -- "concept + progress" --> C
+    TG -- "skill level + task history" --> C
     C -- "task proposal" --> TG
     TG -- "validate + compute targets" --> E
     TG -- "task" --> W
@@ -60,7 +60,42 @@ flowchart LR
 - The Claude API key exists only on the backend, loaded from the environment.
 - The backend applies basic rate limiting, since the deployed prototype is public.
 
-## 5. Stack
+## 5. Configuration
+
+The Claude models and behavior knobs live in one YAML file, `backend/config.yaml`, not in code. That lets us switch models, for example Opus vs. Haiku for reactions, and tune thresholds without code changes. The API key is never in this file; it comes from the environment.
+
+```yaml
+claude:
+  tutor_reaction:              # idle-triggered reactions
+    model: claude-opus-5-5
+    effort: low
+    max_tokens: 16000
+    timeout_s: 30
+  tutor_request:               # learner check / hint / message
+    model: claude-opus-5-5
+    effort: low
+    max_tokens: 16000
+    timeout_s: 30
+  task_generation:
+    model: claude-opus-5-5
+    effort: high
+    max_tokens: 16000
+    timeout_s: 120
+    max_validate_calls: 5
+    max_attempts: 2
+
+tutor:
+  idle_threshold_ms: 1500
+  max_snapshots: 10
+  history_turns: 6
+
+task_generation:
+  recent_tasks: 10
+```
+
+The values above are the defaults, as described in [contract.md](contract.md).
+
+## 6. Stack
 
 | Layer | Choice | Status |
 |---|---|---|

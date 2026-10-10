@@ -1,6 +1,6 @@
 # Schematics
 
-The domain-specific design: the grid and graph formats, the task flow, the components, how a board becomes a circuit, how the evaluator solves it, and the levels. Everything here is specific to electronics. The domain-independent architecture is in [design.md](design.md), and the data shapes are in [contract.md](contract.md).
+The domain-specific design: the grid and graph formats, the task flow, the evaluation pipeline, the solver, the structural checks, rendering, and the curated levels. Everything here is specific to electronics. The domain-independent architecture is in [design.md](design.md), and the data shapes are in [contract.md](contract.md).
 
 ## 1. Board format: the `grid` document
 
@@ -17,9 +17,9 @@ A board is one JSON document. The same shape describes a level's starting board 
   ],
   "inventory": [ { "id": "R3", "type": "resistor", "value": 50 } ],
   "wires": [
-    [[[3, 1], [4, 1]]],
-    [[[1, 3], [1, 2]], [[1, 2], [1, 1]]],
-    [[[8, 2], [8, 3]], [[8, 3], [9, 3]], [[7, 3], [8, 3]]]
+    { "id": "W1", "segments": [[[3, 1], [4, 1]]] },
+    { "id": "W2", "segments": [[[1, 3], [1, 2]], [[1, 2], [1, 1]]] },
+    { "id": "W3", "segments": [[[8, 2], [8, 3]], [[8, 3], [9, 3]], [[7, 3], [8, 3]]] }
   ],
   "targets": {
     "VM1": { "value": 4.0, "tolerance": 0.1 },
@@ -70,7 +70,8 @@ Pin names by type. The first pin listed is the one `orientation` points to.
 
 ### Wires
 
-- A wire piece is a list of **segments**.
+- A wire piece is an object with an `id` and a list of `segments`.
+- **Wire IDs.** A wire gets a unique ID (`W1`, `W2`, …) when it is placed on the grid. The editor assigns the next number after the highest existing wire number. A new wire therefore never collides with an existing one, and existing IDs never change when other wires are added or removed.
 - A segment is a pair of points `[[c1, r1], [c2, r2]]` that are orthogonal neighbors (a distance of exactly 1 apart).
 - The segments of one piece must form one of four shapes:
 
@@ -107,7 +108,7 @@ Voltmeters and ammeters can appear in both `components` and `inventory`, dependi
 
 ### Connectivity
 
-- Points conduct only through wire segments. There are no breadboard strips or rails.
+- Points conduct only through wire segments. There are no hidden internal connections.
 - A component pin connects to whatever wires touch its point.
 - Wire pieces connect to each other wherever their endpoints share a point.
 
@@ -116,7 +117,7 @@ Voltmeters and ammeters can appear in both `components` and `inventory`, dependi
 The backend rejects a document that breaks any of these rules, before any electrical evaluation:
 
 - Every point is inside the grid.
-- `id`s are unique, and every `targets` key names a meter in `components` or `inventory`.
+- `id`s are unique across components, inventory and wires, and every `targets` key names a meter in `components` or `inventory`.
 - Pins match the type's pin names, lie 2 apart in a straight line, and agree with `orientation`.
 - Every wire segment joins orthogonal neighbors, and every wire piece has one of the four shapes.
 - No two components share a point: neither pins nor bodies may overlap. Components connect only through wires.
@@ -180,10 +181,10 @@ There are two data objects:
 
 ```mermaid
 flowchart TD
-    P["Concept + learner progress"] --> G["Claude: generate TaskSpec<br/>(self-checks with validate_grid)"]
-    G --> V{"Backend validation<br/>1. format<br/>2. solvable<br/>3. not already solved"}
+    P["Skill level + task history"] --> G["Claude: generate TaskSpec<br/>(self-checks with validate_grid)"]
+    G --> V{"Backend validation<br/>1. format<br/>2. solvable<br/>3. not already solved<br/>4. not a repeat"}
     V -- "fails, 1st time" --> G
-    V -- "fails again" --> F["Curated level<br/>for the concept"]
+    V -- "fails again" --> F["Curated level<br/>for the skill level"]
     V -- passes --> D["Derive task grid<br/>+ compute targets"]
     D --> L[Level sent to frontend]
     F --> L
@@ -195,11 +196,11 @@ flowchart TD
     T --> U
 ```
 
-### Curriculum
+### Progression
 
-- The concept sequence is fixed: closed loop → Ohm's law → series → parallel → measurement.
-- The first task of each concept is a curated level. Claude generates the following tasks within that concept, tailored to the learner's progress and misconceptions.
-- The fixed sequence keeps progression reliable, while generation keeps each task fresh and personal.
+- **Skill level.** The backend keeps the learner's skill level, an integer starting at 1, and adds 1 each time a task is solved. Nothing else changes it.
+- **Claude chooses the task.** It receives the skill level and the task history, and picks the next task's concept and complexity itself. The aim is to build on what the learner has done and avoid repeating it.
+- **Curated levels.** These hand-made levels are the very first task and the fallback when generation fails. Each is tagged with the skill level it suits.
 
 ### Generation: Claude proposes, the backend decides
 
@@ -209,6 +210,7 @@ Claude returns a `TaskSpec` ([contract.md](contract.md#22-task-generation-call))
 - **removed IDs:** the parts the learner must place
 - **decoys:** extra parts that aren't needed
 - **target meter IDs:** the meters whose readings define the goal
+- **difficulty** (1–5) and a one-sentence **rationale** for why the task suits this learner
 
 Claude does **not** produce the task grid or any target value. The backend derives both:
 
@@ -225,6 +227,7 @@ Every generated task passes the same validator that checks learner boards. All o
 | 1. Format | The §1 format rules hold for the complete board, and `removed_ids`, `decoys` and `target_meter_ids` refer to valid, unique IDs |
 | 2. Solvable | The complete board's graph has no issues (no short, open circuit, bypassed or floating part), and every target meter reads a non-zero value |
 | 3. Not already solved | The task grid does **not** meet the targets. Removed parts are not `fixed`, and target meters are not removed. |
+| 4. Not a repeat | The complete board's graph differs from the graphs of the learner's recent tasks: different component types and values, or different connections. |
 
 ### Grading
 
@@ -236,79 +239,92 @@ Every generated task passes the same validator that checks learner boards. All o
 
 - Generation takes seconds to tens of seconds.
 - The backend generates the next task in the background as soon as the current one is delivered.
-- Each concept opens with a curated level, so the learner never waits at the start.
+- The very first task is a curated level, so the learner never waits at the start.
 
-## 4. From board to circuit
-
-> **Pending revision.** Sections 4–8 predate the `grid` format: they assume breadboard strips and rails, and a `battery` component. They will be updated when the evaluator is designed.
+## 4. Evaluation pipeline
 
 ```mermaid
 flowchart LR
-    B[Board: components + holes] --> U["Union-find over holes:<br/>strips, rails, wires"]
-    U --> N["Netlist:<br/>nodes + 2-terminal elements"]
-    N --> S[Structural checks]
-    N --> M["MNA solver<br/>(numpy)"]
+    G[grid] --> V{Format validation §1}
+    V -- invalid --> X["Rejected: bad_message"]
+    V -- valid --> GR["Grid → graph §2"]
+    GR --> N["Nets: union-find<br/>over edge pins"]
+    N --> S["Structural checks §6"]
+    N --> M["MNA solve §5"]
+    M --> R["Readings, rounded §1"]
     S --> E[Evaluation]
-    M --> E
-    G[Level goal] --> E
+    R --> E
+    T[targets] --> E
 ```
 
-1. **Nodes.** A union-find over all holes:
-   - Each strip's 5 holes are merged into one set.
-   - All 30 holes of each rail are merged into one set.
-   - Each `wire` merges the sets of its two holes.
-
-   The resulting sets are the circuit's nodes.
-2. **Elements.** Every non-wire component becomes an element between the nodes of its two pins.
-3. **Ground.** The node of the battery's `−` pin is the reference, at 0 V.
+1. **Validate** the grid against the §1 format rules.
+2. **Convert** it to a graph (§2).
+3. **Build nets.** A union-find over the pins in `edges` gives the nets. Each net is one electrical node, and every component sits between the nets of its two pins. A pin that appears in no edge gets its own single-pin net.
+4. **Choose ground.** The net of the `negative` pin of the first `voltage_source`, by `id`, is the reference at 0 V.
+5. **Check structure** (§6), then **solve** (§5), unless a blocking issue makes the circuit unsolvable.
+6. **Report** the meter readings, rounded to resolution, and check them against `targets`: `goal_met` is true when every target is within its tolerance.
 
 ## 5. Solver
 
-A DC **modified nodal analysis (MNA)** over the netlist, solved with `numpy.linalg.solve`. Nothing beyond DC is in scope.
+A DC **modified nodal analysis (MNA)** over the nets, solved with `numpy.linalg.solve`. Nothing beyond DC is in scope.
 
-- Resistors contribute conductance terms. The battery contributes a voltage-source row, and its branch current is the circuit's total current.
-- Voltmeters contribute nothing (infinite resistance) and are read after the solve.
-- **Floating nodes**, connected to nothing that leads to the source, would make the matrix singular. A tiny conductance to ground (gmin = 1e‑12 S) keeps it solvable; those nodes then read 0 V and carry no current.
-- Results per element: the voltage across it and the current through it, rounded for display to 3 significant figures.
-- **Goal check:** `|actual − target| ≤ tolerance`.
+| Component | MNA model | Reading |
+|---|---|---|
+| `voltage_source` | Ideal voltage source, V(positive) − V(negative) = `value`; adds one branch-current unknown | — |
+| `resistor` | Conductance 1/`value` between its two nets | — |
+| `ammeter` | Ideal ammeter: a 0 V source, which adds one branch-current unknown | The branch current, positive when current flows into `positive` and out of `negative` |
+| `voltmeter` | Ideal voltmeter: infinite resistance, so it adds nothing | V(positive) − V(negative) |
+
+- **Signed readings.** Reversed meter probes give negative readings, as on a real multimeter. That is a useful teaching moment, and the tutor sees it.
+- **Floating nets** (not connected to ground through any element) would make the matrix singular. A tiny conductance to ground (gmin = 1e‑12 S) on every net keeps it solvable. Those nets read 0 V and carry no current, and after rounding the residue disappears (§1).
+- **Unsolvable circuits.** Contradictory sources (two sources of different values in parallel) or a loop of sources and ammeters still make the matrix singular. The result is `valid: false`, normally already explained by a `short_circuit` issue.
 
 ## 6. Structural checks
 
-These run before and alongside the solve, and fill `Evaluation.issues`.
+These checks read the graph and its nets, and fill `Evaluation.issues`. Each issue lists the pins involved; the backend maps them to grid points for highlighting (§2).
 
-| Code | Detection | Effect on `valid` |
+| Code | Detection | Effect |
 |---|---|---|
-| `no_source` | No battery on the board | `false` |
-| `short_circuit` | The battery's `+` and `−` pins end up in the same node | `false` (the solve is skipped) |
-| `same_strip` | A non-wire component has both pins in the same strip or rail, so it is bypassed | `true` (it reads 0 V and 0 A) |
-| `floating_component` | A component pin's node connects to nothing else | `true` |
-| `open_circuit` | The battery current is ~0 (below 1 µA) although a source exists | `true` |
+| `no_source` | No `voltage_source` in `components` | `valid: false`; no solve |
+| `short_circuit` | A source's `positive` and `negative` are joined through wires and ammeters only, so there is no resistance between them | `valid: false`; no solve |
+| `bypassed` | A component's two pins are in the same net, so it reads 0 V and carries 0 A | `valid: true` |
+| `floating_component` | A component has a pin that is not connected to any other pin | `valid: true` |
+| `ammeter_parallel` | An ammeter's two nets are exactly the two nets of a resistor, so the ammeter shorts that resistor | `valid: true`; the readings show the effect |
+| `open_circuit` | A source exists but its current is below the ammeter resolution (0.1 mA) | `valid: true` |
+
+A voltmeter placed in series shows up as `open_circuit`, plus a voltmeter reading close to the source voltage. The tutor interprets that combination; it needs no separate code.
 
 ## 7. Rendering and interaction (three.js)
 
-- **Scene graph:** every hole, component and wire is its own scene object, carrying the component `id` for raycast picking.
-- **Placing a part:** drag from the palette, then click two holes. Each pin snaps to the nearest free hole.
-- **Wires:** click hole A, then hole B. The wire is drawn as a curved lead.
-- **Colors:**
-  - `+` rails are red and `−` rails are blue.
-  - Resistors show real color bands, so the learner absorbs the color code.
-  - Each voltmeter's live reading is shown above it, from the latest `evaluation`.
-- **Highlights:** the components and holes in a `TutorMessage.focus` are outlined. Hovering a hole highlights its whole strip, which makes the hidden connections visible.
+- **Scene graph:** every grid point, component and wire piece is its own scene object, carrying its `id` (or point) for raycast picking.
+- **Grid:** a lattice of points. Components connect only through wires.
+- **Placing a part:**
+  - Drag it from the inventory and drop it so its body snaps to a free point. Its pins then occupy the two points 2 apart.
+  - Press **R** to cycle the orientation.
+  - Parts marked `fixed` cannot be moved.
+- **Placing a wire:** choose a piece (straight, corner, T or +) from the wire palette, press **R** to rotate it, and click a point to place it. Each placement assigns the next wire ID (§1).
+- **Removing:** select a non-fixed part or wire and press Delete. A removed part goes back to the inventory.
+- **Visual cues:**
+  - Source pins are red (`positive`) and black (`negative`).
+  - Resistors show real color bands.
+  - Each meter shows its live reading, from the latest `evaluation`.
+  - Hovering a point highlights every point and pin in the same net, which makes connectivity visible.
+- **Highlights:** the components, wires and points in `TutorMessage.meta.highlights` are drawn with their style (see [contract.md](contract.md)).
 
-## 8. Levels (draft)
+## 8. Curated levels (draft)
 
-Each level teaches one concept and targets known beginner misconceptions. The tutor receives the concept and the misconception list for the current level.
+Curated levels are the very first task and the fallback when generation fails (§3). Each is tagged with the skill level it suits, teaches one concept, and lists the beginner misconceptions the tutor should watch for. All use a 12 V source.
 
-| # | Title | Setup | Goal | Concept | Misconceptions to watch for |
-|---|---|---|---|---|---|
-| 1 | Close the loop | Battery on the rails, one resistor and a voltmeter across it; one wire missing | 9 V across R1 | A current needs a closed loop | "A single wire from the battery is enough"; "current flows out of + and is used up" |
-| 2 | Hidden connections | Resistor placed with both leads in one strip | 9 V across R1 | Breadboard strips and rails | "Any two holes in a row are separate"; "the top and bottom rails are connected" |
-| 3 | Ohm's law | Battery and an empty slot; choose a resistor | 4 mA ± 0.5 mA through R1 (9 V / 2.2k ≈ 4.1 mA) | V = I·R | "A bigger resistor means more current" |
-| 4 | Voltage divider | Two resistors in series | 3 V ± 0.2 V across R2 | Series resistors share the voltage | "Each resistor gets the full battery voltage" |
-| 5 | Measure it right | A working divider with no meter | Place a voltmeter that reads the voltage across R1 | Voltmeters go in parallel, across a part | "A meter goes in series like a wire" |
-| 6 | Parallel paths | Battery and a resistor; add a second resistor in parallel | Total current doubles | Parallel branches each get the full voltage | "Adding a resistor always reduces current" |
+| Skill level | Title | Setup (task grid) | Inventory | Target | Concept | Misconceptions to watch for |
+|---|---|---|---|---|---|---|
+| 1 | Close the loop | V1, R1 and VM1 across R1, all fixed; one wire piece missing | Wires only | VM1 = 12.00 V | Current needs a closed loop | "One wire from the source is enough"; "current is used up along the way" |
+| 2 | Ohm's law | V1 and AM1 in series, with a gap for a resistor | R 30 Ω, 60 Ω, 120 Ω | AM1 = 0.200 A (60 Ω) | I = V / R | "A bigger resistor means more current" |
+| 3 | Voltage divider | V1, R1 = 40 Ω, VM1 across a gap for R2 | R 20 Ω, 40 Ω, 60 Ω | VM1 = 4.00 V (R2 = 20 Ω) | Series resistors share the voltage | "Each resistor gets the full source voltage" |
+| 4 | Measure the current | V1 and R1 = 60 Ω, with a gap in the loop | AM1, wires | AM1 = 0.200 A | An ammeter goes in series | "A meter goes across a part, like a voltmeter" (`ammeter_parallel`) |
+| 5 | Parallel paths | V1, AM1 in series, R1 = 60 Ω; room for a branch | R 30 Ω, 60 Ω, 120 Ω | AM1 = 0.400 A (R2 = 60 Ω in parallel) | Parallel branches each get the full voltage | "Adding a resistor always reduces current" |
+
+The values in parentheses show the intended solution. Each target is reached only by that choice from the inventory.
 
 ## Open points
 
-- Resolved: there is an `ammeter` component, and current targets are ammeter readings.
-- The level order and exact values are to be validated by playtesting.
+- The level layouts and exact values are to be validated by playtesting.
