@@ -1,6 +1,6 @@
 # Design
 
-Major design decisions for the system as a whole. For the product, its workflow and its constraints, see [task.md](task.md). Domain-specific design (circuits, breadboard, levels) is in [schematics.md](schematics.md).
+Major design decisions for the system as a whole. For the product, its workflow and its constraints, see [task.md](task.md). Domain-specific design (circuits, the grid, levels) is in [schematics.md](schematics.md).
 
 ## 1. Separate ground truth from tutoring
 

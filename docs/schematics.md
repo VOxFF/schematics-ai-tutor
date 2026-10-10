@@ -107,7 +107,7 @@ Voltmeters and ammeters can appear in both `components` and `inventory`, dependi
 
 ### Connectivity
 
-- Points conduct only through wire segments. There are no breadboard strips or rails.
+- Points conduct only through wire segments. There are no hidden internal connections.
 - A component pin connects to whatever wires touch its point.
 - Wire pieces connect to each other wherever their endpoints share a point.
 
