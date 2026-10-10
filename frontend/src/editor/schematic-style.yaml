@@ -20,7 +20,7 @@ pin:
   color: "#1f2328"
 
 outline:
-  thickness: 1.5               # border of resistor bodies and meter circles
+  thickness: 1.5               # border of resistor bodies
   color: "#1f2328"
 
 resistor:
@@ -41,6 +41,7 @@ battery:
 
 meter:
   radius: 19
+  outline_thickness: 2.5       # meters only; other outlines use outline.thickness
   letter_size: 19              # font size (px) of A / V
   voltmeter_fill: "#eaf2fc"
   ammeter_fill: "#fdf3d7"

@@ -75,7 +75,7 @@ Rendered with three.js in an orthographic, top-down view (`frontend/src/editor/`
 - empty and connected pin-hole radius
 - resistor length, height, fill and band width
 - battery plate sizes and colors (the positive plate is red), and the size of the + and − marks
-- meter radius, fills per type (voltmeter light blue, ammeter light amber) and letter size
+- meter radius, outline thickness, fills per type (voltmeter light blue, ammeter light amber) and letter size
 - label size
 
 Editing the file and saving reloads the page in development.

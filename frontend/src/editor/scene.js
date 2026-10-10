@@ -82,7 +82,7 @@ function symbol(component) {
     lead(CELL, meter.radius);
     lead(-meter.radius, -CELL);
     const fill = component.type === "ammeter" ? meter.ammeter_fill : meter.voltmeter_fill;
-    g.add(disc(meter.radius, outline.color, 0, 0, 0.1), disc(meter.radius - outline.thickness, fill, 0, 0, 0.2));
+    g.add(disc(meter.radius, outline.color, 0, 0, 0.1), disc(meter.radius - meter.outline_thickness, fill, 0, 0, 0.2));
     g.add(label(component.type === "ammeter" ? "A" : "V", "editor-meter-letter", 0, 0, meter.letter_size));
   }
   return g;
