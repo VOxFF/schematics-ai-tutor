@@ -25,7 +25,8 @@ The major steps to build the product. A step is checked off when it is complete,
 
 ## 2. Backend
 
-- [ ] Scaffold the Python service
+- [x] Scaffold the Python service (FastAPI, `/api/health`, pytest)
+- [x] `start.sh` / `stop.sh` in the repo root
 - [ ] Grid format validation
 - [ ] Grid-to-graph conversion
 - [ ] Circuit solver (voltages and currents)
@@ -42,7 +43,8 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Circuit summary line for the tutor
 - [ ] Location-talk backstop with regeneration and fallback messages
 - [ ] REST endpoints and WebSocket session
-- [ ] Configuration loader for `config.yaml`
+- [x] Configuration loader for the root `config.yaml`
+- [x] Usage and cost log per backend run (`logs/`, on/off in `config.yaml`)
 - [ ] Rate limiting (per session, per IP, global Claude budget) and API key handling
 - [ ] Tests for the evaluator
 

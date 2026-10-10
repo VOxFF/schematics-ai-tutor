@@ -4,6 +4,17 @@ A Claude-based tutor for learning electric circuits and schematics on an interac
 
 ## Structure
 
+- Full layout: [docs/design.md](docs/design.md#7-repository-layout)
 - [`docs/`](docs/): design documents. Start with [task.md](docs/task.md), then [design.md](docs/design.md), [contract.md](docs/contract.md), [schematics.md](docs/schematics.md), [tutor.md](docs/tutor.md), [gui.md](docs/gui.md) and [plan.md](docs/plan.md).
 - [`frontend/`](frontend/): grid editor and tutor UI
 - [`backend/`](backend/): circuit evaluator and Claude API integration
+
+## Run locally
+
+```sh
+# API key: backend/keys/apikey.txt (gitignored), or ANTHROPIC_API_KEY in .env
+./start.sh              # starts the backend in the background
+./stop.sh
+```
+
+Server output goes to `.run/backend.log`. Usage and cost logs go to `logs/run-<timestamp>.jsonl` (toggle `logs.enabled` in [`config.yaml`](config.yaml)). Details are in [backend/README.md](backend/README.md).
