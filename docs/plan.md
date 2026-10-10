@@ -43,7 +43,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Location-talk backstop with regeneration and fallback messages
 - [ ] REST endpoints and WebSocket session
 - [ ] Configuration loader for `config.yaml`
-- [ ] Rate limiting and API key handling
+- [ ] Rate limiting (per session, per IP, global Claude budget) and API key handling
 - [ ] Tests for the evaluator
 
 ## 3. Frontend

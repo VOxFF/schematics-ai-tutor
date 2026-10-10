@@ -58,7 +58,21 @@ flowchart LR
 ## 4. Security and operations
 
 - The Claude API key exists only on the backend, loaded from the environment.
-- The backend applies basic rate limiting, since the deployed prototype is public.
+- The deployed prototype is public and uses our API key, so the backend enforces the rate limits below. They protect the cost of Claude calls and the server. **Evaluation never depends on Claude**, so when a Claude limit is hit, the grid, the readings and the status keep working. Only the tutor goes quiet, or generation falls back to curated levels.
+
+| Scope | Limit (default) | When exceeded |
+|---|---|---|
+| Tutor calls per session | 6 per minute (reactions and messages together) | Reactions are skipped silently. A learner message gets `error: rate_limited`, shown as "The tutor needs a moment; try again shortly". |
+| Task generations per session | 1 in flight, 10 per hour | The curated level for the skill level is served |
+| Board updates per session | 20 per second | Extra updates are dropped; only the latest board is evaluated |
+| WebSocket message size | 64 KB | `error: bad_message` |
+| Grid size | at most 30 × 30 points, 40 components, 300 wire pieces | `error: bad_message`. This also bounds solver and validation time. |
+| New sessions per IP | 10 per hour, 3 open at once | The connection is refused |
+| REST requests per IP | 60 per minute | `429` |
+| Global Claude budget | 5,000 calls per day | Tutor calls return `error: tutor_unavailable`; generation serves curated levels. Evaluation is unaffected. |
+
+- **Implementation.** In-memory token buckets in the single backend process. Running several instances would need a shared store such as Redis; that is noted for scale, not built for the prototype.
+- **Configuration.** All limits are settings in `config.yaml` (§5).
 
 ## 5. Configuration
 
@@ -92,6 +106,19 @@ tutor:
 
 task_generation:
   recent_tasks: 10
+
+rate_limits:
+  tutor_calls_per_session_per_min: 6
+  task_generations_per_session_per_hour: 10
+  board_updates_per_session_per_sec: 20
+  ws_message_max_kb: 64
+  grid_max_points: 30            # per side
+  grid_max_components: 40
+  grid_max_wires: 300
+  sessions_per_ip_per_hour: 10
+  open_sessions_per_ip: 3
+  rest_requests_per_ip_per_min: 60
+  claude_calls_per_day: 5000
 
 evaluator:
   near_target_ratio: 0.10      # "near_target" when within 10% of every target
