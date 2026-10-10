@@ -67,6 +67,7 @@ test("a new learner sees the start screen, then gets a task", async () => {
 
   fireEvent.click(screen.getByRole("button", { name: "Start Learning" }));
   expect(await screen.findByRole("heading", { name: "Share the voltage" })).toBeDefined();
+  fireEvent.click(screen.getByRole("button", { name: "JSON" })); // the grid needs WebGL; the JSON view doesn't
   expect(screen.getByLabelText("Editor").textContent).toContain('"id": "gen-1234"');
   expect(screen.getByLabelText("Skill level").textContent).toBe("Level 1");
   expect(screen.getByLabelText("Inventory").textContent).toContain("R2 resistor 20");
@@ -199,6 +200,7 @@ test("a saved task the server rejects offers a new task, keeping progress", asyn
   expect(screen.getByText(/can't be resumed/)).toBeDefined();
 
   fireEvent.click(screen.getByRole("button", { name: "Get a new task" }));
+  fireEvent.click(await screen.findByRole("button", { name: "JSON" }));
   await screen.findByText(/"id": "gen-new"/);
   expect(JSON.parse(fetch.mock.calls[0][1].body).skill_level).toBe(3);
   expect(screen.queryByText(/can't be resumed/)).toBeNull();

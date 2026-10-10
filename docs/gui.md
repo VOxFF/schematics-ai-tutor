@@ -66,16 +66,28 @@ The sketch shows placement only; its values are placeholders.
 
 ## 4. Grid
 
-Rendered with three.js in an orthographic, top-down view. Every grid point, component and wire piece is its own scene object, carrying its `id` (or point) for raycast picking.
+Rendered with three.js in an orthographic, top-down view (`frontend/src/editor/`). Every component and wire piece is its own scene node, a `THREE.Group` named by its `id` with `userData.kind`, ready for raycast picking and highlights. Grid points are one instanced mesh. Labels and readings are HTML overlays (`CSS2DRenderer`), so text stays crisp at any zoom. A small **JSON** toggle in the corner shows the raw task for debugging.
+
+**Schematic style.** Sizes and colors of the drawing live in `frontend/src/editor/schematic-style.yaml`, in grid units where one grid step is 40:
+- wire thickness and color
+- pin connector radius and lead thickness
+- outline thickness
+- empty and connected pin-hole radius
+- resistor length, height, fill and band width
+- battery plate sizes and colors (the positive plate is red), and the size of the + and − marks
+- meter radius, outline thickness, fills per type (voltmeter light blue, ammeter light amber) and letter size
+- label size
+
+Editing the file and saving reloads the page in development.
 
 **Symbols.** Components are drawn as flat schematic symbols, each labeled with its `id` and value:
 
 | Component | Symbol | Label |
 |---|---|---|
-| `voltage_source` | Battery symbol (long and short plates); `positive` side marked | `V1 12 V` |
+| `voltage_source` | Battery symbol: a long red plate (positive) and a short dark plate (negative), marked + and − | `V1 12 V` |
 | `resistor` | Rectangle with its 4 color bands | `R1 20 Ω`, always shown |
-| `ammeter` | Circle with **A** | Live reading above it, e.g. `0.200 A` |
-| `voltmeter` | Circle with **V** | Live reading above it, e.g. `4.00 V` |
+| `ammeter` | Light amber circle with a large **A** | Live reading beside it, e.g. `0.200 A` |
+| `voltmeter` | Light blue circle with a large **V** | Live reading beside it, e.g. `4.00 V` |
 
 - **Resistor color bands.** Every resistor, on the grid and in the inventory, shows the standard 4-band color code for its value. The value label is always shown next to it, so the learner absorbs the code just by seeing both. There is no legend.
 
@@ -86,6 +98,8 @@ Rendered with three.js in an orthographic, top-down view. Every grid point, comp
   | 4 | Tolerance: always gold (±5%) |
 
   Examples: 20 Ω = red, black, black, gold; 60 Ω = blue, black, black, gold; 120 Ω = brown, red, brown, gold.
+
+  The bands always read left to right (horizontal parts) or top to bottom (vertical parts), with the gold band last, whatever the part's orientation.
 - **Solved.** When the status becomes `solved`, a big green checkmark appears over the grid and **Next** is enabled. The checkmark is a non-blocking overlay: semi-transparent and centered, and it ignores clicks, so the learner can still observe the readings and read the tutor's praise in the chat. Refinements are in polishing: fading out, and reacting when the solution is broken again.
 - Meters show `--` when the reading is `null`.
 - `fixed` parts show a small lock and cannot be moved.
