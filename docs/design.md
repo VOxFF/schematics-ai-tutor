@@ -4,16 +4,19 @@ Major design decisions for the system as a whole. For the product, its workflow 
 
 ## 1. Separate ground truth from tutoring
 
-The system has two engines with strictly separated responsibilities:
+The system separates deterministic code from Claude, with strictly divided responsibilities:
 
 | Engine | Responsibility | Nature |
 |---|---|---|
-| Evaluator | Decides what is correct: computes results and checks them against the goal | Deterministic code |
+| Evaluator | Decides what is correct: validates generated tasks, computes target values, grades the learner's work | Deterministic code |
+| Task generator (Claude) | Proposes new tasks tailored to the learner | LLM; output validated |
 | Tutor (Claude) | Decides how to teach: feedback, hints, assessment of the learner's direction | LLM |
 
 **Why:** LLMs make calculation errors, and a tutor that is confidently wrong does more harm than no tutor. Deterministic evaluation also makes results reproducible and testable.
 
-**Rule:** Claude never produces or overrides a verdict or a computed value. It receives the evaluator's output as input and reasons about the *learner*.
+**Rules:**
+- Claude never produces or overrides a verdict or a computed value. It receives the evaluator's output as input and reasons about the *learner*.
+- Everything Claude produces is untrusted input. Generated tasks pass the same validator as the learner's work, and the system falls back to curated content when they fail.
 
 ## 2. The learner keeps agency
 
@@ -29,11 +32,16 @@ flowchart LR
         T[Tutor panel]
     end
     subgraph BE["Backend (Python)"]
+        TG[Task generator]
         E["Evaluator (deterministic)"]
         TS[Tutor service]
     end
     C[(Claude API)]
 
+    TG -- "concept + progress" --> C
+    C -- "task proposal" --> TG
+    TG -- "validate + compute targets" --> E
+    TG -- "task" --> W
     W -- "learner's work" --> E
     E -- verdict + results --> TS
     TS -- task context + results --> C
@@ -43,8 +51,9 @@ flowchart LR
 
 - **Frontend:** JavaScript + React. It owns the interactive workspace and displays the tutor's messages. It holds no secrets and does no grading.
 - **Backend:** Python. It owns the evaluator and all Claude API calls.
+- **Task flow:** Claude proposes a task. The evaluator validates it and computes its targets, and the frontend receives the resulting task. Details are in [schematics.md](schematics.md#2-task-flow).
 - **Request flow:** the frontend sends the learner's work. The backend runs the evaluator, passes its result together with the task context to Claude, and returns both the verdict and the tutor message.
-- **Transport:** REST for static resources (levels), and one WebSocket per learning session for the interactive loop: live evaluation on every board edit and streamed tutor messages. Details are in [contract.md](contract.md).
+- **Transport:** REST for static resources (curated levels), and one WebSocket per learning session for the interactive loop: live evaluation on every board edit and streamed tutor messages. Details are in [contract.md](contract.md).
 
 ## 4. Security and operations
 

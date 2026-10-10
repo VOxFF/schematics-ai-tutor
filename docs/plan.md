@@ -13,6 +13,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Tutor design: teaching behavior, system prompt, hint ladder content
 - [x] Domain design: breadboard model, components, netlist mapping, evaluator checks ([schematics.md](schematics.md))
 - [x] Board data format: the `grid` document ([schematics.md](schematics.md))
+- [x] Task flow: generation, validation stages, derivation, grading ([schematics.md](schematics.md#2-task-flow))
 - [ ] Level design and progression
 - [x] Workspace rendering decision: three.js
 - [ ] Hosting decision
@@ -20,10 +21,13 @@ The major steps to build the product. A step is checked off when it is complete,
 ## 2. Backend
 
 - [ ] Scaffold the Python service
-- [ ] Breadboard-to-netlist conversion
+- [ ] Grid format validation
+- [ ] Grid-to-graph conversion
 - [ ] Circuit solver (voltages and currents)
 - [ ] Structural checks (shorts, open circuits, bypassed components)
-- [ ] Level definitions and goal checking
+- [ ] Curated levels (one per concept) and goal checking
+- [ ] Task generation: Claude call, `validate_grid` tool, derivation, retries and fallback
+- [ ] Background pre-generation of the next task
 - [ ] Tutor service: Claude API integration and prompts
 - [ ] REST endpoints and WebSocket session
 - [ ] Rate limiting and API key handling

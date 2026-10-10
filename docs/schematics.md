@@ -1,6 +1,6 @@
 # Schematics
 
-The domain-specific design: the board format, the components, how a board becomes a circuit, how the evaluator solves it, and the levels. Everything here is specific to electronics. The domain-independent architecture is in [design.md](design.md), and the data shapes are in [contract.md](contract.md).
+The domain-specific design: the board format, the task flow, the components, how a board becomes a circuit, how the evaluator solves it, and the levels. Everything here is specific to electronics. The domain-independent architecture is in [design.md](design.md), and the data shapes are in [contract.md](contract.md).
 
 ## 1. Board format: the `grid` document
 
@@ -123,9 +123,76 @@ The backend rejects a document that breaks any of these rules, before any electr
 
 - **Redundant pins:** pin positions are fully determined by the body point and `orientation`. Both are kept for now, and validation checks that they agree. This is to be revisited in an optimization step.
 
-## 2. From board to circuit
+## 2. Task flow
 
-> **Pending revision.** Sections 2–6 predate the `grid` format: they assume breadboard strips and rails, and a `battery` component. They will be updated when the evaluator is designed.
+There are two data objects:
+
+- **Grid:** the `grid` document from §1. It is what the learner sees and edits.
+- **Graph:** the netlist (ratsnest) derived from a grid. Nodes are connected sets of points, and edges are components. The evaluator works only on the graph, never on the grid directly.
+
+```mermaid
+flowchart TD
+    P["Concept + learner progress"] --> G["Claude: generate TaskSpec<br/>(self-checks with validate_grid)"]
+    G --> V{"Backend validation<br/>1. format<br/>2. solvable<br/>3. not already solved"}
+    V -- "fails, 1st time" --> G
+    V -- "fails again" --> F["Curated level<br/>for the concept"]
+    V -- passes --> D["Derive task grid<br/>+ compute targets"]
+    D --> L[Level sent to frontend]
+    F --> L
+    L --> U["Learner edits the grid"]
+    U --> GG["Grid → graph"]
+    GG --> EV["Evaluator: readings, issues, goal_met"]
+    EV --> U
+    EV --> T["Claude tutor: feedback and hints"]
+    T --> U
+```
+
+### Curriculum
+
+- The concept sequence is fixed: closed loop → Ohm's law → series → parallel → measurement.
+- The first task of each concept is a curated level. Claude generates the following tasks within that concept, tailored to the learner's progress and misconceptions.
+- The fixed sequence keeps progression reliable, while generation keeps each task fresh and personal.
+
+### Generation: Claude proposes, the backend decides
+
+Claude returns a `TaskSpec` ([contract.md](contract.md#22-task-generation-call)) with:
+
+- a **complete board:** the solved circuit
+- **removed IDs:** the parts the learner must place
+- **decoys:** extra parts that aren't needed
+- **target meter IDs:** the meters whose readings define the goal
+
+Claude does **not** produce the task grid or any target value. The backend derives both:
+
+1. **Task grid** = the complete board with `removed_ids` taken out.
+2. **Inventory** = the removed parts plus the decoys, shuffled.
+3. **Targets** = the readings of `target_meter_ids` from solving the complete board, rounded to meter resolution. Each tolerance is the default from §1.
+
+### Validation stages
+
+Every generated task passes the same validator that checks learner boards. All of Claude's output is treated as untrusted input.
+
+| Stage | Checks |
+|---|---|
+| 1. Format | The §1 format rules hold for the complete board, and `removed_ids`, `decoys` and `target_meter_ids` refer to valid, unique IDs |
+| 2. Solvable | The complete board's graph has no issues (no short, open circuit, bypassed or floating part), and every target meter reads a non-zero value |
+| 3. Not already solved | The task grid does **not** meet the targets. Removed parts are not `fixed`, and target meters are not removed. |
+
+### Grading
+
+- A task is solved when every target reading is within tolerance on the learner's grid. **It is graded on readings only.**
+- Any layout that meets the targets passes, even if it differs from the complete board.
+- The complete board stays on the server as the tutor's reference. It is never sent to the frontend.
+
+### Latency
+
+- Generation takes seconds to tens of seconds.
+- The backend generates the next task in the background as soon as the current one is delivered.
+- Each concept opens with a curated level, so the learner never waits at the start.
+
+## 3. From board to circuit
+
+> **Pending revision.** Sections 3–7 predate the `grid` format: they assume breadboard strips and rails, and a `battery` component. They will be updated when the evaluator is designed.
 
 ```mermaid
 flowchart LR
@@ -147,7 +214,7 @@ flowchart LR
 2. **Elements.** Every non-wire component becomes an element between the nodes of its two pins.
 3. **Ground.** The node of the battery's `−` pin is the reference, at 0 V.
 
-## 3. Solver
+## 4. Solver
 
 A DC **modified nodal analysis (MNA)** over the netlist, solved with `numpy.linalg.solve`. Nothing beyond DC is in scope.
 
@@ -157,7 +224,7 @@ A DC **modified nodal analysis (MNA)** over the netlist, solved with `numpy.lina
 - Results per element: the voltage across it and the current through it, rounded for display to 3 significant figures.
 - **Goal check:** `|actual − target| ≤ tolerance`.
 
-## 4. Structural checks
+## 5. Structural checks
 
 These run before and alongside the solve, and fill `Evaluation.issues`.
 
@@ -169,7 +236,7 @@ These run before and alongside the solve, and fill `Evaluation.issues`.
 | `floating_component` | A component pin's node connects to nothing else | `true` |
 | `open_circuit` | The battery current is ~0 (below 1 µA) although a source exists | `true` |
 
-## 5. Rendering and interaction (three.js)
+## 6. Rendering and interaction (three.js)
 
 - **Scene graph:** every hole, component and wire is its own scene object, carrying the component `id` for raycast picking.
 - **Placing a part:** drag from the palette, then click two holes. Each pin snaps to the nearest free hole.
@@ -180,7 +247,7 @@ These run before and alongside the solve, and fill `Evaluation.issues`.
   - Each voltmeter's live reading is shown above it, from the latest `evaluation`.
 - **Highlights:** the components and holes in a `TutorMessage.focus` are outlined. Hovering a hole highlights its whole strip, which makes the hidden connections visible.
 
-## 6. Levels (draft)
+## 7. Levels (draft)
 
 Each level teaches one concept and targets known beginner misconceptions. The tutor receives the concept and the misconception list for the current level.
 
