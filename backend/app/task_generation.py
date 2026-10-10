@@ -12,6 +12,7 @@ from pathlib import Path
 
 import anthropic
 
+from .jsonfmt import dumps
 from .task_spec import TASK_SPEC_SCHEMA, build_level, check_format, normalize
 from .usage_log import UsageLog
 
@@ -76,7 +77,7 @@ def load_examples() -> list[dict]:
 
 
 def system_prompt(examples: list[dict]) -> str:
-    return SYSTEM_RULES + "\n".join(json.dumps(e, separators=(",", ":")) for e in examples)
+    return SYSTEM_RULES + "\n".join(dumps(e) for e in examples)
 
 
 def learner_context(skill_level: int, history: list[dict], grid: dict, recent: int) -> dict:
@@ -123,7 +124,7 @@ async def generate_task(
     system = [{"type": "text", "text": system_prompt(load_examples()), "cache_control": {"type": "ephemeral"}}]
     context = learner_context(skill_level, history, generation.get("grid", {"columns": 12, "rows": 8}),
                               generation.get("recent_tasks", 10))
-    prompt = "Learner context:\n" + json.dumps(context, indent=2) + "\n\nPropose the next task."
+    prompt = "Learner context:\n" + dumps(context) + "\nPropose the next task."
 
     result = GenerationResult()
     feedback: list[str] = []

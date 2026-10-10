@@ -191,7 +191,8 @@ schematics-ai-tutor/
 │   │   ├── usage_log.py       per-run usage and cost log
 │   │   ├── grid.py            grid format validation
 │   │   ├── task_spec.py       TaskSpec schema, format checks, task-grid derivation
-│   │   └── task_generation.py Claude task generation with the validate_grid tool
+│   │   ├── task_generation.py Claude task generation with the validate_grid tool
+│   │   └── jsonfmt.py         readable JSON formatting
 │   ├── data/
 │   │   └── examples/          example TaskSpecs for the generation prompt
 │   ├── tests/
@@ -208,6 +209,10 @@ schematics-ai-tutor/
 ├── logs/                      usage and cost logs, one per run (gitignored)
 └── .run/                      PID files and server output from start.sh (gitignored)
 ```
+
+### Conventions
+
+- **Readable JSON.** JSON files in the repo, and JSON embedded in Claude prompts, are human-readable: indented, short arrays and objects on one line (`[5, 3]`), and arrays longer than 6 elements wrapped 6 per line. `backend/app/jsonfmt.py` implements it, and `./check.sh` enforces it for tracked `.json` files. JSONL logs are the exception: one event per line.
 
 ## Open decisions
 

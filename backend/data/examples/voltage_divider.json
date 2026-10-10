@@ -3,26 +3,14 @@
   "title": "Share the voltage",
   "intro": "Pick a resistor for the gap so the voltmeter across it shows 4 V.",
   "complete_board": {
-    "grid": {
-      "columns": 12,
-      "rows": 8
-    },
+    "grid": {"columns": 12, "rows": 8},
     "components": [
       {
         "id": "V1",
         "type": "voltage_source",
         "fixed": true,
         "orientation": "N",
-        "pins": {
-          "positive": [
-            2,
-            4
-          ],
-          "negative": [
-            2,
-            6
-          ]
-        },
+        "pins": {"positive": [2, 4], "negative": [2, 6]},
         "value": 12
       },
       {
@@ -30,16 +18,7 @@
         "type": "resistor",
         "fixed": true,
         "orientation": "W",
-        "pins": {
-          "a": [
-            5,
-            3
-          ],
-          "b": [
-            7,
-            3
-          ]
-        },
+        "pins": {"a": [5, 3], "b": [7, 3]},
         "value": 40
       },
       {
@@ -47,16 +26,7 @@
         "type": "resistor",
         "fixed": false,
         "orientation": "N",
-        "pins": {
-          "a": [
-            9,
-            4
-          ],
-          "b": [
-            9,
-            6
-          ]
-        },
+        "pins": {"a": [9, 4], "b": [9, 6]},
         "value": 20
       },
       {
@@ -64,339 +34,35 @@
         "type": "voltmeter",
         "fixed": true,
         "orientation": "N",
-        "pins": {
-          "positive": [
-            11,
-            4
-          ],
-          "negative": [
-            11,
-            6
-          ]
-        }
+        "pins": {"positive": [11, 4], "negative": [11, 6]}
       }
     ],
     "wires": [
-      {
-        "id": "W1",
-        "segments": [
-          [
-            [
-              2,
-              4
-            ],
-            [
-              2,
-              3
-            ]
-          ]
-        ]
-      },
-      {
-        "id": "W2",
-        "segments": [
-          [
-            [
-              2,
-              3
-            ],
-            [
-              3,
-              3
-            ]
-          ]
-        ]
-      },
-      {
-        "id": "W3",
-        "segments": [
-          [
-            [
-              3,
-              3
-            ],
-            [
-              4,
-              3
-            ]
-          ]
-        ]
-      },
-      {
-        "id": "W4",
-        "segments": [
-          [
-            [
-              4,
-              3
-            ],
-            [
-              5,
-              3
-            ]
-          ]
-        ]
-      },
-      {
-        "id": "W5",
-        "segments": [
-          [
-            [
-              7,
-              3
-            ],
-            [
-              8,
-              3
-            ]
-          ]
-        ]
-      },
-      {
-        "id": "W6",
-        "segments": [
-          [
-            [
-              8,
-              3
-            ],
-            [
-              9,
-              3
-            ]
-          ]
-        ]
-      },
-      {
-        "id": "W7",
-        "segments": [
-          [
-            [
-              9,
-              3
-            ],
-            [
-              9,
-              4
-            ]
-          ]
-        ]
-      },
-      {
-        "id": "W8",
-        "segments": [
-          [
-            [
-              9,
-              4
-            ],
-            [
-              10,
-              4
-            ]
-          ]
-        ]
-      },
-      {
-        "id": "W9",
-        "segments": [
-          [
-            [
-              10,
-              4
-            ],
-            [
-              11,
-              4
-            ]
-          ]
-        ]
-      },
-      {
-        "id": "W10",
-        "segments": [
-          [
-            [
-              9,
-              6
-            ],
-            [
-              10,
-              6
-            ]
-          ]
-        ]
-      },
-      {
-        "id": "W11",
-        "segments": [
-          [
-            [
-              10,
-              6
-            ],
-            [
-              11,
-              6
-            ]
-          ]
-        ]
-      },
-      {
-        "id": "W12",
-        "segments": [
-          [
-            [
-              9,
-              6
-            ],
-            [
-              9,
-              7
-            ]
-          ]
-        ]
-      },
-      {
-        "id": "W13",
-        "segments": [
-          [
-            [
-              9,
-              7
-            ],
-            [
-              8,
-              7
-            ]
-          ]
-        ]
-      },
-      {
-        "id": "W14",
-        "segments": [
-          [
-            [
-              8,
-              7
-            ],
-            [
-              7,
-              7
-            ]
-          ]
-        ]
-      },
-      {
-        "id": "W15",
-        "segments": [
-          [
-            [
-              7,
-              7
-            ],
-            [
-              6,
-              7
-            ]
-          ]
-        ]
-      },
-      {
-        "id": "W16",
-        "segments": [
-          [
-            [
-              6,
-              7
-            ],
-            [
-              5,
-              7
-            ]
-          ]
-        ]
-      },
-      {
-        "id": "W17",
-        "segments": [
-          [
-            [
-              5,
-              7
-            ],
-            [
-              4,
-              7
-            ]
-          ]
-        ]
-      },
-      {
-        "id": "W18",
-        "segments": [
-          [
-            [
-              4,
-              7
-            ],
-            [
-              3,
-              7
-            ]
-          ]
-        ]
-      },
-      {
-        "id": "W19",
-        "segments": [
-          [
-            [
-              3,
-              7
-            ],
-            [
-              2,
-              7
-            ]
-          ]
-        ]
-      },
-      {
-        "id": "W20",
-        "segments": [
-          [
-            [
-              2,
-              7
-            ],
-            [
-              2,
-              6
-            ]
-          ]
-        ]
-      }
+      {"id": "W1", "segments": [[[2, 4], [2, 3]]]},
+      {"id": "W2", "segments": [[[2, 3], [3, 3]]]},
+      {"id": "W3", "segments": [[[3, 3], [4, 3]]]},
+      {"id": "W4", "segments": [[[4, 3], [5, 3]]]},
+      {"id": "W5", "segments": [[[7, 3], [8, 3]]]},
+      {"id": "W6", "segments": [[[8, 3], [9, 3]]]},
+      {"id": "W7", "segments": [[[9, 3], [9, 4]]]},
+      {"id": "W8", "segments": [[[9, 4], [10, 4]]]},
+      {"id": "W9", "segments": [[[10, 4], [11, 4]]]},
+      {"id": "W10", "segments": [[[9, 6], [10, 6]]]},
+      {"id": "W11", "segments": [[[10, 6], [11, 6]]]},
+      {"id": "W12", "segments": [[[9, 6], [9, 7]]]},
+      {"id": "W13", "segments": [[[9, 7], [8, 7]]]},
+      {"id": "W14", "segments": [[[8, 7], [7, 7]]]},
+      {"id": "W15", "segments": [[[7, 7], [6, 7]]]},
+      {"id": "W16", "segments": [[[6, 7], [5, 7]]]},
+      {"id": "W17", "segments": [[[5, 7], [4, 7]]]},
+      {"id": "W18", "segments": [[[4, 7], [3, 7]]]},
+      {"id": "W19", "segments": [[[3, 7], [2, 7]]]},
+      {"id": "W20", "segments": [[[2, 7], [2, 6]]]}
     ]
   },
-  "removed_ids": [
-    "R2"
-  ],
-  "decoys": [
-    {
-      "id": "R3",
-      "type": "resistor",
-      "value": 40
-    },
-    {
-      "id": "R4",
-      "type": "resistor",
-      "value": 60
-    }
-  ],
-  "target_meter_ids": [
-    "VM1"
-  ],
+  "removed_ids": ["R2"],
+  "decoys": [{"id": "R3", "type": "resistor", "value": 40}, {"id": "R4", "type": "resistor", "value": 60}],
+  "target_meter_ids": ["VM1"],
   "difficulty": 3,
   "rationale": "The learner has solved Ohm's law tasks; series sharing is the next step."
 }

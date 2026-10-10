@@ -1,9 +1,11 @@
 """Repository integrity checks, run by ./check.sh locally and in CI.
 
 Checks: markdown links and anchors, config.yaml vs. the documented defaults,
-the layout snapshot in docs/design.md, secrets, and stale design terms.
+the layout snapshot in docs/design.md, secrets, stale design terms, and the
+readable JSON format of tracked .json files.
 """
 
+import json
 import re
 import subprocess
 import sys
@@ -12,6 +14,8 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "backend"))
+from app.jsonfmt import dumps  # noqa: E402
 DESIGN = ROOT / "docs" / "design.md"
 
 # Terms from superseded design decisions that must not reappear in the docs.
@@ -124,6 +128,14 @@ def check_stale_terms(md_files: list[str]) -> None:
                 errors.append(f"{name}: stale term '{term}'")
 
 
+def check_json_format(tracked: list[str]) -> None:
+    for name in tracked:
+        if name.endswith(".json"):
+            text = (ROOT / name).read_text()
+            if text != dumps(json.loads(text)):
+                errors.append(f"{name}: not in the readable JSON format (backend/app/jsonfmt.py)")
+
+
 def main() -> int:
     tracked = tracked_files()
     md_files = [t for t in tracked if t.endswith(".md")]
@@ -132,6 +144,7 @@ def main() -> int:
     check_layout(tracked)
     check_secrets(tracked)
     check_stale_terms(md_files)
+    check_json_format(tracked)
     for e in errors:
         print(f"FAIL {e}")
     print(f"integrity: {len(errors)} problem(s)" if errors else "integrity: ok")
