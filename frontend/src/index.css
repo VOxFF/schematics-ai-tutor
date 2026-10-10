@@ -160,7 +160,9 @@ button.large {
   display: grid;
   /* The header column fits its content and never shrinks (buttons stay on one line);
      the top row has a fixed height so nothing jumps while a task loads. */
-  grid-template-columns: max-content minmax(320px, 1fr) minmax(260px, 0.75fr);
+  /* The chat has its own width (it doesn't share leftover space), and the middle column
+     can't be pushed wider by its content (canvas, JSON, long text). */
+  grid-template-columns: max-content minmax(0, 1fr) clamp(360px, 26vw, 460px);
   grid-template-rows: 128px 1fr;
   grid-template-areas:
     "header task chat"
@@ -319,6 +321,7 @@ button.danger {
 
 .workspace {
   grid-area: work;
+  min-width: 0;
   display: grid;
   grid-template-columns: 1fr 220px;
   gap: 12px;
@@ -326,6 +329,7 @@ button.danger {
 }
 
 .editor-column {
+  min-width: 0;
   display: grid;
   grid-template-rows: 1fr auto;
   gap: 8px;
@@ -333,6 +337,7 @@ button.danger {
 }
 
 .editor {
+  min-width: 0;
   position: relative;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -380,6 +385,7 @@ button.danger {
 
 .chat {
   grid-area: chat;
+  min-width: 0;
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: 8px;

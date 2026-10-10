@@ -51,7 +51,7 @@ The sketch shows placement only; its values are placeholders.
 
 **Waiting for a task.** While a task is generated (about half a minute), a spinner with "Generating your task…" is shown over the editor.
 
-**Stable layout.** The top row (header and Task / Targets) has a fixed height, so nothing jumps while a task loads. The header's column fits its content and never shrinks, so its buttons always stay on one line.
+**Stable layout.** The top row (header and Task / Targets) has a fixed height, so nothing jumps while a task loads. The header's column fits its content and never shrinks, so its buttons always stay on one line. The chat column has its own width (about a quarter of the window, 360–460 px), so it never shrinks or grows when the editor's content changes.
 
 | Region | Contents | Source of data |
 |---|---|---|
