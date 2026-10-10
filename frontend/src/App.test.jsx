@@ -72,3 +72,10 @@ test("a failed generation shows the error and a retry button", async () => {
   expect(await screen.findByText("Claude is not configured")).toBeDefined();
   expect(screen.getByRole("button", { name: "Try again" })).toBeDefined();
 });
+
+test("the start screen shows eight learning path steps with what each teaches", () => {
+  render(<App />);
+  const steps = screen.getAllByRole("listitem").filter((li) => li.querySelector(".step"));
+  expect(steps).toHaveLength(8);
+  expect(steps[0].textContent).toBe("Closed LoopCurrent flows only around a complete loop");
+});

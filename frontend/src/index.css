@@ -67,13 +67,28 @@ button.large {
   list-style: none;
 }
 
-/* One column of equal-width pills, text centered. */
+/* One column of equal-width pills: title, then what the learner discovers, on one line. */
 .start .path li {
-  padding: 6px 12px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 6px 16px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--panel);
-  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.start .path .step {
+  flex: 0 0 150px;
+  font-weight: 600;
+}
+
+.start .path .discovery {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
 }
 
 .start-action {

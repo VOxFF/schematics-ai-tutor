@@ -1,6 +1,16 @@
 // Start screen for new learners (docs/gui.md §1).
 
-const PATH = ["Closed loop", "Ohm's law", "Voltage divider", "Measuring", "Parallel circuits"];
+// Typical path for a beginner: [title, what the learner discovers]. Each must fit one line.
+const PATH = [
+  ["Closed Loop", "Current flows only around a complete loop"],
+  ["Measuring Voltage", "A voltmeter goes across a part"],
+  ["Measuring Current", "An ammeter goes in the loop"],
+  ["Ohm's Law", "Current, voltage and resistance are linked"],
+  ["Series Circuits", "Resistances add up; current stays the same"],
+  ["Parallel Circuits", "Each branch gets the full voltage"],
+  ["Power and Safety", "Too little resistance means too much heat"],
+  ["Troubleshooting", "Find the fault by measuring"],
+];
 
 export default function StartScreen({ onStart }) {
   return (
@@ -21,8 +31,11 @@ export default function StartScreen({ onStart }) {
       <section>
         <h2>Your Learning Path</h2>
         <ol className="path">
-          {PATH.map((step) => (
-            <li key={step}>{step}</li>
+          {PATH.map(([title, discovery]) => (
+            <li key={title}>
+              <span className="step">{title}</span>
+              <span className="discovery">{discovery}</span>
+            </li>
           ))}
         </ol>
         <p className="note">Tasks adapt to you, so your path may differ.</p>

@@ -21,7 +21,7 @@ One static screen, with no sign-up and no backend call:
    - build circuits on the grid
    - see live meter readings
    - get nudges and questions from the tutor, never the answer
-3. **Your Learning Path:** a typical route, shown as one column of pills, from closed loop to Ohm's law, voltage divider, measuring and parallel circuits. Tasks adapt to the learner, so it is shown as a typical path, not a fixed sequence.
+3. **Your Learning Path:** 8 steps in one column of pills, each with a one-line note on what the learner discovers: Closed Loop, Measuring Voltage, Measuring Current, Ohm's Law, Series Circuits, Parallel Circuits, Power and Safety, Troubleshooting. Tasks adapt to the learner, so it is shown as a typical path, not a fixed sequence.
 4. **One large, centered Start Learning button.**
 
 It also sets expectations about agency up front: the tutor asks rather than tells. That prevents "why won't it just tell me?" frustration, and it gives reviewers opening the URL cold the context in seconds.
