@@ -8,8 +8,9 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Task: product, concept of operations, workflow, constraints ([task.md](task.md))
 - [x] System design ([design.md](design.md))
 - [x] Build plan (this file)
+- [x] Contracts: frontend ↔ backend and backend ↔ Claude ([contract.md](contract.md))
 - [ ] Gitignore for the Python and React stack
-- [ ] Tutor contract: Claude's context, when it responds, hint escalation
+- [ ] Tutor design: teaching behavior, system prompt, hint ladder content
 - [ ] Domain design: breadboard model, components, netlist mapping, evaluator checks
 - [ ] Level design and progression
 - [x] Workspace rendering decision: three.js
