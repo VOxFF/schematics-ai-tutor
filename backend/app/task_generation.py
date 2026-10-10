@@ -6,12 +6,14 @@ retries once with the errors, and derives the learner's task grid.
 """
 
 import json
+import random
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import anthropic
 
+from .curriculum import pick_grid, position, prompt_rules
 from .jsonfmt import dumps
 from .task_spec import TASK_SPEC_SCHEMA, build_level, normalize, validate
 from .usage_log import UsageLog
@@ -37,8 +39,12 @@ optional decoy parts, and which meters define the goal. The backend derives the
 learner's starting grid and computes all target values itself.
 
 Task rules
-- Choose the concept and complexity from the learner context: build on what the
-  learner has done, raise difficulty gradually, and never repeat a recent task.
+- Generate exactly the context's `curriculum` level: its concept, circuit, grid size,
+  what is removed, how many decoys and targets. The backend checks all of these.
+- Build on what the learner has done and never repeat a recent task.
+- Follow the context's `variation` hints (layout, source voltage, resistor range) so that tasks differ
+  even for identical learners. Never copy the examples' layouts or values; they only
+  show the format.
 - Keep circuits small: one voltage source, at most 4 resistors, 1-2 meters.
 - The complete board must be a working circuit with no problems: a closed loop, no
   short circuit, no floating or bypassed parts, no meter misuse, and no resistor
@@ -67,6 +73,12 @@ Grid format
   point), a T (3 segments sharing a center) or a + (4 segments sharing a center).
   Long wires are chains of pieces that share end points.
 - Wires must not pass through a component body point.
+
+Layout
+- Center the circuit on the grid and keep it balanced: free columns on the left and
+  right differ by at most one, and so do free rows above and below.
+- Prefer symmetric arrangements, horizontally and vertically. Center a part on its wire
+  run when you can (e.g. a resistor in the middle of the top edge).
 - IDs are unique across components, wires and decoys: V1, R1, VM1, AM1, W1, ...
 - Points connect only through wire segments; a pin connects to the wires touching it.
 
@@ -84,18 +96,50 @@ def system_prompt(examples: list[dict]) -> str:
     return SYSTEM_RULES + "\n".join(dumps(e) for e in examples)
 
 
-def learner_context(skill_level: int, history: list[dict], grid: dict, recent: int) -> dict:
-    recent_tasks, older = history[-recent:], history[:-recent] if len(history) > recent else []
+# Variation hints: identical learner contexts (e.g. every fresh start) still get different tasks.
+# Layout hints keep the circuit centered (see the layout rules); they vary its arrangement.
+LAYOUT_HINTS = [
+    "put the voltage source on the left side",
+    "put the voltage source on the right side",
+    "put the voltage source along the top",
+    "put the voltage source along the bottom",
+    "use a tall loop",
+    "use a wide loop",
+]
+SOURCE_HINTS = ["use a 6 V source", "use a 9 V source", "use a 12 V source", "use a 5 V source"]
+RESISTOR_HINTS = [
+    "use resistors between 10 and 47 Ω",
+    "use resistors between 47 and 220 Ω",
+    "use resistors between 220 Ω and 1 kΩ",
+    "use resistors of 1 kΩ or more",
+]
+
+
+def variation(rng: random.Random | None = None) -> dict:
+    rng = rng or random.Random()
     return {
-        "skill_level": skill_level,
-        "grid": grid,
-        "recent_tasks": recent_tasks,
-        "older_tasks": {"count": len(older), "concepts": sorted({t.get("concept", "") for t in older})},
+        "seed": rng.randrange(10_000),
+        "layout": rng.choice(LAYOUT_HINTS),
+        "source": rng.choice(SOURCE_HINTS),
+        "resistors": rng.choice(RESISTOR_HINTS),
     }
 
 
-def tool_result(draft: dict, grid_limits: dict, settings: dict, recent_signatures=()) -> str:
-    result = validate(normalize(draft), grid_limits, settings, recent_signatures)
+def learner_context(skill_level: int, history: list[dict], grid: dict, recent: int,
+                    rng: random.Random | None = None, curriculum: dict | None = None) -> dict:
+    recent_tasks, older = history[-recent:], history[:-recent] if len(history) > recent else []
+    return {
+        "skill_level": skill_level,
+        "curriculum": curriculum,
+        "grid": grid,
+        "recent_tasks": recent_tasks,
+        "older_tasks": {"count": len(older), "concepts": sorted({t.get("concept", "") for t in older})},
+        "variation": variation(rng),
+    }
+
+
+def tool_result(draft: dict, grid_limits: dict, settings: dict, recent_signatures=(), level=None) -> str:
+    result = validate(normalize(draft), grid_limits, settings, recent_signatures, level)
     return json.dumps({"ok": not result["errors"], "errors": result["errors"], "readings": result["readings"]})
 
 
@@ -127,9 +171,14 @@ async def generate_task(
     limits = config.get("rate_limits", {})
     evaluator = config.get("evaluator", {})
     recent = [t["signature"] for t in history[-generation.get("recent_tasks", 10):] if t.get("signature")]
+    # Curriculum: the level and task for this skill level, and a grid size within its range.
+    rules, task = position(skill_level)
+    grid = pick_grid(rules)
+    level = {"rules": rules, "task": task, "grid": grid}
+    curriculum = {"level": rules["level"], "task": task, "tasks": rules["tasks"], "concept": rules["concept"]}
     system = [{"type": "text", "text": system_prompt(load_examples()), "cache_control": {"type": "ephemeral"}}]
-    context = learner_context(skill_level, history, generation.get("grid", {"columns": 12, "rows": 8}),
-                              generation.get("recent_tasks", 10))
+    context = learner_context(skill_level, history, grid, generation.get("recent_tasks", 10),
+                              curriculum=prompt_rules(rules, task, grid))
     prompt = "Learner context:\n" + dumps(context) + "\nPropose the next task."
 
     result = GenerationResult()
@@ -140,16 +189,16 @@ async def generate_task(
         if feedback:
             content += "\n\nYour previous proposal was rejected. Fix these errors:\n- " + "\n- ".join(feedback)
         messages = [{"role": "user", "content": content}]
-        spec, failure = await _run_conversation(client, settings, system, messages, (limits, evaluator, recent), usage_log,
+        spec, failure = await _run_conversation(client, settings, system, messages, (limits, evaluator, recent, level), usage_log,
                                                 session_id, attempt)
         if spec is None:
             feedback = [failure]
             continue
-        validation = validate(spec, limits, evaluator, recent)
+        validation = validate(spec, limits, evaluator, recent, level)
         errors = validation["errors"]
         if not errors:
             result.spec, result.errors = spec, []
-            result.level = build_level(spec, skill_level, validation["board"])
+            result.level = build_level(spec, skill_level, validation["board"], curriculum)
             usage_log.event("task_generated", session_id=session_id, attempts=attempt,
                             concept=spec["concept"], difficulty=spec["difficulty"])
             return result

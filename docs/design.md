@@ -120,7 +120,6 @@ tutor:
 
 task_generation:
   recent_tasks: 10
-  grid: { columns: 12, rows: 8 }   # grid size for generated tasks
 
 rate_limits:
   tutor_calls_per_session_per_min: 6
@@ -195,11 +194,13 @@ schematics-ai-tutor/
 │   │   ├── solver.py          DC modified nodal analysis
 │   │   ├── evaluate.py        status, readings and issues
 │   │   ├── task_spec.py       TaskSpec schema, validation stages, targets, task-grid derivation
+│   │   ├── curriculum.py      skill level → curriculum level and task; level-fit and centering checks
 │   │   ├── task_generation.py Claude task generation with the validate_grid tool
 │   │   ├── tutor.py           tutor call: context, TutorMessage schema, backstop
 │   │   ├── session.py         WebSocket learning session
 │   │   └── jsonfmt.py         readable JSON formatting
 │   ├── data/
+│   │   ├── curriculum.yaml    curriculum levels: tasks per level, rules for generation
 │   │   └── examples/          example TaskSpecs for the generation prompt
 │   ├── tests/
 │   │   ├── conftest.py        examples and a fake Claude client

@@ -44,7 +44,6 @@ tutor:
 
 task_generation:
   recent_tasks: 10
-  grid: { columns: 12, rows: 8 }   # grid size for generated tasks
 
 rate_limits:
   tutor_calls_per_session_per_min: 6

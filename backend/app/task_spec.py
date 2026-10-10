@@ -8,6 +8,7 @@ target computation, and the derivation of the learner's task grid.
 import uuid
 
 from .evaluate import RESOLUTION, evaluate
+from .curriculum import check_centered, check_level
 from .graph import assign_nets, to_graph
 from .grid import METER_TYPES, PIN_NAMES, validate_grid
 
@@ -67,7 +68,7 @@ def normalize(spec: dict) -> dict:
     return spec
 
 
-def check_format(spec: dict, grid_limits: dict | None = None) -> list[str]:
+def check_format(spec: dict, grid_limits: dict | None = None, removed_targets_allowed: bool = False) -> list[str]:
     """Format errors in a normalized TaskSpec; empty when it is well formed."""
     errors = []
     board = spec.get("complete_board") or {}
@@ -101,7 +102,7 @@ def check_format(spec: dict, grid_limits: dict | None = None) -> list[str]:
         meter = components.get(mid)
         if meter is None or meter.get("type") not in METER_TYPES:
             errors.append(f"target_meter_ids: {mid} is not a meter on the complete board")
-        elif mid in spec.get("removed_ids", []):
+        elif mid in spec.get("removed_ids", []) and not removed_targets_allowed:
             errors.append(f"target_meter_ids: {mid} is removed, so it can't be a target")
 
     if not isinstance(spec.get("difficulty"), int) or not 1 <= spec["difficulty"] <= 5:
@@ -218,13 +219,17 @@ def check_not_repeat(spec: dict, recent_signatures) -> list[str]:
 
 
 def validate(spec: dict, grid_limits: dict | None = None, settings: dict | None = None,
-             recent_signatures=()) -> dict:
+             recent_signatures=(), level: dict | None = None) -> dict:
     """All validation stages for a normalized TaskSpec.
 
+    `level` = {"rules", "task", "grid"} adds the curriculum checks (level fit, centering).
     Returns {"errors", "readings", "targets", "board"}; `board` is the learner's task grid
     with computed targets, present only when there are no errors.
     """
-    errors = check_format(spec, grid_limits)
+    rules = (level or {}).get("rules") or {}
+    errors = check_format(spec, grid_limits, rules.get("removed_targets_allowed", False))
+    if not errors and level:
+        errors = check_level(spec, rules, level["task"], level["grid"]) + check_centered(spec)
     if errors:
         return {"errors": errors, "readings": {}, "targets": {}, "board": None}
     readings = evaluate(complete_grid(spec), settings)["readings"]
@@ -236,15 +241,27 @@ def validate(spec: dict, grid_limits: dict | None = None, settings: dict | None 
     return {"errors": errors, "readings": readings, "targets": targets, "board": None if errors else board}
 
 
-def build_level(spec: dict, skill_level: int, board: dict | None = None) -> dict:
+def build_level(spec: dict, skill_level: int, board: dict | None = None, curriculum: dict | None = None) -> dict:
     """A `Level` for the frontend (docs/contract.md, data model)."""
     return {
+        "curriculum": curriculum,  # {level, task, tasks, concept}; None outside the curriculum
         "id": f"gen-{uuid.uuid4().hex[:8]}",
         "order": skill_level,
         "title": spec["title"],
         "concept": spec["concept"],
         "intro": spec["intro"],
         "board": board or derive_task_board(spec),
-        # Stored in the learner's history (TaskSummary.signature) for the repeat check.
+        "difficulty": spec["difficulty"],
+        # Stored in the learner's history (TaskSummary) for the next generation and the repeat check.
+        "shape": shape(spec),
         "signature": signature(spec),
     }
+
+
+def shape(spec: dict) -> str:
+    """Short parts summary of the complete circuit, e.g. "V + 2R + VM"."""
+    short = {"voltage_source": "V", "resistor": "R", "voltmeter": "VM", "ammeter": "AM"}
+    counts: dict[str, int] = {}
+    for c in spec["complete_board"]["components"]:
+        counts[short[c["type"]]] = counts.get(short[c["type"]], 0) + 1
+    return " + ".join(f"{n if n > 1 else ''}{key}" for key, n in counts.items())

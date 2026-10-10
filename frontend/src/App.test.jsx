@@ -66,12 +66,14 @@ test("a new learner sees the start screen, then gets a task", async () => {
   expect(screen.getByRole("button", { name: "Start Learning" })).toBeDefined();
 
   fireEvent.click(screen.getByRole("button", { name: "Start Learning" }));
+  expect(screen.getByRole("status").textContent).toContain("Generating your task"); // wait animation
   expect(await screen.findByRole("heading", { name: "Share the voltage" })).toBeDefined();
+  expect(screen.queryByRole("status")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "JSON" })); // the grid needs WebGL; the JSON view doesn't
   expect(screen.getByLabelText("Editor").textContent).toContain('"id": "gen-1234"');
   expect(screen.getByLabelText("Skill level").textContent).toBe("Level 1");
   expect(screen.getByLabelText("Inventory").textContent).toContain("R2 resistor 20");
-  expect(screen.getByRole("button", { name: "Next" }).disabled).toBe(true);
+  expect(screen.getByRole("button", { name: "Next" }).disabled).toBe(false); // temporary: always enabled
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(JSON.parse(localStorage.getItem(SESSION_KEY)).level.id).toBe("gen-1234");
 });
@@ -204,4 +206,29 @@ test("a saved task the server rejects offers a new task, keeping progress", asyn
   await screen.findByText(/"id": "gen-new"/);
   expect(JSON.parse(fetch.mock.calls[0][1].body).skill_level).toBe(3);
   expect(screen.queryByText(/can't be resumed/)).toBeNull();
+});
+
+test("Next (temporary) records the task, raises the level and fetches the next task", async () => {
+  const solvedLevel = { ...LEVEL, shape: "V + 2R + VM", difficulty: 3, signature: "sig-1" };
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 2, history: [] }, level: solvedLevel, chat: [] }));
+  const fetch = mockFetch(ok({ level: { ...LEVEL, id: "gen-next", title: "Parallel paths" }, difficulty: 3, rationale: "", attempts: 1 }));
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Next" }));
+
+  expect(await screen.findByRole("heading", { name: "Parallel paths" })).toBeDefined();
+  const body = JSON.parse(fetch.mock.calls[0][1].body);
+  expect(body.skill_level).toBe(3);
+  expect(body.history).toEqual([{ title: "Share the voltage", concept: "voltage divider", shape: "V + 2R + VM",
+                                  difficulty: 3, hints_used: 0, misconceptions: [], signature: "sig-1" }]);
+  expect(screen.getByLabelText("Skill level").textContent).toBe("Level 3");
+  expect(screen.getByText("Tasks solved: 1")).toBeDefined();
+  expect(screen.getByText(/Next task \(after/)).toBeDefined();
+});
+
+test("the header shows the curriculum level and the task within it", () => {
+  const level = { ...LEVEL, curriculum: { level: 2, task: 1, tasks: 2, concept: "Ohm's law" } };
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 3, history: [] }, level, chat: [] }));
+  render(<App />);
+  expect(screen.getByLabelText("Skill level").textContent).toBe("Level 2");
+  expect(screen.getByText("Task 1 of 2")).toBeDefined();
 });

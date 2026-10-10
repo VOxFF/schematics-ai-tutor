@@ -28,7 +28,7 @@ export function useTutorSession(level, chat, onChat) {
   const startSession = useCallback((ws) => {
     // History for the tutor: chat without errors and without a message that is about to be repeated.
     const history = chatRef.current
-      .filter((m) => m.role !== "error")
+      .filter((m) => m.role === "learner" || m.role === "tutor")
       .filter((m, i, all) => !(pending.current && i === all.length - 1 && m.role === "learner"))
       .map(({ role, text }) => ({ role, text }));
     ws.send(JSON.stringify({ type: "session.start", level: levelRef.current, history }));

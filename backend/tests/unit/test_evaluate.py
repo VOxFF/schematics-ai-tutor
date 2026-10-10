@@ -36,7 +36,7 @@ def test_examples_work_and_read_the_intended_values(name, meter, value):
 
 def test_open_loop_is_open_circuit():
     g = grid("closed_loop")
-    drop_wire(g, [[9, 5], [9, 6]])
+    drop_wire(g, [[10, 5], [10, 6]])
     result = evaluate(g)
     assert result["status"] == "open_circuit"
     assert result["readings"]["VM1"] == 0.0
@@ -44,10 +44,10 @@ def test_open_loop_is_open_circuit():
 
 def test_wire_across_the_source_is_short_circuit():
     g = grid("closed_loop")
-    g["wires"].append({"id": "W99", "segments": [[[2, 4], [1, 4]]]})
-    g["wires"].append({"id": "W98", "segments": [[[1, 4], [1, 5]]]})
-    g["wires"].append({"id": "W96", "segments": [[[1, 5], [1, 6]]]})
-    g["wires"].append({"id": "W97", "segments": [[[1, 6], [2, 6]]]})
+    g["wires"].append({"id": "W99", "segments": [[[3, 4], [2, 4]]]})
+    g["wires"].append({"id": "W98", "segments": [[[2, 4], [2, 5]]]})
+    g["wires"].append({"id": "W96", "segments": [[[2, 5], [2, 6]]]})
+    g["wires"].append({"id": "W97", "segments": [[[2, 6], [3, 6]]]})
     assert validate_grid(g) == []
     result = evaluate(g)
     assert result["status"] == "short_circuit"
@@ -73,11 +73,11 @@ def test_voltmeter_in_place_of_a_resistor_is_meter_misuse():
 
 def test_floating_part():
     g = grid("parallel_paths")
-    drop_wire(g, [[4, 5], [5, 5]])  # R2.a loses its only wire
+    drop_wire(g, [[5, 5], [6, 5]])  # R2.a loses its only wire
     result = evaluate(g)
     assert result["status"] == "floating_part"
     assert result["issues"][0]["component_ids"] == ["R2"]
-    assert result["issues"][0]["points"] == [[5, 5]]
+    assert result["issues"][0]["points"] == [[6, 5]]
 
 
 def test_overcurrent():

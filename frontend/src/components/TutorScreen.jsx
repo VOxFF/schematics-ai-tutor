@@ -12,7 +12,7 @@ const WIRE_PALETTE = ["Straight (horizontal)", "Straight (vertical)", "Corner", 
 const shownWhen = (visible) => (visible ? {} : { style: { visibility: "hidden" }, "aria-hidden": true, inert: true });
 
 // Restart Learning asks for confirmation in place of the buttons (no browser popup).
-function Header({ progress, onRestart }) {
+function Header({ progress, curriculum, canNext, onNext, onRestart }) {
   const [confirming, setConfirming] = useState(false);
   const confirmButton = useRef(null);
 
@@ -30,8 +30,13 @@ function Header({ progress, onRestart }) {
         <div className="title">Schematics AI Tutor</div>
         <div className="header-meta">
           <span className="skill" aria-label="Skill level">
-            Level {progress.skill_level}
+            Level {curriculum?.level ?? progress.skill_level}
           </span>
+          {curriculum && (
+            <span className="muted">
+              Task {curriculum.task} of {curriculum.tasks}
+            </span>
+          )}
           <span className="muted">Tasks solved: {progress.history.length}</span>
         </div>
       </div>
@@ -39,7 +44,8 @@ function Header({ progress, onRestart }) {
       <div className="actions-slot">
         <div className="actions" {...shownWhen(!confirming)}>
           <button onClick={() => setConfirming(true)}>Restart Learning</button>
-          <button className="primary" disabled title="Enabled when the task is solved">
+          {/* TEMPORARY: always enabled; will require status `solved`. */}
+          <button className="primary" disabled={!canNext} onClick={onNext} title="Temporary: counts the task as solved">
             Next
           </button>
         </div>
@@ -62,9 +68,14 @@ function TaskPanel({ level, evaluation }) {
   const readings = evaluation?.readings ?? {};
   return (
     <section className="panel task" aria-label="Task and targets">
-      <h2>{level?.title ?? "Task"}</h2>
-      <p>{level?.intro ?? "…"}</p>
-      {targets.length > 0 && (
+      {/* Text scrolls when long; targets keep their own column. */}
+      <div className="task-text">
+        <h2>{level?.title ?? "Task"}</h2>
+        <p>{level?.intro ?? "Your next task is on its way…"}</p>
+      </div>
+      <div className="task-targets" aria-label="Targets">
+        <h3>Targets</h3>
+        {targets.length === 0 && <p className="muted">--</p>}
         <ul className="targets">
           {targets.map(([meter, target]) => (
             <li key={meter}>
@@ -72,7 +83,7 @@ function TaskPanel({ level, evaluation }) {
             </li>
           ))}
         </ul>
-      )}
+      </div>
     </section>
   );
 }
@@ -80,7 +91,14 @@ function TaskPanel({ level, evaluation }) {
 function Editor({ level, evaluation, loading, error, startError, onRetry }) {
   const [showJson, setShowJson] = useState(false);
   let body;
-  if (loading) body = <p className="muted">Generating task… this can take about half a minute.</p>;
+  if (loading)
+    body = (
+      <div className="editor-wait" role="status">
+        <div className="spinner" aria-hidden="true" />
+        <p>Generating your task…</p>
+        <p className="muted">This can take about half a minute.</p>
+      </div>
+    );
   else if (startError)
     body = (
       <div className="error">
@@ -179,13 +197,19 @@ function Chat({ chat, connected, thinking, onSend }) {
   );
 }
 
-export default function TutorScreen({ session, loading, error, onRestart, onRetry, onChat }) {
+export default function TutorScreen({ session, loading, error, onRestart, onRetry, onChat, onNext }) {
   const { progress, level } = session;
   const chat = session.chat ?? [];
   const tutor = useTutorSession(level, chat, onChat);
   return (
     <div className="tutor">
-      <Header progress={progress} onRestart={onRestart} />
+      <Header
+        progress={progress}
+        curriculum={level?.curriculum}
+        canNext={Boolean(level) && !loading}
+        onNext={onNext}
+        onRestart={onRestart}
+      />
       <TaskPanel level={level} evaluation={tutor.evaluation} />
       <div className="panel workspace">
         <div className="editor-column">
