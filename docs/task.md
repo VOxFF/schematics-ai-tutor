@@ -58,6 +58,4 @@ The learner has a skill level that starts at 1 and goes up by one with each solv
 
 ## To be defined
 
-- Claude's teaching behavior and hint content (the interface is in [contract.md](contract.md))
 - Final level list (draft in [schematics.md](schematics.md))
-- Whether current is measured with an ammeter component or reported directly by the evaluator

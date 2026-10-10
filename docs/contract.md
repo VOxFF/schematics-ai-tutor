@@ -229,17 +229,29 @@ interface Snapshot {               // recorded by the server on every board.upda
 
 // Claude's feedback has two parts: `chat`, shown in the chat panel, and
 // `meta`, which drives the grid UI and the backend and is never shown as text.
+// Field order matters: Claude writes fields in schema order, so `meta`
+// (including `principle`) comes first and the text then explains that principle.
 interface TutorMessage {
+  meta: {
+    principle: Principle;          // the physics this message teaches (tutor.md §5)
+    highlights: Highlight[];       // draws the learner's attention on the grid
+    hint_level: 0 | 1 | 2 | 3;     // 0 if this isn't a hint
+    misconception: Misconception | null;  // fixed label (tutor.md §5)
+  };
   chat: {
     kind: "feedback" | "nudge" | "hint" | "question" | "praise";
     text: string;                  // learner-facing, plain language
   };
-  meta: {
-    highlights: Highlight[];       // draws the learner's attention on the grid
-    hint_level: 0 | 1 | 2 | 3;     // 0 if this isn't a hint
-    misconception: string | null;  // internal label, e.g. "current is used up"
-  };
 }
+
+type Principle =
+  | "closed_loop" | "ohms_law" | "series_voltage_division"
+  | "parallel_branches" | "meter_usage" | "power_safety";
+
+type Misconception =
+  | "single_wire_enough" | "current_used_up" | "bigger_r_more_current"
+  | "full_voltage_each_resistor" | "parallel_reduces_current"
+  | "meter_in_series_like_wire" | "ammeter_across_part" | "short_is_harmless";
 
 interface Highlight {
   target:
@@ -279,27 +291,23 @@ The backend makes two kinds of Claude calls: **tutoring** (2.1) and **task gener
 
 The order runs from most stable to least stable, so the cached prefix stays valid.
 
-1. **System prompt (static, cached).** The tutor's role and teaching rules:
-   - never give the solution
-   - never state a number that isn't in the evaluation
-   - escalate hints one level at a time, and only on request
-   - on a reaction, always respond:
-     - **nudge** after a misstep: point to the problem with a question or principle, never with coordinates. For example: "This wire end isn't touching anything. What does current need in order to flow?"
-     - **praise** after progress, briefly and specifically
-     - **feedback** otherwise
-   - write in plain language for beginners
-   - put learner-facing words only in `chat`, and point at the relevant components, wires or points with `meta.highlights` instead of describing their location
+1. **System prompt (static, cached).** The tutor's role, principles, reactions by status, hint ladder and guardrails. The draft is in [tutor.md](tutor.md#8-system-prompt-draft).
 2. **One user turn per call.** Each call is self-contained; there is no multi-turn conversation. The turn contains:
    - `<level>`: concept, targets and intro text
    - `<reference>`: the reference solution's `graph` when available, so hints can point toward a solution without revealing it
+   - `<summary>`: a one-line circuit description written by the backend, e.g. `V1 → R1 → (gap) → V1; VM1 across R1; status open_circuit`
    - `<history>`: the last `tutor.history_turns` tutor and learner chat turns, for continuity
-   - `<snapshots>`: every `Snapshot` (grid, graph, evaluation) recorded since the previous call, up to the last `tutor.max_snapshots`. They show Claude what the learner did and how the circuit changed. The evaluations are the only source of electrical values.
+   - `<snapshots>`: every `Snapshot` (grid, graph, evaluation) recorded since the previous call, up to the last `tutor.max_snapshots`. Each grid is labeled "for highlight references only". They show Claude what the learner did and how the circuit changed. The evaluations are the only source of electrical values.
    - `<request>`: either `trigger: "reaction"`, or the learner's `action`, the next allowed hint level and `learner_text`
 
 #### Response handling
 
 - Parse the structured output into `TutorMessage`.
 - Stream `chat.text` from the partial JSON to the client as `tutor.delta`. Send the parsed `TutorMessage` as `tutor.message`.
+- **Location-talk backstop** ([tutor.md](tutor.md#6-guardrails-physics-not-placement)): scan `chat.text` for coordinates, pin references and the words "row", "column" and "point".
+  - On a match, regenerate once with the problem named.
+  - If it fails again, send a safe generic message for the status.
+  - Streamed `tutor.delta` text may already have been shown; the final `tutor.message` replaces it.
 - Enforce `meta.hint_level` server-side: the session tracks the highest hint given. Claude may go at most one level higher, and anything beyond that is clamped.
 - Check every highlight against the latest snapshot: the component ID exists, the wire ID exists, and the point is inside the grid. Drop any that fail.
 - The returned `evaluation` always comes from the evaluator, never from Claude.
@@ -391,7 +399,3 @@ Claude never supplies target values. The backend computes them by solving `compl
 1. If the final `TaskSpec` fails backend validation, including the repeat check, the call is retried once with the errors appended, for at most 2 calls in total.
 2. If it still fails, the backend serves the curated level for the learner's skill level.
 3. Every failure is logged with its errors, to improve the prompt.
-
-## Open points
-
-- The hint ladder's content per level, defined in the tutor design

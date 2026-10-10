@@ -73,7 +73,7 @@ claude:
     timeout_s: 30
   tutor_request:               # learner check / hint / message
     model: claude-opus-5-5
-    effort: low
+    effort: medium             # rarer than reactions and matter more
     max_tokens: 16000
     timeout_s: 30
   task_generation:
@@ -88,6 +88,7 @@ tutor:
   idle_threshold_ms: 1500
   max_snapshots: 10
   history_turns: 6
+  offer_hint_after_reactions: 3
 
 task_generation:
   recent_tasks: 10
@@ -113,5 +114,4 @@ The values above are the defaults, as described in [contract.md](contract.md).
 
 ## Open decisions
 
-- Tutor teaching behavior: system prompt and hint content (the interface is fixed in [contract.md](contract.md))
 - Hosting and deployment

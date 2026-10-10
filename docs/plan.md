@@ -11,7 +11,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Contracts: frontend ↔ backend and backend ↔ Claude ([contract.md](contract.md))
 - [x] Gitignore for the Python and React stack
 - [x] Tutor triggers: idle-triggered reactions on snapshots, plus learner requests ([contract.md](contract.md#21-tutor-call))
-- [ ] Tutor design: teaching behavior, system prompt, hint ladder content, free learner chat (context packed by the backend)
+- [x] Tutor design: principles, reactions, hint ladder, free chat, guardrails, system prompt ([tutor.md](tutor.md))
 - [x] Domain design: grid model, components, netlist mapping, evaluator checks ([schematics.md](schematics.md))
 - [x] Board data format: the `grid` document ([schematics.md](schematics.md))
 - [x] Graph format: the `graph` document with pin-pair edges ([schematics.md](schematics.md#2-graph-format-the-graph-document))
@@ -38,6 +38,8 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Prompt examples as files, validated in tests
 - [ ] Tutor service: Claude API integration and prompts
 - [ ] Snapshot recording and idle-triggered reactions
+- [ ] Circuit summary line for the tutor
+- [ ] Location-talk backstop with regeneration and fallback messages
 - [ ] REST endpoints and WebSocket session
 - [ ] Configuration loader for `config.yaml`
 - [ ] Rate limiting and API key handling
@@ -51,6 +53,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Wire pieces: straight, corner, T and +
 - [ ] Level view: targets, inventory, check action, next task
 - [ ] Live meter readings and tutor highlights (components, wires, points)
+- [ ] Optional: predict, then measure (hide a new meter's reading until the learner predicts)
 - [ ] Tutor panel
 - [ ] Backend integration
 
@@ -66,6 +69,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Revisit the redundancy of component `orientation` and `pins`
 - [ ] Compact reaction context: one-line action descriptions and evaluation deltas instead of full snapshots, and a `dangling_wire` issue for spatial missteps
 - [ ] Append-only multi-turn tutor conversation, so earlier turns are served from the prompt cache
+- [ ] Tutor evaluation set: ~20 broken boards, physics-focus rubric, backstop trip rate
 - [ ] Experiment: let Claude stay silent on neutral moves
 - [ ] Tune the idle threshold for reactions
 - [ ] Choose the model for reactions (Opus 5.5 at low effort vs. Haiku 5.5) by measuring cost and quality; switched in `config.yaml`
