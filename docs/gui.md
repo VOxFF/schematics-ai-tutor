@@ -88,6 +88,7 @@ Rendered with three.js in an orthographic, top-down view. Every grid point, comp
   | 4 | Tolerance: always gold (±5%) |
 
   Examples: 20 Ω = red, black, black, gold; 60 Ω = blue, black, black, gold; 120 Ω = brown, red, brown, gold.
+- **Solved.** When the status becomes `solved`, a big green checkmark appears over the grid and **Next** is enabled. The checkmark is a non-blocking overlay: semi-transparent and centered, and it ignores clicks, so the learner can still observe the readings and read the tutor's praise in the chat. Refinements are in polishing: fading out, and reacting when the solution is broken again.
 - Meters show `--` when the reading is `null`.
 - `fixed` parts show a small lock and cannot be moved.
 
