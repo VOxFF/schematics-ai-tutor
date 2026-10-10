@@ -17,11 +17,16 @@ sequenceDiagram
     BE->>EV: validate + compute targets
     BE-->>FE: evaluation
     loop learner edits the board
-        FE->>BE: board.update (seq, board)
+        FE->>BE: board.update (seq, board) on each finished edit
         BE->>EV: evaluate(level, board)
         EV-->>BE: Evaluation
         BE-->>FE: evaluation (seq)
     end
+    Note over BE: editing pauses ≥ idle threshold
+    BE-->>FE: tutor.started (trigger: reaction)
+    BE->>C: snapshots since last call
+    C-->>BE: TutorMessage
+    BE-->>FE: tutor.message
     FE->>BE: tutor.request (action, learner_text)
     BE-->>FE: tutor.started
     BE->>C: level + board + evaluation + learner input (stream)
@@ -39,7 +44,7 @@ The frontend and backend talk over two channels:
 | Channel | Used for | Why |
 |---|---|---|
 | **REST** (JSON over HTTP, under `/api`) | Static, cacheable resources: the curated levels | Simple, cacheable, debuggable |
-| **WebSocket** (`/ws/session`) | The interactive learning session: task delivery, board updates, live evaluation, tutor requests, streamed tutor replies | Live meter readings on every edit without per-request overhead; the tutor's reply streams in as Claude writes it |
+| **WebSocket** (`/ws/session`) | The interactive learning session: task delivery, board updates, live evaluation, tutor reactions and requests, streamed tutor replies | Live meter readings on every edit without per-request overhead; the server can push tutor reactions unprompted; replies stream in as Claude writes them |
 
 ### REST endpoints
 
@@ -72,7 +77,7 @@ Every message is a JSON object with a `type` field.
 |---|---|---|
 | `session.start` | `progress?`, `level?`, `board?`, `history?` | Starts a session (the server sends `task.ready` with the curated level for the skill level) or resumes one (`level` given). The server also replies with `evaluation`. |
 | `task.next` | — | Asks for the next task, usually after the current one is solved |
-| `board.update` | `seq`, `board` | Re-evaluates; the server replies with `evaluation` carrying the same `seq` |
+| `board.update` | `seq`, `board` | Sent on each finished edit (a part dropped, a wire piece placed or removed). The server records a snapshot, re-evaluates and replies with `evaluation` carrying the same `seq`. |
 | `tutor.request` | `request_id`, `action` (`"check"`, `"hint"` or `"message"`), `learner_text?` | Runs the evaluator and then Claude on the latest board |
 
 **Server → client**
@@ -82,7 +87,7 @@ Every message is a JSON object with a `type` field.
 | `task.ready` | `level: Level`, `source` (`"curated"` or `"generated"`), `progress: Progress` | A new task. The client replaces its board with `level.board` and stores `progress`. |
 | `task.generating` | — | Sent when `task.next` arrives before the pre-generated task is ready |
 | `evaluation` | `seq`, `evaluation: Evaluation` | The client ignores any `seq` older than the last one it applied |
-| `tutor.started` | `request_id` | The UI shows "tutor is thinking" |
+| `tutor.started` | `request_id`, `trigger` (`"reaction"` or `"request"`) | The UI shows "tutor is thinking". Reactions get a server-generated `request_id`. |
 | `tutor.delta` | `request_id`, `text` | An incremental chunk of `TutorMessage.text`, for live display |
 | `tutor.message` | `request_id`, `evaluation`, `message: TutorMessage` | Final and authoritative; replaces the streamed text |
 | `error` | `code`, `message`, `request_id?` | Codes: `bad_message`, `unknown_level`, `rate_limited`, `tutor_unavailable`. Generation failures never surface: they fall back to a curated level. |
@@ -90,8 +95,13 @@ Every message is a JSON object with a `type` field.
 **Rules**
 
 - The server starts generating the next task in the background as soon as a task is delivered, so `task.next` is usually instant.
-- `board.update` is debounced by the client (about 150 ms while dragging).
-- Only one `tutor.request` may be in flight per session. A second one gets `error: rate_limited`.
+- The client sends `board.update` only on finished edits. Dragging stays local to three.js until the drop.
+- **Reactions.** The server starts an idle timer on every `board.update`. When editing pauses for at least the **idle threshold** (initially 1.5 s), the server calls Claude with the snapshots recorded since the previous Claude call.
+  - A burst of quick edits, each within a split second of the last, produces one reaction, not one per edit.
+  - If edits arrive while a reaction is running, they wait for the next pause.
+- An explicit `tutor.request` cancels the pending idle timer and takes priority. Its call also includes the unsent snapshots.
+- Only one Claude tutor call, either a reaction or a request, may be in flight per session.
+- A second `tutor.request` while one is in flight gets `error: rate_limited`.
 - The `evaluation` in `tutor.message` always comes from a fresh server-side evaluator run, never from the client.
 - If Claude fails, the learner still has the latest `evaluation`, and the server sends `error: tutor_unavailable` with the `request_id`.
 
@@ -199,8 +209,16 @@ interface ChatTurn {
   text: string;
 }
 
+interface Snapshot {               // recorded by the server on every board.update
+  seq: number;
+  t_ms: number;                      // milliseconds since the task started, so Claude sees the pace
+  grid: Board;
+  graph: Graph;
+  evaluation: Evaluation;
+}
+
 interface TutorMessage {
-  kind: "feedback" | "hint" | "question" | "praise";
+  kind: "feedback" | "nudge" | "hint" | "question" | "praise";
   text: string;                    // learner-facing, plain language
   hint_level: 0 | 1 | 2 | 3;       // 0 if this isn't a hint
   focus: { component_ids: string[]; points: Point[] };  // what three.js should highlight
@@ -219,13 +237,13 @@ The backend makes two kinds of Claude calls: **tutoring** (2.1) and **task gener
 | Setting | Value | Why |
 |---|---|---|
 | SDK | Official `anthropic` Python SDK | |
-| Endpoint | Messages API, streamed; one call per `tutor.request` | Single-turn tutoring, not an agent loop; streaming feeds `tutor.delta` |
+| Endpoint | Messages API, streamed; one call per reaction or `tutor.request` | Not an agent loop; streaming feeds `tutor.delta` |
 | Model | `claude-opus-5-5` | Current default model |
 | Effort | `output_config.effort: "low"`, set explicitly | Interactive latency; tune upward if feedback quality is weak |
 | Output | Structured output: `output_config.format` with the `TutorMessage` JSON schema | Guaranteed parseable responses for the UI |
 | `max_tokens` | 16000 | Must cover thinking plus the response; not a quality lever |
 | Refusals | Server-side `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`); check `stop_reason` before reading content | Recommended default for this model |
-| Caching | `cache_control` on the static system prompt | It is identical across all requests. Below the model's minimum cacheable size it simply won't cache, which is harmless. |
+| Caching | `cache_control` on the static system prompt, plus top-level automatic caching on the append-only conversation | The system prompt is identical across requests, and each call only appends to the conversation, so earlier turns are read from cache. Below the minimum cacheable size it simply won't cache, which is harmless. |
 | Timeout and retries | SDK defaults (2 retries), 30 s request timeout | On failure, send `error: tutor_unavailable` |
 
 #### Prompt layout
@@ -235,15 +253,19 @@ The order runs from most stable to least stable, so the cached prefix stays vali
 1. **System prompt (static, cached).** The tutor's role and teaching rules:
    - never give the solution
    - never state a number that isn't in the evaluation
-   - escalate hints one level at a time
+   - escalate hints one level at a time, and only on request
+   - on a reaction, always respond:
+     - **nudge** after a misstep: point to the problem with a question or principle, never with coordinates. For example: "This wire end isn't touching anything. What does current need in order to flow?"
+     - **praise** after progress, briefly and specifically
+     - **feedback** otherwise
    - write in plain language for beginners
    - set `focus` to the relevant parts
-2. **Messages.** The session's history turns as alternating user and assistant text, then the current user turn with tagged JSON blocks:
+2. **First user turn of the task (stable, cached):**
    - `<level>`: concept, targets and intro text
    - `<reference>`: the reference solution's `graph` when available, so hints can point toward a solution without revealing it
-   - `<graph>`: the learner's board as a `graph`, which is compact and placement-free
-   - `<evaluation>`: the evaluator's result, which is the only source of electrical values
-   - `<request>`: the `action`, the next allowed hint level and `learner_text`
+3. **Append-only turns.** One user turn per Claude call, each followed by the assistant's `TutorMessage`. Earlier turns are never edited. A user turn contains:
+   - `<snapshots>`: every `Snapshot` (grid, graph, evaluation) recorded since the previous call, up to the last 10. They show Claude what the learner did and how the circuit changed. The evaluations are the only source of electrical values.
+   - `<request>`: either `trigger: "reaction"`, or the learner's `action`, the next allowed hint level and `learner_text`
 
 #### Response handling
 

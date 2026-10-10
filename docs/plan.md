@@ -10,6 +10,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Build plan (this file)
 - [x] Contracts: frontend ↔ backend and backend ↔ Claude ([contract.md](contract.md))
 - [x] Gitignore for the Python and React stack
+- [x] Tutor triggers: idle-triggered reactions on snapshots, plus learner requests ([contract.md](contract.md#21-tutor-call))
 - [ ] Tutor design: teaching behavior, system prompt, hint ladder content
 - [x] Domain design: grid model, components, netlist mapping, evaluator checks ([schematics.md](schematics.md))
 - [x] Board data format: the `grid` document ([schematics.md](schematics.md))
@@ -36,6 +37,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Repeat check against recent task graphs
 - [ ] Prompt examples as files, validated in tests
 - [ ] Tutor service: Claude API integration and prompts
+- [ ] Snapshot recording and idle-triggered reactions
 - [ ] REST endpoints and WebSocket session
 - [ ] Rate limiting and API key handling
 - [ ] Tests for the evaluator
@@ -61,6 +63,10 @@ The major steps to build the product. A step is checked off when it is complete,
 ## 5. Polishing
 
 - [ ] Revisit the redundancy of component `orientation` and `pins`
+- [ ] Compact reaction context: one-line action descriptions and evaluation deltas instead of full snapshots, and a `dangling_wire` issue for spatial missteps
+- [ ] Experiment: let Claude stay silent on neutral moves
+- [ ] Tune the idle threshold for reactions
+- [ ] Choose the model for reactions (Opus 5.5 at low effort vs. Haiku 5.5) by measuring cost and quality
 
 ## 6. Submission
 
