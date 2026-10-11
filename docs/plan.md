@@ -67,7 +67,8 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Grid rendering: schematic symbols, labels, resistor color bands, live readings (three.js, one scene node per element; JSON view behind a toggle)
 - [x] Schematic style config: `frontend/src/editor/schematic-style.yaml`
 - [x] Drag from the inventory and the wire palette onto the grid: ghost preview, blue/red target points, R to rotate, Esc and release-outside snap back, live `board.update`
-- [ ] Selection on the grid: click-and-drag to move, R to rotate in place, Del to remove (parts back to the inventory)
+- [x] Picking by drawn shape (grown by 2 px), drag without a jump (grab offset), and moving placed parts and wires with the same drag as the inventory
+- [ ] Selection on the grid: selection highlight, R to rotate in place, Del to remove (parts back to the inventory)
 - [x] Wire palette: horizontal, vertical, corner, T, + (non-depleting, R to rotate)
 - [x] Inventory drawn inside the editor scene: same scale as the board, two columns, fixed width, scale fixed per task, grid centered, lifted slot and floating ghost while dragging
 - [x] Hint bar: idle, dragging and can't-place hints (selection hints come with selection)

@@ -1,10 +1,11 @@
 // Builds the three.js scene graph for a grid board. Every grid element is its own node:
-// a THREE.Group named by id, with userData { kind, id }, ready for picking and highlights.
+// a THREE.Group named by id, with userData { kind, id }, ready for picking (pickAt, by the
+// drawn shapes) and highlights.
 import * as THREE from "three";
 import { CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import { BAND_COLORS, resistorBands } from "./colorCode.js";
 import { partCaption } from "./naming.js";
-import { WIRE_PALETTE, wireSegments } from "./placement.js";
+import { WIRE_PALETTE, itemSegments, wireSegments } from "./placement.js";
 import { CELL, STYLE } from "./style.js";
 
 const PIN_NAMES = {
@@ -274,9 +275,51 @@ export function layoutInventory(board, capacity = 0) {
   };
 }
 
-// The slot under a world point, or null.
-export function slotAt(layout, x, y) {
-  return layout.slots.find((s) => Math.abs(x - s.x) <= s.w / 2 && Math.abs(y - s.y) <= s.h / 2) ?? null;
+// ---- Picking: by the drawn shapes themselves, not by bounding boxes. ----
+
+const PICKABLE = new Set(["component", "wire", "inventory"]);
+
+// Whether world point `world` is on `mesh`'s shape, grown by `tolerance` world units.
+// The scene only uses planes, circles and rings.
+function onMesh(mesh, world, tolerance) {
+  const p = mesh.worldToLocal(world.clone());
+  const g = mesh.geometry.parameters;
+  switch (mesh.geometry.type) {
+    case "PlaneGeometry": return Math.abs(p.x) <= g.width / 2 + tolerance && Math.abs(p.y) <= g.height / 2 + tolerance;
+    case "CircleGeometry": return Math.hypot(p.x, p.y) <= g.radius + tolerance;
+    case "RingGeometry": return Math.hypot(p.x, p.y) <= g.outerRadius + tolerance;
+    default: return false;
+  }
+}
+
+// The topmost element under world point (x, y) among `roots` (searched front to back):
+// its userData ({ kind: "component" | "wire" | "inventory", ... }), or null. Labels don't count.
+export function pickAt(roots, x, y, tolerance = 0) {
+  const world = new THREE.Vector3(x, y, 0);
+  for (const root of roots) {
+    if (!root) continue;
+    root.updateMatrixWorld(true);
+    // Outermost pickable nodes only: an inventory slot owns the part symbol drawn inside it.
+    const elements = [];
+    const collect = (o) => (PICKABLE.has(o.userData.kind) ? elements.push(o) : o.children.forEach(collect));
+    collect(root);
+    for (const element of elements.reverse()) { // later nodes are drawn on top
+      let hit = false;
+      element.traverse((o) => { if (!hit && o.isMesh && onMesh(o, world, tolerance)) hit = true; });
+      if (hit) return element.userData;
+    }
+  }
+  return null;
+}
+
+// Where a slot draws its item's anchor (a part's body, a wire piece's [0, 0]), in the
+// inventory's own frame: dragging starts from here, so the item doesn't jump to the pointer.
+export function slotAnchor(slot) {
+  if (slot.item.kind === "part") return { x: slot.x, y: slot.y + 8 };
+  const points = wireSegments(slot.item.shape, slot.item.rotation, [0, 0]).flat();
+  const cx = (Math.min(...points.map((p) => p[0])) + Math.max(...points.map((p) => p[0]))) / 2;
+  const cy = (Math.min(...points.map((p) => p[1])) + Math.max(...points.map((p) => p[1]))) / 2;
+  return { x: slot.x - cx * CELL, y: slot.y + cy * CELL };
 }
 
 // Grid and inventory together: what the camera fits. Both columns share a vertical midline,
@@ -297,17 +340,15 @@ function slotSymbol(slot) {
     const node = componentNode({ ...slot.item, orientation: "E",
                                  pins: pinsAround(slot.item.type, [0, 0]) });
     node.remove(node.getObjectByName("labels"));
-    node.position.set(slot.x, slot.y + 8, 2);
+    const anchor = slotAnchor(slot);
+    node.position.set(anchor.x, anchor.y, 2);
     node.add(label(slot.label, "editor-label", 0, -26));
     return node;
   }
   // A wire piece, centered in its slot by the middle of its own extent.
-  const segments = wireSegments(slot.item.shape, slot.item.rotation, [0, 0]);
-  const points = segments.flat();
-  const cx = (Math.min(...points.map((p) => p[0])) + Math.max(...points.map((p) => p[0]))) / 2;
-  const cy = (Math.min(...points.map((p) => p[1])) + Math.max(...points.map((p) => p[1]))) / 2;
-  const node = wireNode({ id: slot.key, segments });
-  node.position.set(slot.x - cx * CELL, slot.y + cy * CELL, 1);
+  const node = wireNode({ id: slot.key, segments: wireSegments(slot.item.shape, slot.item.rotation, [0, 0]) });
+  const anchor = slotAnchor(slot);
+  node.position.set(anchor.x, anchor.y, 1);
   return node;
 }
 
@@ -317,11 +358,8 @@ function pinsAround(type, body) {
   return { [first]: [body[0] + 1, body[1]], [second]: [body[0] - 1, body[1]] };
 }
 
-const HOVER_TINT = 0xeef4fc;
-
-// The inventory region as a scene node; `hoverKey` tints the slot under the pointer and
-// `liftedKey` leaves a slot empty (its part is being dragged).
-export function inventoryNode(layout, hoverKey = null, liftedKey = null) {
+// The inventory region as a scene node; `liftedKey` leaves a slot empty (its part is being dragged).
+export function inventoryNode(layout, liftedKey = null) {
   const root = new THREE.Group();
   root.name = "inventory";
   const d = layout.divider;
@@ -335,7 +373,6 @@ export function inventoryNode(layout, hoverKey = null, liftedKey = null) {
     const node = new THREE.Group();
     node.name = slot.key;
     node.userData = { kind: "inventory", key: slot.key };
-    if (slot.key === hoverKey) node.add(rect(slot.w, slot.h, HOVER_TINT, slot.x, slot.y, 0.5));
     if (slot.key !== liftedKey) node.add(slotSymbol(slot));
     root.add(node);
   }
@@ -398,7 +435,7 @@ export function floatingNode(item, rotation, x, y) {
                             pins: { [first]: [dx, dy], [second]: [-dx, -dy] } });
     ghost.position.set(x, y, 4);
   } else {
-    ghost = wireNode({ id: "floating-wire", segments: wireSegments(item.shape, rotation, [0, 0]) });
+    ghost = wireNode({ id: "floating-wire", segments: itemSegments(item, rotation, [0, 0]) });
     ghost.position.set(x, y, 4);
   }
   ghost.name = "floating";

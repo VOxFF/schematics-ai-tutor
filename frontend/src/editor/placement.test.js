@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { componentPoints, nextOrientation, place, plan, wireSegments } from "./placement.js";
+import { componentPoints, itemSegments, lift, nextOrientation, place, plan, wireSegments } from "./placement.js";
 
 const board = () => ({
   grid: { columns: 8, rows: 6 },
@@ -59,5 +59,33 @@ describe("plan and place", () => {
     expect(next.wires.at(-1).id).toBe("W4");
     expect(plan(board(), { kind: "wire", shape: "straight" }, [3, 1], 1).valid).toBe(false); // into R1's body
     expect(place(board(), { kind: "wire", shape: "straight" }, [3, 1], 1)).toBeNull();
+  });
+});
+
+describe("moving placed elements", () => {
+  const placed = () => {
+    const b = place(board(), R2, [5, 5], "E");
+    return place(b, { kind: "wire", shape: "corner" }, [6, 1], 1);
+  };
+
+  test("fixed parts and the task's own wires can't be picked up", () => {
+    expect(lift(board(), { kind: "component", id: "R1" }, board())).toBeNull();
+    expect(lift(board(), { kind: "wire", id: "W3" }, board())).toBeNull();
+  });
+
+  test("a placed part lifts off the board and drops elsewhere, keeping its id", () => {
+    const lifted = lift(placed(), { kind: "component", id: "R2" }, board());
+    expect(lifted).toMatchObject({ item: { kind: "part", id: "R2", value: 20 }, rotation: "E", anchor: [5, 5] });
+    expect(lifted.base.components.map((c) => c.id)).toEqual(["R1"]);
+    const moved = place(lifted.base, lifted.item, [3, 5], "S");
+    expect(moved.components.at(-1)).toMatchObject({ id: "R2", orientation: "S", pins: { a: [3, 6], b: [3, 4] } });
+  });
+
+  test("a placed wire moves by its anchor, keeping its id and shape", () => {
+    const lifted = lift(placed(), { kind: "wire", id: "W4" }, board());
+    expect(lifted.anchor).toEqual([6, 1]);
+    expect(itemSegments(lifted.item, 0, [2, 4])).toEqual([[[2, 4], [2, 5]], [[2, 4], [1, 4]]]);
+    const moved = place(lifted.base, lifted.item, [2, 4], 0);
+    expect(moved.wires.map((w) => w.id)).toEqual(["W3", "W4"]);
   });
 });

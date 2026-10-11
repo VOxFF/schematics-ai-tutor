@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { resistorBands } from "./colorCode.js";
-import { boardBounds, buildBoard, floatingNode, inventoryNode, layoutInventory, sceneBounds, slotAt, toWorld } from "./scene.js";
+import { boardBounds, buildBoard, floatingNode, inventoryNode, layoutInventory, pickAt, sceneBounds, slotAnchor, toWorld } from "./scene.js";
 import { CELL, STYLE } from "./style.js";
 
 describe("resistor color bands", () => {
@@ -53,6 +53,19 @@ describe("scene graph", () => {
   test("grid coordinates map to world space with row 1 at the top", () => {
     expect(toWorld([1, 1]).toArray()).toEqual([CELL, -CELL, 0]);
     expect(toWorld([12, 8]).y).toBeLessThan(toWorld([12, 1]).y);
+  });
+
+  test("picking on the board: parts over wires, wires by their thin segments, not the grid", () => {
+    const board = JSON.parse(readFileSync(resolve(process.cwd(), "../backend/data/examples/voltage_divider.json"), "utf8")).complete_board;
+    const root = buildBoard(board);
+    const part = board.components.find((c) => c.type === "resistor");
+    const pin = toWorld(Object.values(part.pins)[0]);
+    expect(pickAt([root], pin.x, pin.y)).toMatchObject({ kind: "component", id: part.id });
+    const [a, b] = board.wires[0].segments[0].map(toWorld);
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    expect(pickAt([root], mid.x, mid.y)).toMatchObject({ kind: "wire", id: board.wires[0].id });
+    const off = Math.abs(a.x - b.x) > 0 ? [0, 6] : [6, 0]; // beside the wire, across its direction
+    expect(pickAt([root], mid.x + off[0], mid.y + off[1])).toBeNull();
   });
 });
 
@@ -195,12 +208,20 @@ describe("inventory region (same scene as the board)", () => {
     expect(b.right).toBeGreaterThan(layout.bounds.right);
   });
 
-  test("hit-testing finds the slot under a point", () => {
+  test("picking hits an inventory item by its drawn shape, not its slot's box", () => {
     const layout = layoutInventory(board);
+    const inventory = inventoryNode(layout);
     const r3 = layout.slots.find((s) => s.key === "part:R3");
-    expect(slotAt(layout, r3.x, r3.y).item).toMatchObject({ kind: "part", id: "R3", value: 4700 });
-    expect(slotAt(layout, 0, 0)).toBeNull(); // over the grid
+    const body = slotAnchor(r3);
+    expect(pickAt([inventory], body.x, body.y)).toEqual({ kind: "inventory", key: "part:R3" });
+    // Inside the slot's box but beside the symbol: nothing.
+    expect(pickAt([inventory], body.x, body.y + STYLE.resistor.height)).toBeNull();
+    // Grown by a tolerance, the edge of the body counts.
+    const edge = body.y + STYLE.resistor.height / 2 + 1.5;
+    expect(pickAt([inventory], body.x, edge)).toBeNull();
+    expect(pickAt([inventory], body.x, edge, 2)).toEqual({ kind: "inventory", key: "part:R3" });
   });
+
 
   test("inventory parts are drawn with the board's own builder, so they're the same size", () => {
     const node = inventoryNode(layoutInventory(board));
@@ -218,7 +239,7 @@ describe("dragging from the inventory", () => {
                   inventory: [{ id: "R2", type: "resistor", value: 20 }] };
 
   test("a lifted part leaves its slot empty", () => {
-    const node = inventoryNode(layoutInventory(board), null, "part:R2");
+    const node = inventoryNode(layoutInventory(board), "part:R2");
     expect(node.getObjectByName("part:R2").getObjectByName("R2")).toBeUndefined();
   });
 

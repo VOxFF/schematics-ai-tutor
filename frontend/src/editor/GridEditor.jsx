@@ -1,26 +1,35 @@
 // Grid editor: one three.js scene (orthographic, top-down) with the board and, to its right,
 // the inventory region, so both share one scale by construction. HTML labels via
-// CSS2DRenderer; every element is its own scene node (scene.js). Pressing an inventory slot
-// starts a drag; over the grid a ghost shows blue/red target points, and a drop places it.
+// CSS2DRenderer; every element is its own scene node (scene.js). Pressing an inventory item or
+// a movable element on the board starts the same drag: the item is held where it was grabbed
+// (no jump to the pointer); over the grid a ghost shows blue/red target points, and a drop places it.
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer.js";
-import { plan } from "./placement.js";
-import { boardBounds, buildBoard, disposeTree, floatingNode, inventoryNode, layoutInventory, previewNode, sceneBounds, slotAt } from "./scene.js";
+import { lift, plan } from "./placement.js";
+import { boardBounds, buildBoard, disposeTree, floatingNode, inventoryNode, layoutInventory, pickAt, previewNode, sceneBounds,
+         slotAnchor, toWorld } from "./scene.js";
 import { CELL, STYLE } from "./style.js";
 
 const MARGIN = 1.04; // a little air around the grid
+const PICK_TOLERANCE_PX = 2; // shapes are hit-tested grown by this many screen pixels
 
+// Props: `drag` is the current drag ({ item, rotation, base?, origin? }, see TutorScreen) or null;
+// `onStartDrag(drag)` starts one, `onDrop(point)` ends it on a grid point, and `onPlan(fits)`
+// reports whether the ghost fits (null off the grid).
 // `startBoard` is the task's starting board: the scene's bounds (and so its scale) are computed
-// from it once per task and never change while the learner edits `board`.
+// from it once per task and never change while the learner edits `board`. It also tells the
+// task's own wires (not movable) from the ones the learner placed. While a placed
+// element is being moved, `board` is the board without it.
 export default function GridEditor({ board, startBoard, readings, drag, onStartDrag, onDrop, onPlan }) {
   const capacity = startBoard?.inventory?.length ?? 0;
   const host = useRef(null);
   const view = useRef(null);
-  const pointer = useRef(null); // last grid point under the pointer while dragging (null off the grid)
-  const pointerWorld = useRef(null); // last world position while dragging, for the free-floating ghost
+  const pointer = useRef(null); // grid point under the dragged item's anchor (null off the grid)
+  const pointerWorld = useRef(null); // world position of the dragged item's anchor, for the free-floating ghost
+  const grab = useRef({ x: 0, y: 0 }); // pointer minus the item's anchor, fixed when the drag starts
   const [unsupported, setUnsupported] = useState(false);
-  const [hover, setHover] = useState(null); // inventory slot key under the pointer
+  const [hover, setHover] = useState(null); // key of the movable element under the pointer
 
   // Renderer, camera and resize handling: created once.
   useEffect(() => {
@@ -117,11 +126,11 @@ export default function GridEditor({ board, startBoard, readings, drag, onStartD
     }
     // A part being dragged leaves its slot at once; the slot closes up after the drop.
     const lifted = drag?.item.kind === "part" ? `part:${drag.item.id}` : null;
-    state.inventory = inventoryNode(state.layout, drag ? null : hover, lifted);
+    state.inventory = inventoryNode(state.layout, lifted);
     state.inventory.position.x = state.inventoryOffset;
     state.scene.add(state.inventory);
     state.render();
-  }, [board, hover, drag, unsupported]);
+  }, [board, drag, unsupported]);
 
   // World point under a pointer event.
   const worldAt = (event) => {
@@ -132,18 +141,39 @@ export default function GridEditor({ board, startBoard, readings, drag, onStartD
                                   -((event.clientY - rect.top) / rect.height) * 2 + 1, 0);
     return ndc.unproject(state.camera);
   };
-  // Grid point under a pointer event, or null when it isn't over the grid.
-  const pointAt = (event) => {
+  // Where the dragged item's anchor is for a pointer event: the pointer minus the grab offset.
+  const anchorAt = (event) => {
     const world = worldAt(event);
+    return world && { x: world.x - grab.current.x, y: world.y - grab.current.y };
+  };
+  // Grid point nearest a world position, or null when it isn't over the grid.
+  const snap = (world) => {
     if (!world || !board) return null;
     const point = [Math.round(world.x / CELL), Math.round(-world.y / CELL)];
     const { columns, rows } = board.grid;
     return point[0] >= 1 && point[1] >= 1 && point[0] <= columns && point[1] <= rows ? point : null;
   };
-  const slotUnder = (event) => {
+  // What a press here would pick up: { key, drag, anchor (world) }, or null. Inventory items and
+  // movable board elements are hit-tested the same way, by their drawn shapes.
+  const pickUp = (event) => {
     const world = worldAt(event);
     const state = view.current;
-    return world && state?.layout ? slotAt(state.layout, world.x - state.inventoryOffset, world.y) : null;
+    if (!world || !state || !board) return null;
+    const tolerance = (PICK_TOLERANCE_PX * (state.camera.right - state.camera.left)) / host.current.clientWidth;
+    const hit = pickAt([state.inventory, state.root], world.x, world.y, tolerance);
+    if (hit?.kind === "inventory") {
+      const slot = state.layout.slots.find((s) => s.key === hit.key);
+      if (!slot) return null;
+      const anchor = slotAnchor(slot);
+      return { key: hit.key, world, anchor: { x: anchor.x + state.inventoryOffset, y: anchor.y },
+               drag: { item: slot.item, rotation: slot.item.kind === "part" ? "E" : slot.item.rotation } };
+    }
+    const lifted = hit && lift(board, hit, startBoard);
+    if (!lifted) return null;
+    const anchor = toWorld(lifted.anchor);
+    return { key: `${hit.kind}:${hit.id}`, world, anchor: { x: anchor.x, y: anchor.y },
+             drag: { item: lifted.item, rotation: lifted.rotation, base: lifted.base,
+                     origin: { anchor: lifted.anchor, rotation: lifted.rotation } } };
   };
 
   // Ghost preview for the dragged item at the last pointer position.
@@ -176,27 +206,28 @@ export default function GridEditor({ board, startBoard, readings, drag, onStartD
   const [, redraw] = useState(0);
   const move = (event) => {
     if (!drag) {
-      setHover(slotUnder(event)?.key ?? null);
+      setHover(pickUp(event)?.key ?? null);
       return;
     }
-    const point = pointAt(event);
+    pointerWorld.current = anchorAt(event);
+    const point = snap(pointerWorld.current);
     const previous = pointer.current;
     const changed = point ? !previous || point[0] !== previous[0] || point[1] !== previous[1] : true;
-    pointerWorld.current = worldAt(event);
     if (changed) {
       pointer.current = point; // null off the grid: the ghost floats, and a release there snaps back
       redraw((n) => n + 1);
     }
   };
   const press = (event) => {
-    const slot = slotUnder(event);
-    if (slot) {
-      event.preventDefault();
-      setHover(null);
-      pointerWorld.current = worldAt(event); // the ghost appears under the pointer at once
-      pointer.current = null;
-      onStartDrag?.(slot.item);
-    }
+    const picked = pickUp(event);
+    if (!picked) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId); // keep the drag when leaving the canvas
+    setHover(null);
+    grab.current = { x: picked.world.x - picked.anchor.x, y: picked.world.y - picked.anchor.y };
+    pointerWorld.current = picked.anchor; // the ghost starts exactly where the item was
+    pointer.current = picked.drag.base ? snap(picked.anchor) : null;
+    onStartDrag?.(picked.drag);
   };
   const leave = () => {
     setHover(null);
@@ -208,7 +239,7 @@ export default function GridEditor({ board, startBoard, readings, drag, onStartD
   };
   const drop = (event) => {
     if (!drag) return;
-    const point = pointAt(event);
+    const point = snap(anchorAt(event));
     pointer.current = null;
     pointerWorld.current = null;
     if (point) {
