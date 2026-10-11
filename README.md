@@ -17,7 +17,7 @@ A Claude-based tutor for learning electric circuits and schematics on an interac
 ./stop.sh
 ```
 
-Open http://127.0.0.1:5173. Server output goes to `.run/backend.log` and `.run/frontend.log`. Usage and cost logs go to `logs/run-<timestamp>.jsonl` (toggle `logs.enabled` in [`config.yaml`](config.yaml)). Details are in [backend/README.md](backend/README.md).
+Open http://127.0.0.1:5173. Server output goes to `.run/backend.log` and `.run/frontend.log`. Usage and cost logs go to `logs/run-<timestamp>.<part>.jsonl`, archived to `logs/history/` (toggle `logs.enabled` in [`config.yaml`](config.yaml)). Details are in [backend/README.md](backend/README.md).
 
 ## Deploy
 

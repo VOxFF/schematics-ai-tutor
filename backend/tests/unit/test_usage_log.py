@@ -36,7 +36,7 @@ def test_claude_call_cost_and_summary(tmp_path):
     log.claude_call(purpose="task_generation", model="unknown-model", usage={"input_tokens": 5})
     log.summary()
 
-    events = read_events(tmp_path / "logs" / "run-r1.jsonl")
+    events = read_events(tmp_path / "logs" / "run-r1.001.jsonl")
     call, unpriced, summary = events
     expected = (1_000 * 4.0 + 500 * 20.0 + 2_000 * 0.2 + 100 * 5.0) / 1e6
     assert call["event"] == "claude_call" and call["session_id"] == "s1"

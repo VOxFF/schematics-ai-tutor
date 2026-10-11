@@ -5,6 +5,14 @@ primary_region = "sjc"
 [build]
   dockerfile = "Dockerfile"
 
+[env]
+  SCHEMATICS_LOGS_DIR = "/data/logs"   # logs and their history on the volume (docs/deployment.md §5)
+
+# Persistent disk for the logs; a deploy replaces everything else on the machine.
+[mounts]
+  source = "logs_data"
+  destination = "/data"
+
 [http_service]
   internal_port = 8080
   force_https = true

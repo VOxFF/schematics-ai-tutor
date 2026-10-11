@@ -130,7 +130,7 @@ flowchart LR
 - **Build status.** Implemented: tutor calls per session (one call in flight, 6 per minute), and the grid size limits for generated tasks only; learner boards aren't size-checked yet. The other limits are planned for deployment ([plan.md](plan.md#2-backend)).
 - **Implementation.** In-memory token buckets in the single backend process. Running several instances would need a shared store such as Redis; that is noted for scale, not built for the prototype.
 - **Configuration.** All limits are settings in `config.yaml` (§5).
-- **Usage and cost log.** When `logs.enabled` is on, the backend writes one JSON-lines file per run, `logs/run-<timestamp>.jsonl` (gitignored). It records server start and stop, every Claude call (purpose, model, learner session ID, token usage, estimated cost from the `pricing` table) and a run summary with totals. Each `./start.sh` is one run; code reloads append to the same file.
+- **Usage and cost log.** When `logs.enabled` is on, the backend writes one JSON-lines log per run, `logs/run-<timestamp>.<part>.jsonl` (gitignored). It records server start and stop, every Claude call (purpose, model, learner session ID, token usage, estimated cost from the `pricing` table), each log archive, and a run summary with totals. Each `./start.sh` is one run; a code reload continues it in a new part. Earlier parts are gzipped into `logs/history/` within a size budget ([deployment.md](deployment.md#5-logs)).
 - **Deployment.** Fly.io: one Docker image on one always-on machine, deployed from GitHub Actions when a PR merges to `main`, then smoke tested. Details are in [deployment.md](deployment.md).
 - **Message size.** No fixed limit yet; the grid size caps already bound it indirectly. Typical message sizes will be observed in practice before a limit is set.
 
@@ -143,9 +143,13 @@ public: false                  # true for a public deployment: hides debug featu
                                # (read by the frontend build; restart the dev server after a change;
                                # SCHEMATICS_PUBLIC overrides it, and the Dockerfile sets true)
 
-logs:
+logs:                          # archived at startup, by size and nightly (deployment.md §5)
   enabled: true                # usage and cost log per backend run
-  dir: logs
+  dir: logs                    # SCHEMATICS_LOGS_DIR overrides it (Fly: /data/logs)
+  history_dir: history         # gzipped earlier parts, inside dir
+  max_file_mb: 20              # archive when a log's current part grows past this
+  history_max_mb: 200          # history budget for all logs; oldest files deleted first
+  nightly_utc: "10:00"         # daily archive (3 am Pacific)
 
 pricing:                       # USD per million tokens, for cost estimates
   claude-opus-5-5: { input: 4.00, output: 20.00, cache_read: 0.20, cache_write: 5.00 }
@@ -263,6 +267,7 @@ schematics-ai-tutor/
 │   │   ├── main.py            FastAPI app: REST endpoints, startup and shutdown
 │   │   ├── config.py          loads the root config.yaml
 │   │   ├── usage_log.py       per-run usage and cost log
+│   │   ├── log_archive.py     log files in parts; gzip into history/, size cap, nightly
 │   │   ├── grid.py            grid format validation
 │   │   ├── graph.py           grid → graph conversion, nets
 │   │   ├── solver.py          DC modified nodal analysis
