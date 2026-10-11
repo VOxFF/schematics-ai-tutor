@@ -81,6 +81,7 @@ Rendered with three.js in an orthographic, top-down view (`frontend/src/editor/`
 - battery plate sizes and colors (the positive plate is red), and the size and placement (distance from the plate and from the wire) of the + and − marks
 - meter radius, outline thickness, fills per type (voltmeter light blue, ammeter light amber) and letter size
 - label size and the gap between a part and its labels
+- selection outline color and width
 
 Editing the file and saving reloads the page in development.
 
@@ -132,10 +133,10 @@ A tutor highlight lasts until the next tutor message, or until the learner edits
 
 | Action | Behavior |
 |---|---|
-| Mouse down on an element | Selects it (blue outline). The same press can turn straight into a drag, with no separate click needed. |
+| Mouse down on an element | Selects it (blue outline). Moving the pointer 4 px or more while pressed turns the same press into a drag, with no separate click needed; less is a click. |
 | Drag from the inventory, the wire palette, or the grid | The grid points nearest the element's pins are highlighted, showing where it will connect |
 | **R** while dragging | Rotates the element; the pin highlights follow the new orientation |
-| **R** while selected | Rotates the element in place |
+| **R** while selected | Rotates the element in place, a quarter turn clockwise: a part around its body, a wire piece around its anchor. If the turned element wouldn't fit, nothing changes and the hint bar says why. |
 | Release on a valid spot | Drops the element onto the highlighted points. A new wire piece gets the next wire ID. |
 | Release on an invalid spot | The element snaps back to where it came from: the inventory, the palette, or its previous position |
 | **Esc** while dragging | Cancels the drag; the element snaps back |
@@ -143,7 +144,9 @@ A tutor highlight lasts until the next tutor message, or until the learner edits
 | Click empty grid, or **Esc** | Deselects |
 | Hover a point | Highlights every point and pin in the same net |
 
-- **Fixed parts** can be selected, so they show the outline and the hint bar explains them, but they can't be dragged, rotated or deleted.
+- **Fixed parts** and the task's own wires can be selected, so they show the outline and the hint bar explains them, but they can't be dragged, rotated or deleted.
+- **Selection outline.** Every shape of the element is copied, grown by `selection.width` and drawn just behind it in `selection.color` (both in `schematic-style.yaml`), so only a silhouette line shows. The copies don't count for picking. The selection survives moves and rotations (the element keeps its `id`), and clears on Del, Esc, a press on empty space, Reset board, or a new task.
+- **Keys** (R, Del, Esc) are ignored while the learner is typing in the chat.
 - **Sending edits.** Each finished edit (drop, rotate, delete) sends one `board.update`. Dragging stays local until the drop.
 - **Anchor points.** A part is dropped by its **body** point; its pins land on the neighboring points in the direction of its orientation (new parts start horizontal, `E`). A wire piece is dropped by its **anchor**: the left end of a straight piece, or the shared point of a corner, T or +.
 - **Reset board** (bottom-left corner of the editor field, next to the JSON toggle) puts the board back to the task's start; the learner's edited board is saved in the session until then.
@@ -155,7 +158,7 @@ A tutor highlight lasts until the next tutor message, or until the learner edits
   - **Movable:** non-`fixed` parts and wire pieces the learner placed. `fixed` parts and the task's own wires stay put.
   - Over the grid the ghost snaps with blue/red target points; elsewhere it floats. Esc, an invalid spot, or a release off the grid puts the element back where it came from.
   - The drag survives the pointer leaving the editor (pointer capture).
-- **Build status.** Shape picking and dragging from the inventory, the wire palette and the board are implemented. Selection, rotating in place and Del come next.
+- **Build status.** Shape picking, dragging from the inventory, the wire palette and the board, selection with its outline, R in place and Del are implemented. Tutor highlights and net hover come later.
 
 ## 5. Hint bar
 
@@ -163,11 +166,11 @@ The frontend generates the hint text from the current UI state. Claude and the b
 
 | UI state | Hint |
 |---|---|
-| Nothing selected | "Click or drag an element on the grid, or drag one from the inventory" |
-| Part or wire selected | "Drag to move · R to rotate · Del to remove · Esc to deselect" |
-| Fixed part selected | "This part is fixed and can't be moved" |
-| Dragging a part | "Drop onto the highlighted points to connect · R to rotate · Esc to cancel" |
-| Dragging a wire piece | "Drop onto the highlighted points · R to rotate · Esc to cancel" |
+| Nothing selected | "Drag a part or a wire piece from the inventory onto the grid, or move one you placed" |
+| Part or wire selected | "R2 selected · drag to move · R to rotate · Del to remove · Esc to deselect" |
+| Fixed part or task wire selected | "V1 is part of the task: it can't be moved, rotated or removed · Esc to deselect" |
+| R pressed, but the turned element doesn't fit | "Can't rotate R2 here: the turned part would overlap or leave the grid" |
+| Dragging | "Drop onto the highlighted points to connect · R to rotate · Esc to cancel" |
 | Dragging over an invalid spot | "Can't place here: the spot is taken or off the grid" |
 
 ## 6. Inventory

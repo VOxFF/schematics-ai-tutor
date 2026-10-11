@@ -550,6 +550,10 @@ button:focus-visible {
   cursor: grab;
 }
 
+.grid-editor.over-fixed {
+  cursor: pointer; /* selectable, but it can't be moved */
+}
+
 .editor-title {
   font-weight: 700;
   color: var(--text);

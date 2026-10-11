@@ -1,35 +1,39 @@
 // Grid editor: one three.js scene (orthographic, top-down) with the board and, to its right,
 // the inventory region, so both share one scale by construction. HTML labels via
-// CSS2DRenderer; every element is its own scene node (scene.js). Pressing an inventory item or
-// a movable element on the board starts the same drag: the item is held where it was grabbed
+// CSS2DRenderer; every element is its own scene node (scene.js). Pressing an inventory item
+// starts a drag; pressing a board element selects it (blue outline), and moving the pointer a
+// few pixels turns that press into the same drag. A dragged item is held where it was grabbed
 // (no jump to the pointer); over the grid a ghost shows blue/red target points, and a drop places it.
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import { lift, plan } from "./placement.js";
-import { boardBounds, buildBoard, disposeTree, floatingNode, inventoryNode, layoutInventory, pickAt, previewNode, sceneBounds,
-         slotAnchor, toWorld } from "./scene.js";
+import { boardBounds, buildBoard, disposeTree, floatingNode, inventoryNode, layoutInventory, outline, pickAt, previewNode,
+         sceneBounds, slotAnchor, toWorld } from "./scene.js";
 import { CELL, STYLE } from "./style.js";
 
 const MARGIN = 1.04; // a little air around the grid
 const PICK_TOLERANCE_PX = 2; // shapes are hit-tested grown by this many screen pixels
+const DRAG_THRESHOLD_PX = 4; // a press on a board element that moves less than this is a click
 
 // Props: `drag` is the current drag ({ item, rotation, base?, origin? }, see TutorScreen) or null;
 // `onStartDrag(drag)` starts one, `onDrop(point)` ends it on a grid point, and `onPlan(fits)`
-// reports whether the ghost fits (null off the grid).
+// reports whether the ghost fits (null off the grid). `selected` ({ kind, id } or null) is the
+// selected board element, drawn with an outline; `onSelect(selection)` changes it.
 // `startBoard` is the task's starting board: the scene's bounds (and so its scale) are computed
 // from it once per task and never change while the learner edits `board`. It also tells the
 // task's own wires (not movable) from the ones the learner placed. While a placed
 // element is being moved, `board` is the board without it.
-export default function GridEditor({ board, startBoard, readings, drag, onStartDrag, onDrop, onPlan }) {
+export default function GridEditor({ board, startBoard, readings, drag, onStartDrag, onDrop, onPlan, selected, onSelect }) {
   const capacity = startBoard?.inventory?.length ?? 0;
   const host = useRef(null);
   const view = useRef(null);
   const pointer = useRef(null); // grid point under the dragged item's anchor (null off the grid)
   const pointerWorld = useRef(null); // world position of the dragged item's anchor, for the free-floating ghost
   const grab = useRef({ x: 0, y: 0 }); // pointer minus the item's anchor, fixed when the drag starts
+  const pending = useRef(null); // a press on a movable board element that may still become a drag
   const [unsupported, setUnsupported] = useState(false);
-  const [hover, setHover] = useState(null); // key of the movable element under the pointer
+  const [hover, setHover] = useState(null); // under the pointer: "grab" (movable), "select" (fixed) or null
 
   // Renderer, camera and resize handling: created once.
   useEffect(() => {
@@ -101,10 +105,12 @@ export default function GridEditor({ board, startBoard, readings, drag, onStartD
       disposeTree(state.root);
     }
     state.root = buildBoard(board, readings ?? {});
+    const node = selected && state.root.getObjectByName(selected.id);
+    if (node && node.userData.kind === selected.kind) outline(node);
     state.scene.add(state.root);
     state.layout = layoutInventory(board, capacity);
     state.render();
-  }, [board, capacity, readings, unsupported]);
+  }, [board, capacity, readings, selected, unsupported]);
 
   // Scene bounds: once per task, from its starting board. The inventory column reserves the
   // starting inventory's rows, so its width and height never change during the task.
@@ -116,7 +122,7 @@ export default function GridEditor({ board, startBoard, readings, drag, onStartD
     state.fit();
   }, [startBoard, capacity, unsupported]);
 
-  // The inventory region; rebuilt when its contents or the hovered slot change.
+  // The inventory region; rebuilt when its contents or the drag change.
   useEffect(() => {
     const state = view.current;
     if (!state || !state.layout) return;
@@ -153,27 +159,40 @@ export default function GridEditor({ board, startBoard, readings, drag, onStartD
     const { columns, rows } = board.grid;
     return point[0] >= 1 && point[1] >= 1 && point[0] <= columns && point[1] <= rows ? point : null;
   };
-  // What a press here would pick up: { key, drag, anchor (world) }, or null. Inventory items and
-  // movable board elements are hit-tested the same way, by their drawn shapes.
-  const pickUp = (event) => {
+  // The element under a pointer event, hit-tested by its drawn shape: { world, hit } where
+  // `hit` is the picked node's userData (inventory slot or board element) or null.
+  const hitUnder = (event) => {
     const world = worldAt(event);
     const state = view.current;
-    if (!world || !state || !board) return null;
+    if (!world || !state || !board) return { world, hit: null };
     const tolerance = (PICK_TOLERANCE_PX * (state.camera.right - state.camera.left)) / host.current.clientWidth;
-    const hit = pickAt([state.inventory, state.root], world.x, world.y, tolerance);
+    return { world, hit: pickAt([state.inventory, state.root], world.x, world.y, tolerance) };
+  };
+  // What dragging `hit` would carry: { anchor (world), drag }, or null when it can't move.
+  // Inventory items and movable board elements go through the same drag.
+  const dragFor = (hit) => {
+    const state = view.current;
     if (hit?.kind === "inventory") {
       const slot = state.layout.slots.find((s) => s.key === hit.key);
       if (!slot) return null;
       const anchor = slotAnchor(slot);
-      return { key: hit.key, world, anchor: { x: anchor.x + state.inventoryOffset, y: anchor.y },
+      return { anchor: { x: anchor.x + state.inventoryOffset, y: anchor.y },
                drag: { item: slot.item, rotation: slot.item.kind === "part" ? "E" : slot.item.rotation } };
     }
     const lifted = hit && lift(board, hit, startBoard);
     if (!lifted) return null;
     const anchor = toWorld(lifted.anchor);
-    return { key: `${hit.kind}:${hit.id}`, world, anchor: { x: anchor.x, y: anchor.y },
+    return { anchor: { x: anchor.x, y: anchor.y },
              drag: { item: lifted.item, rotation: lifted.rotation, base: lifted.base,
                      origin: { anchor: lifted.anchor, rotation: lifted.rotation } } };
+  };
+  // Start dragging, keeping the offset between the pointer (at `world`) and the item's anchor.
+  const begin = (world, carried) => {
+    setHover(null);
+    grab.current = { x: world.x - carried.anchor.x, y: world.y - carried.anchor.y };
+    pointerWorld.current = carried.anchor; // the ghost starts exactly where the item was
+    pointer.current = carried.drag.base ? snap(carried.anchor) : null;
+    onStartDrag?.(carried.drag);
   };
 
   // Ghost preview for the dragged item at the last pointer position.
@@ -205,8 +224,16 @@ export default function GridEditor({ board, startBoard, readings, drag, onStartD
 
   const [, redraw] = useState(0);
   const move = (event) => {
+    const held = pending.current;
+    if (held) {
+      if (Math.hypot(event.clientX - held.x, event.clientY - held.y) < DRAG_THRESHOLD_PX) return;
+      pending.current = null;
+      begin(held.world, held.carried); // from where it was pressed: no jump
+      return;
+    }
     if (!drag) {
-      setHover(pickUp(event)?.key ?? null);
+      const { hit } = hitUnder(event);
+      setHover(hit ? (dragFor(hit) ? "grab" : "select") : null);
       return;
     }
     pointerWorld.current = anchorAt(event);
@@ -219,15 +246,14 @@ export default function GridEditor({ board, startBoard, readings, drag, onStartD
     }
   };
   const press = (event) => {
-    const picked = pickUp(event);
-    if (!picked) return;
+    const { world, hit } = hitUnder(event);
+    if (hit?.kind !== "inventory") onSelect?.(hit ? { kind: hit.kind, id: hit.id } : null); // empty space deselects
+    const carried = dragFor(hit);
+    if (!carried) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId); // keep the drag when leaving the canvas
-    setHover(null);
-    grab.current = { x: picked.world.x - picked.anchor.x, y: picked.world.y - picked.anchor.y };
-    pointerWorld.current = picked.anchor; // the ghost starts exactly where the item was
-    pointer.current = picked.drag.base ? snap(picked.anchor) : null;
-    onStartDrag?.(picked.drag);
+    if (hit.kind === "inventory") begin(world, carried);
+    else pending.current = { x: event.clientX, y: event.clientY, world, carried };
   };
   const leave = () => {
     setHover(null);
@@ -238,6 +264,7 @@ export default function GridEditor({ board, startBoard, readings, drag, onStartD
     }
   };
   const drop = (event) => {
+    pending.current = null; // released before moving: just a click (selection)
     if (!drag) return;
     const point = snap(anchorAt(event));
     pointer.current = null;
@@ -252,7 +279,7 @@ export default function GridEditor({ board, startBoard, readings, drag, onStartD
   return (
     <div
       ref={host}
-      className={`grid-editor${drag ? " dragging" : ""}${hover ? " over-item" : ""}`}
+      className={`grid-editor${drag ? " dragging" : ""}${hover === "grab" ? " over-item" : ""}${hover === "select" ? " over-fixed" : ""}`}
       aria-label="Grid"
       onPointerDown={press}
       onPointerMove={move}
