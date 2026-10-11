@@ -5,6 +5,7 @@
 .env
 logs
 state
+research
 docs
 backend/keys
 backend/.venv

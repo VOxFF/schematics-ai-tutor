@@ -134,8 +134,9 @@ A deploy replaces the machine's filesystem, so the logs live on a **Fly volume**
 | `/data/logs/` | The current part of each log: `<log>-<run id>.<part>.jsonl`, e.g. `run-20261011-172121.003.jsonl` |
 | `/data/logs/history/` | Archived parts of all logs, gzipped: `<log>-<run id>.<part>.jsonl.gz` |
 | `/data/state/` | Not a log: the day's Claude spend, `claude-budget.json`, so a deploy doesn't reset the budget ([design.md](design.md#rate-limits)) |
+| `/data/research/` | Not a log: learner experience records, with consent, one folder per learner ([design.md](design.md#5-learner-experience-research)). Never archived or served; collected with `research.sh`. |
 
-- `SCHEMATICS_LOGS_DIR=/data/logs` (`[env]` in `fly.toml`) overrides `logs.dir` in `config.yaml`, and `SCHEMATICS_STATE_DIR=/data/state` overrides `claude_budget.state_dir` in `ratelimiting.yaml`. Locally the same code uses the repo's `logs/` and `state/` folders.
+- `SCHEMATICS_LOGS_DIR=/data/logs` (`[env]` in `fly.toml`) overrides `logs.dir` in `config.yaml`, and `SCHEMATICS_STATE_DIR=/data/state` overrides `claude_budget.state_dir` in `ratelimiting.yaml`. `SCHEMATICS_RESEARCH_DIR=/data/research` overrides `research.dir` in `config.yaml`. Locally the same code uses the repo's `logs/`, `state/` and `research/` folders.
 - A 1 GB volume is plenty: the history is capped well below it (`history_max_mb`), and it costs about $0.15 a month.
 - File names sort in time order: the run id is the start time, and the part number grows within a run.
 
@@ -196,6 +197,9 @@ fly deploy --image <image>         # roll back to a past release's image
 fly ssh console                    # shell on the machine
 fly secrets list                   # names only, never values
 fly ssh sftp get /data/logs/history/<file>   # copy an archived log (§5)
+./research.sh list                 # research records on the volume, per learner
+./research.sh pull                 # download them into ./research (gitignored)
+./research.sh delete <learner_id>  # remove one learner's records, e.g. on request
 ```
 
 **Manual recovery,** when the automatic rollback fails:

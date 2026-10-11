@@ -39,6 +39,8 @@
   --knowledge-edge: #d4a72c;
   --hint-tint: #f5f0ff;
   --hint-edge: #a475f9;
+  --experience-tint: #e6f7f5;
+  --experience-edge: #2fb5a5;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   color: var(--text);
   background: var(--bg);
@@ -158,6 +160,31 @@ button.large {
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--muted);
+}
+
+/* Research consent: an opt-in checkbox and, once checked, an optional name. */
+.start .research {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+  color: var(--info);
+  font-size: var(--info-size);
+}
+
+.start .research label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.start .research-name {
+  font: inherit;
+  max-width: 260px;
+  margin-left: 24px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }
 
 .start-action {
@@ -527,6 +554,7 @@ button.danger {
 .chat .kind-question { --tint: var(--question-tint); --edge: var(--question-edge); }
 .chat .kind-knowledge { --tint: var(--knowledge-tint); --edge: var(--knowledge-edge); }
 .chat .kind-hint { --tint: var(--hint-tint); --edge: var(--hint-edge); }
+.chat .kind-experience { --tint: var(--experience-tint); --edge: var(--experience-edge); }
 
 @keyframes message-in {
   from {

@@ -83,6 +83,36 @@ test("a new learner sees the start screen, then gets a task", async () => {
   expect(JSON.parse(localStorage.getItem(SESSION_KEY)).chat).toEqual([{ role: "tutor", ...welcome }]);
 });
 
+test("research consent and a name are saved with the session and sent to the server", async () => {
+  mockFetch(ok({ level: LEVEL, difficulty: 3, rationale: "", attempts: 1 }));
+  render(<App />);
+  expect(screen.queryByLabelText("Your name (optional)")).toBeNull(); // only after opting in
+  fireEvent.click(screen.getByRole("checkbox"));
+  fireEvent.change(screen.getByLabelText("Your name (optional)"), { target: { value: " Ada " } });
+  fireEvent.click(screen.getByRole("button", { name: "Start Learning" }));
+  await screen.findByPlaceholderText("Ask the tutor…");
+  const research = JSON.parse(localStorage.getItem(SESSION_KEY)).research;
+  expect(research).toMatchObject({ consent: true, name: "Ada" });
+  expect(research.learner_id).toMatch(/^[0-9a-f-]{36}$/);
+  expect(FakeSocket.last.sent[0]).toMatchObject({ type: "session.start", research });
+});
+
+test("a blank name gets a generated one; no consent records nothing", async () => {
+  mockFetch(ok({ level: LEVEL, difficulty: 3, rationale: "", attempts: 1 }));
+  const { unmount } = render(<App />);
+  fireEvent.click(screen.getByRole("checkbox"));
+  fireEvent.click(screen.getByRole("button", { name: "Start Learning" }));
+  await screen.findByPlaceholderText("Ask the tutor…");
+  expect(JSON.parse(localStorage.getItem(SESSION_KEY)).research.name).toMatch(/^\w+ \w+ \d{2}$/);
+  unmount();
+  localStorage.clear();
+
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Start Learning" }));
+  await screen.findByPlaceholderText("Ask the tutor…");
+  expect(JSON.parse(localStorage.getItem(SESSION_KEY)).research).toEqual({ consent: false });
+});
+
 test("/start shows the start screen and keeps the saved progress", async () => {
   const saved = { progress: { skill_level: 4, history: [] }, level: LEVEL, chat: [] };
   localStorage.setItem(SESSION_KEY, JSON.stringify(saved));

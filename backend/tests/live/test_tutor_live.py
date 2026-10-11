@@ -101,3 +101,20 @@ def test_tutor_teaches_a_topic_it_has_not_explained(config):
     print(f"cost: ${usage_log.totals['cost_usd']:.4f}")
     assert chat["kind"] == "knowledge" and chat["title"]
     assert next(t for t in profile["topics"] if t["id"] == "voltmeter")["explained"] == 1
+
+
+def test_feedback_conversation_asks_a_follow_up_without_tutoring(config, tmp_path):
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        pytest.skip("ANTHROPIC_API_KEY is not set (./test.sh live loads backend/keys/apikey.txt)")
+    from app.research import Research, ResearchLog
+
+    usage_log = UsageLog.from_config(config, REPO_ROOT, "live-test")
+    research = Research(ResearchLog(tmp_path), config, anthropic.AsyncAnthropic(), usage_log, "live")
+    research.start({"consent": True, "learner_id": "0b7e3c1a-5f2d-4c8e-9a1b-2c3d4e5f6a7b"}, {}, {}, {})
+    research.active_s = 600
+    research.prompt_due(3, "open_circuit")
+    reply = asyncio.run(research.reply("The hints are too vague, and why is my voltmeter reading 12 V?"))
+    print(json.dumps(reply, indent=2, ensure_ascii=False))
+    print(f"cost: ${usage_log.totals['cost_usd']:.4f}")
+    assert reply["kind"] == "experience" and reply["text"]
+    assert research.thread_open  # a follow-up question, not the end

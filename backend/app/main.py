@@ -17,6 +17,7 @@ from .config import REPO_ROOT, config_path, load_config
 from .log_archive import LogArchive
 from .rate_limits import RateLimiter, client_ip
 from .reply_composer import welcome
+from .research import ResearchLog
 from .session import Session
 from .task_cache import TaskCache
 from .task_generation import generate_task
@@ -56,6 +57,8 @@ async def lifespan(app: FastAPI):
     app.state.config = config
     app.state.usage_log = usage_log
     app.state.references = References()
+    # Learner experience research, with consent (docs/design.md §5); None when it's off.
+    app.state.research_log = ResearchLog.from_config(config, REPO_ROOT, usage_log)
     # The SDK reads ANTHROPIC_API_KEY from the environment; without it, Claude features are off.
     app.state.claude = anthropic.AsyncAnthropic() if os.environ.get("ANTHROPIC_API_KEY") else None
     app.state.task_cache = task_cache(app.state.claude, config, usage_log, limits)
@@ -109,6 +112,10 @@ def get_references(conn: HTTPConnection) -> dict:
 
 def get_task_cache(conn: HTTPConnection) -> TaskCache | None:
     return getattr(conn.app.state, "task_cache", None)  # absent when the app runs without its lifespan
+
+
+def get_research_log(conn: HTTPConnection) -> ResearchLog | None:
+    return getattr(conn.app.state, "research_log", None)  # absent when the app runs without its lifespan
 
 
 def get_limits(conn: HTTPConnection) -> RateLimiter:
@@ -195,6 +202,7 @@ async def session_socket(
     references: dict = Depends(get_references),
     cache: TaskCache | None = Depends(get_task_cache),
     limits: RateLimiter = Depends(get_limits),
+    research_log: ResearchLog | None = Depends(get_research_log),
 ) -> None:
     await websocket.accept()
     ip = client_ip(websocket)
@@ -213,7 +221,7 @@ async def session_socket(
             pass  # the learner left; nothing to deliver to
 
     session = Session(send, config=config, claude=claude, usage_log=usage_log, references=references,
-                      task_cache=cache, limits=limits)
+                      task_cache=cache, limits=limits, research_log=research_log)
     try:
         while True:
             message = await websocket.receive_json()

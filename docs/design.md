@@ -320,35 +320,20 @@ class Research:                        # one per learning session; inert without
 
 ### Configuration
 
-Planned for `config.yaml` (§7), with the feedback conversation's call settings under `claude`:
-
-```yaml
-research:
-  enabled: true
-  dir: research                # SCHEMATICS_RESEARCH_DIR overrides it (Fly: /data/research)
-  max_mb_per_learner: 20
-  prompt_from_level: 3         # curriculum level
-  prompt_every_active_min: 10
-  max_followups: 2
-
-claude:
-  experience:                  # the feedback conversation
-    model: claude-opus-5-5
-    effort: low
-    max_tokens: 16000
-    timeout_s: 30
-```
+The `research` block and `claude.experience` in `config.yaml` (§7): the folder, the size cap per learner, when the 🔔 prompt comes, how many follow-ups, and the feedback conversation's model.
 
 ### Collecting the data
 
 - **Where:** on Fly, the `/data` volume ([deployment.md](deployment.md#5-logs)); locally, `research/` in the repo root. Both are gitignored and outside the image, and no endpoint reads them.
 - **`research.sh pull`** downloads the volume's `research/` folder over `fly ssh` (a tar stream) into the local `research/` folder. It works only with the Fly credentials of the app's owner.
 - **`research.sh delete <learner_id>`** removes one learner's records on the server, for a learner who asks.
-- **Costs:** recording is free. Each feedback turn is one Claude call at low effort, at most `1 + max_followups` per prompt, and it counts against the per-session tutor rate limit and the daily budget like any tutor call.
+- **Costs:** recording is free, and so is the 🔔 prompt: its text is fixed. Each learner answer in the conversation is one Claude call at low effort, at most `1 + max_followups` per prompt, and it counts against the per-session tutor rate limit and the daily budget like any tutor call.
 
 ### Status
 
-Designed; not built yet ([plan.md](plan.md#6-polishing)). The interfaces go into [contract.md](contract.md), the start screen and the chat kind into [gui.md](gui.md), the config block into §7 and the module into the repository layout (§9) as they are built.
+Built: `research.py` (`ResearchLog`, `Research`), its hooks in `session.py`, the start screen's consent and name, the `experience` chat kind and `research.sh`. Interfaces are in [contract.md](contract.md), the start screen and the chat kind in [gui.md](gui.md), collecting on Fly in [deployment.md](deployment.md#6-manual-operations).
+
+- **Active time is per connection.** It's counted in the server's session, so a reload or a reconnect starts the 10 minutes over. That only delays a prompt, which is acceptable.
 
 ## 6. Security and operations
 
@@ -466,6 +451,11 @@ claude:
     effort: low
     max_tokens: 16000
     timeout_s: 30
+  experience:                  # the 🔔 feedback conversation (research, docs/design.md §5)
+    model: claude-opus-5-5
+    effort: low
+    max_tokens: 16000
+    timeout_s: 30
   task_generation:
     model: claude-opus-5-5
     effort: high
@@ -488,6 +478,14 @@ pregeneration:                 # tasks generated ahead of time and cached (§3)
   first_task_pool: 2           # ready first tasks for new learners, filled at startup
   max_entries: 50              # cached or running generations, oldest dropped first
   ttl_s: 3600                  # a cached task older than this is dropped
+
+research:                      # learner experience research, with consent (docs/design.md §5)
+  enabled: true
+  dir: research                # SCHEMATICS_RESEARCH_DIR overrides it (Fly: /data/research)
+  max_mb_per_learner: 20
+  prompt_from_level: 3         # curriculum level
+  prompt_every_active_min: 10
+  max_followups: 2
 
 evaluator:
   near_target_ratio: 0.10      # "near_target" when within 10% of every target
@@ -526,6 +524,7 @@ schematics-ai-tutor/
 ├── check.sh                   integrity checks: docs, config, layout, secrets, tests
 ├── test.sh                    backend tests: unit + api, or live (real Claude)
 ├── smoke.sh                   smoke test of a deployed app (docs/deployment.md)
+├── research.sh                research records on Fly: list, pull into research/, delete one learner (§5)
 ├── .env.example               optional local overrides (copy to .env)
 ├── .gitignore
 ├── .github/
@@ -554,6 +553,7 @@ schematics-ai-tutor/
 │   │   ├── usage_log.py       per-run usage and cost log
 │   │   ├── log_archive.py     log files in parts; gzip into history/, size cap, nightly
 │   │   ├── rate_limits.py     rate limits and the daily Claude budget (ratelimiting.yaml)
+│   │   ├── research.py        learner experience research: consent, records, the feedback prompt and conversation
 │   │   ├── grid.py            grid format validation
 │   │   ├── graph.py           grid → graph conversion, nets
 │   │   ├── solver.py          DC modified nodal analysis
@@ -606,6 +606,7 @@ schematics-ai-tutor/
 │   │   └── lib/
 │   │       ├── api.js         backend calls
 │   │       ├── session.js     localStorage session
+│   │       ├── names.js       generated names for learners who leave the research name blank
 │   │       ├── tutorSession.js WebSocket session hook (chat, live evaluation)
 │   │       ├── jsonfmt.js     readable JSON, same rules as the backend formatter
 │   │       └── build.js       build-time settings from config.yaml (`public`)
@@ -613,6 +614,7 @@ schematics-ai-tutor/
 │   └── dist/                  production build output (gitignored)
 ├── logs/                      usage and cost logs, one per run (gitignored)
 ├── state/                     state kept across restarts: the day's Claude spend (gitignored)
+├── research/                  research records, with consent; pulled by research.sh (gitignored)
 └── .run/                      PID files and server output from start.sh (gitignored)
 ```
 

@@ -18,7 +18,8 @@ One static screen, with no sign-up and no backend call:
 
 1. **What it is:** "Learn electronics by building real circuits, experimenting with components, and discovering how electricity works — with an AI tutor guiding you along the way."
 2. **Your Learning Path:** 8 steps in one column of pills, each with a one-line note on what the learner discovers: Closed Loop, Measuring Voltage, Measuring Current, Ohm's Law, Series Circuits, Parallel Circuits, Power and Safety, Troubleshooting. The first step has a lightning icon (where the learner starts); the rest have a lock icon. Tasks adapt to the learner, so it is shown as a typical path, not a fixed sequence.
-3. **One large, centered Start Learning button.**
+3. **Research consent:** an unchecked checkbox, "Help improve the tutor: record my session (boards and chat) for research". Checking it shows an optional name field; a blank name gets a generated one, e.g. "Curious Otter 42" ([design.md](design.md#5-learner-experience-research)).
+4. **One large, centered Start Learning button.**
 
 Everything sits in one light card with rounded corners. Below the card, at the bottom left, an italic note reads "Tasks adapt to you, so your path may differ."
 
@@ -34,6 +35,7 @@ A reload or a closed tab must not lose anything. The browser saves the learner's
 - the chat history
 - the previous task's curriculum level, shown in the header while the next task loads
 - the learner profile: the topics the learner has met, with their scores ([design.md](design.md#learner-profile))
+- the research consent for this session: `{ consent, learner_id, name }`
 
 On load, if a saved session exists, the app opens the learning screen and sends it with `session.start` ([contract.md](contract.md#websocket-session)), and the backend resumes from it. The server-side reference solution is lost if the reconnect lands on a different server instance. Grading is unaffected, and the tutor works without the reference.
 
@@ -206,6 +208,7 @@ The inventory is drawn **inside the editor's three.js scene**, in a column right
   | `question` | pink | ❓ |
   | `knowledge` | gold | 📘 |
   | `hint` | purple | 🔑 |
+  | `experience` | teal | 🔔 |
 
   The icon and the title come from the backend's reply composer; the tints are CSS variables in `frontend/src/index.css`.
 - **Welcome:** each new task opens with a tutor message, added to the chat when the task arrives ([design.md](design.md#welcome-message)). It is gold (`knowledge`) when the task brings new topics, else blue (`feedback`).

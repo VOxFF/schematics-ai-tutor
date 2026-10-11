@@ -265,7 +265,7 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
       ? [...(current.misconceptions ?? []), meta.misconception] : current.misconceptions ?? [],
   })), [onTask]);
   const tutor = useTutorSession(level, chat, onChat, board, progress,
-                                { hintLevel, onReply, profile: session.profile, onProfile });
+                                { hintLevel, onReply, profile: session.profile, onProfile, research: session.research });
   const askHint = () => {
     if (tutor.askHint()) onTask?.(() => ({ hint_offered: false }));
   };

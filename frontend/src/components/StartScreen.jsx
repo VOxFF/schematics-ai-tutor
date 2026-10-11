@@ -1,5 +1,7 @@
 // Start screen for new learners (docs/gui.md §1).
 
+import { useState } from "react";
+
 // Typical path for a beginner: [title, what the learner discovers]. Each must fit one line.
 const PATH = [
   ["Closed Loop", "Current flows only around a complete loop"],
@@ -25,7 +27,10 @@ const Lock = () => (
   </svg>
 );
 
+// `onStart({ consent, name })`: the learner's research choice for this session (docs/design.md §5).
 export default function StartScreen({ onStart }) {
+  const [consent, setConsent] = useState(false);
+  const [name, setName] = useState("");
   return (
     <main className="start">
       <div className="start-card">
@@ -48,8 +53,19 @@ export default function StartScreen({ onStart }) {
           </ol>
         </section>
 
+        <div className="research">
+          <label>
+            <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+            Help improve the tutor: record my session (boards and chat) for research
+          </label>
+          {consent && (
+            <input className="research-name" aria-label="Your name (optional)" placeholder="Your name (optional)"
+                   maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />
+          )}
+        </div>
+
         <div className="start-action">
-          <button className="primary large" onClick={onStart}>
+          <button className="primary large" onClick={() => onStart({ consent, name })}>
             Start Learning
           </button>
         </div>

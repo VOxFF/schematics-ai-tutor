@@ -16,8 +16,10 @@ function socketUrl() {
 // progress: sent with session.start, so the server can pre-generate the task after this one;
 // hintLevel: the hint level reached in this task, sent with session.start so the ladder continues;
 // onReply(meta, hintOffered): each tutor reply's metadata, for the task's hint and misconception record;
-// profile / onProfile: the learner profile, sent with session.start and saved from each server update.
-export function useTutorSession(level, chat, onChat, board, progress, { hintLevel = 0, onReply, profile, onProfile } = {}) {
+// profile / onProfile: the learner profile, sent with session.start and saved from each server update;
+// research: the learner's research consent, sent with session.start (docs/design.md §5).
+export function useTutorSession(level, chat, onChat, board, progress,
+                                { hintLevel = 0, onReply, profile, onProfile, research } = {}) {
   const [connected, setConnected] = useState(false);
   const [thinking, setThinking] = useState(false);
   const [evaluation, setEvaluation] = useState(null);
@@ -41,6 +43,8 @@ export function useTutorSession(level, chat, onChat, board, progress, { hintLeve
   onReplyRef.current = onReply;
   const profileRef = useRef(profile);
   profileRef.current = profile;
+  const researchRef = useRef(research);
+  researchRef.current = research;
   const onProfileRef = useRef(onProfile);
   onProfileRef.current = onProfile;
   const seq = useRef(0);
@@ -56,7 +60,7 @@ export function useTutorSession(level, chat, onChat, board, progress, { hintLeve
     seq.current = 0; // a new server session numbers boards from 0 (its session.start board)
     ws.send(JSON.stringify({ type: "session.start", level: levelRef.current, board: boardRef.current, history,
                              progress: progressRef.current, hint_level: hintRef.current,
-                             profile: profileRef.current }));
+                             profile: profileRef.current, research: researchRef.current }));
   }, []);
 
   // A message (`text`) or a hint request (`text` undefined).
