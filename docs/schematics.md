@@ -213,6 +213,7 @@ flowchart TD
 - **Generation follows the level.** The backend picks the grid size within the level's range and sends Claude the level's rules: concept, goal, circuit, what to remove, decoys, targets, and the task's variant. Claude chooses the circuit within those rules; a random variation hint (layout, source voltage, resistor range) keeps tasks different even for identical learners.
 - **The backend checks the fit** (validation stage 1): grid size, number of removed wires, parts and meters, decoys and targets. A task that doesn't fit its level is regenerated like any other failure.
 - **Centered, balanced layout.** The circuit must be centered on the grid: free columns left and right differ by at most one, and so do free rows above and below. The backend checks this. Claude is also asked to prefer symmetric arrangements and to center parts on their wire runs where it can.
+- **Room for labels.** Two parts side by side and parallel (e.g. a voltmeter across a resistor) are at least 2 grid steps apart, so their labels don't overlap. This is a prompt rule only; the backend doesn't check it.
 - **Curated levels.** These hand-made levels are the very first task and the fallback when generation fails. Each is tagged with the skill level it suits.
 
 ### Generation: Claude proposes, the backend decides

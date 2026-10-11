@@ -84,6 +84,9 @@ Layout
   right differ by at most one, and so do free rows above and below.
 - Prefer symmetric arrangements, horizontally and vertically. Center a part on its wire
   run when you can (e.g. a resistor in the middle of the top edge).
+- Keep labels readable: two parts side by side and parallel (e.g. a voltmeter across
+  a resistor) must be at least 2 grid steps apart, with a free row or column between
+  them, so their labels don't overlap. Never place them on neighboring rows or columns.
 - IDs are unique across components, wires and decoys: V1, R1, VM1, AM1, W1, ...
 - Points connect only through wire segments; a pin connects to the wires touching it.
 
