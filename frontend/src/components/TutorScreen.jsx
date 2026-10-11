@@ -3,7 +3,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import GridEditor from "../editor/GridEditor.jsx";
-import { PartIcon, WireIcon, partCaption, partName } from "../editor/InventoryIcons.jsx";
+import { partName } from "../editor/naming.js";
 import { WIRE_PALETTE, nextOrientation, place } from "../editor/placement.js";
 import { readableJson } from "../lib/jsonfmt.js";
 import { useTutorSession } from "../lib/tutorSession.js";
@@ -89,8 +89,7 @@ function TaskPanel({ level, evaluation }) {
   );
 }
 
-function Editor({ level, board, evaluation, loading, error, startError, onRetry, drag, onDrop, onPlan, onReset }) {
-  const [showJson, setShowJson] = useState(false);
+function Editor({ level, board, evaluation, loading, error, startError, onRetry, drag, onStartDrag, onDrop, onPlan, showJson }) {
   let body;
   if (loading)
     body = (
@@ -121,14 +120,10 @@ function Editor({ level, board, evaluation, loading, error, startError, onRetry,
         {showJson ? (
           <pre className="json">{readableJson({ ...level, board })}</pre>
         ) : (
-          <GridEditor board={board} readings={evaluation?.readings} drag={drag} onDrop={onDrop} onPlan={onPlan} />
+          <GridEditor board={board} startBoard={level.board}
+                      readings={evaluation?.readings} drag={drag} onStartDrag={onStartDrag}
+                      onDrop={onDrop} onPlan={onPlan} />
         )}
-        <div className="editor-tools">
-          <button onClick={onReset} title="Put the board back to the task's start">
-            Reset board
-          </button>
-          <button onClick={() => setShowJson((v) => !v)}>{showJson ? "Grid" : "JSON"}</button>
-        </div>
       </>
     );
   return (
@@ -138,36 +133,26 @@ function Editor({ level, board, evaluation, loading, error, startError, onRetry,
   );
 }
 
-// Press on an item to drag it onto the grid (docs/gui.md §4). Items are drawn as their symbols.
-function Inventory({ board, onStartDrag }) {
-  const parts = board?.inventory ?? [];
+// The inventory is drawn inside the editor's scene (same scale as the board). This visually
+// hidden list mirrors it for screen readers and keyboard users.
+function InventoryList({ board, onStartDrag }) {
   const start = (item) => (event) => {
-    event.preventDefault(); // no text selection while dragging
+    event.preventDefault();
     onStartDrag(item);
   };
   return (
-    <aside className="inventory" aria-label="Inventory">
-      <h3>Inventory</h3>
-      <ul className="palette parts">
-        {parts.length === 0 && <li className="muted">No parts</li>}
-        {parts.map((p) => (
-          <li key={p.id} className="draggable tile" aria-label={partName(p)} title={partName(p)}
-              onPointerDown={start({ kind: "part", ...p })}>
-            <PartIcon item={p} />
-            <span className="caption">{partCaption(p)}</span>
-          </li>
-        ))}
-      </ul>
-      <h3>Wires</h3>
-      <ul className="palette wires">
-        {WIRE_PALETTE.map((w) => (
-          <li key={w.key} className="draggable tile" aria-label={w.label} title={w.label}
-              onPointerDown={start({ kind: "wire", shape: w.shape, rotation: w.rotation })}>
-            <WireIcon shape={w.shape} rotation={w.rotation} />
-          </li>
-        ))}
-      </ul>
-    </aside>
+    <ul className="sr-only" aria-label="Inventory">
+      {(board?.inventory ?? []).map((p) => (
+        <li key={p.id} aria-label={partName(p)} onPointerDown={start({ kind: "part", ...p })}>
+          {partName(p)}
+        </li>
+      ))}
+      {WIRE_PALETTE.map((w) => (
+        <li key={w.key} aria-label={w.label} onPointerDown={start({ kind: "wire", shape: w.shape, rotation: w.rotation })}>
+          {w.label}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -224,6 +209,7 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
   const tutor = useTutorSession(level, chat, onChat, board);
   const [drag, setDrag] = useState(null); // { item, rotation }
   const [fits, setFits] = useState(null);
+  const [showJson, setShowJson] = useState(false);
 
   // While dragging: R rotates, Esc cancels, releasing anywhere but the grid snaps back.
   useEffect(() => {
@@ -267,18 +253,30 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
             level={level}
             board={board}
             drag={drag}
+            onStartDrag={startDrag}
             onDrop={drop}
             onPlan={setFits}
-            onReset={() => onBoard(null)}
+            showJson={showJson}
             evaluation={tutor.evaluation}
             loading={loading}
             error={error}
             startError={tutor.startError}
             onRetry={onRetry}
           />
-          <div className="hint-bar" aria-live="polite">{hint(drag, fits)}</div>
+          {/* Below the editor, so nothing sits on top of the canvas: hint left, tools right. */}
+          <div className="editor-footer">
+            <div className="hint-bar" aria-live="polite">{hint(drag, fits)}</div>
+            {level && !loading && (
+              <div className="editor-tools">
+                <button onClick={() => onBoard(null)} title="Put the board back to the task's start">
+                  Reset board
+                </button>
+                <button onClick={() => setShowJson((v) => !v)}>{showJson ? "Grid" : "JSON"}</button>
+              </div>
+            )}
+          </div>
         </div>
-        <Inventory board={board} onStartDrag={startDrag} />
+        <InventoryList board={board} onStartDrag={startDrag} />
       </div>
       <Chat chat={chat} connected={tutor.connected} thinking={tutor.thinking} onSend={tutor.send} />
     </div>

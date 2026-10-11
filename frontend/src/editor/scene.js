@@ -3,6 +3,8 @@
 import * as THREE from "three";
 import { CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import { BAND_COLORS, resistorBands } from "./colorCode.js";
+import { partCaption } from "./naming.js";
+import { WIRE_PALETTE, wireSegments } from "./placement.js";
 import { CELL, STYLE } from "./style.js";
 
 const PIN_NAMES = {
@@ -200,6 +202,146 @@ export function boardBounds(board) {
   };
 }
 
+// ---- Inventory region: part of the same scene, right of the grid, at the same scale. ----
+
+// Inventory width = two elements + a little spacing and margins (world units):
+// element = pin dot to pin dot; then column gap, and a margin each side of the column.
+const SLOT_W = 2 * (CELL + STYLE.pin.connector_radius);
+const COLUMN_GAP = 10;
+const INVENTORY_MARGIN = 10;
+const PART_SLOT_H = 66; // symbol plus its caption
+const WIRE_PAD = 12; // around a wire piece's own extent
+const SLOT_GAP = 6;
+const TITLE_H = 24;
+
+// Height of a wire piece's slot: its own extent, so short pieces don't take tall rows.
+function wireSlotHeight(w) {
+  const ys = wireSegments(w.shape, w.rotation, [0, 0]).flat().map((p) => p[1]);
+  return (Math.max(...ys) - Math.min(...ys)) * CELL + 2 * WIRE_PAD;
+}
+
+// Slots for the inventory parts and the wire palette, in world units.
+// `capacity` reserves rows for the task's starting inventory, so the column (and with it the
+// scene's scale) doesn't shrink as parts are placed on the board.
+// Returns { slots: [{ key, item, label, x, y, w, h }], titles, divider, bounds }.
+export function layoutInventory(board, capacity = 0) {
+  const grid = boardBounds(board);
+  const dividerX = grid.right; // the grid's bounds already include half a step of margin
+  const left = dividerX + INVENTORY_MARGIN;
+  const columnX = (i) => left + SLOT_W / 2 + (i % 2) * (SLOT_W + COLUMN_GAP);
+  const slots = [];
+  const titles = [];
+  let y = 0; // laid out from 0 downward, then centered on the grid's midline
+
+  // Two columns; each row is as tall as its tallest entry. `reservedRows` keeps empty rows.
+  const section = (title, entries, reservedRows = 0, rowHeight = 0) => {
+    titles.push({ text: title, x: left, y: y - TITLE_H / 2 });
+    y -= TITLE_H;
+    for (let i = 0; i < entries.length; i += 2) {
+      const pair = entries.slice(i, i + 2);
+      const height = Math.max(...pair.map((e) => e.height));
+      pair.forEach((entry, j) => {
+        const { height: _h, ...rest } = entry;
+        slots.push({ ...rest, x: columnX(j), y: y - height / 2, w: SLOT_W, h: height });
+      });
+      y -= height + SLOT_GAP;
+    }
+    const missing = reservedRows - Math.ceil(entries.length / 2);
+    if (missing > 0) y -= missing * (rowHeight + SLOT_GAP);
+    y -= SLOT_GAP;
+  };
+  section("Inventory", (board.inventory ?? []).map((part) => ({
+    key: `part:${part.id}`, item: { kind: "part", ...part }, label: partCaption(part), height: PART_SLOT_H,
+  })), Math.ceil(capacity / 2), PART_SLOT_H);
+  section("Wires", WIRE_PALETTE.map((w) => ({
+    key: `wire:${w.key}`, item: { kind: "wire", shape: w.shape, rotation: w.rotation }, label: null,
+    height: wireSlotHeight(w),
+  })));
+
+  // Center the column on the grid's vertical midline.
+  const height = -y;
+  const shift = (grid.top + grid.bottom) / 2 + height / 2;
+  for (const slot of slots) slot.y += shift;
+  for (const title of titles) title.y += shift;
+  const top = shift;
+  const bottom = shift - height;
+  const right = left + 2 * SLOT_W + COLUMN_GAP;
+  return {
+    slots,
+    titles,
+    divider: { x: dividerX, top: Math.max(top, grid.top), bottom: Math.min(bottom, grid.bottom) },
+    bounds: { left, right, top, bottom },
+  };
+}
+
+// The slot under a world point, or null.
+export function slotAt(layout, x, y) {
+  return layout.slots.find((s) => Math.abs(x - s.x) <= s.w / 2 && Math.abs(y - s.y) <= s.h / 2) ?? null;
+}
+
+// Grid and inventory together: what the camera fits. Both columns share a vertical midline,
+// so the grid sits in the middle of the field whichever column is taller.
+export function sceneBounds(board, layout) {
+  const g = boardBounds(board);
+  return {
+    left: g.left,
+    right: layout.bounds.right + INVENTORY_MARGIN,
+    top: Math.max(g.top, layout.bounds.top),
+    bottom: Math.min(g.bottom, layout.bounds.bottom),
+  };
+}
+
+function slotSymbol(slot) {
+  if (slot.item.kind === "part") {
+    // Drawn exactly like a horizontal part on the board, without the board's labels.
+    const node = componentNode({ ...slot.item, orientation: "E",
+                                 pins: pinsAround(slot.item.type, [0, 0]) });
+    node.remove(node.getObjectByName("labels"));
+    node.position.set(slot.x, slot.y + 8, 2);
+    node.add(label(slot.label, "editor-label", 0, -26));
+    return node;
+  }
+  // A wire piece, centered in its slot by the middle of its own extent.
+  const segments = wireSegments(slot.item.shape, slot.item.rotation, [0, 0]);
+  const points = segments.flat();
+  const cx = (Math.min(...points.map((p) => p[0])) + Math.max(...points.map((p) => p[0]))) / 2;
+  const cy = (Math.min(...points.map((p) => p[1])) + Math.max(...points.map((p) => p[1]))) / 2;
+  const node = wireNode({ id: slot.key, segments });
+  node.position.set(slot.x - cx * CELL, slot.y + cy * CELL, 1);
+  return node;
+}
+
+// Pins of a horizontal (E) part whose body is at grid point `body`.
+function pinsAround(type, body) {
+  const [first, second] = PIN_NAMES[type];
+  return { [first]: [body[0] + 1, body[1]], [second]: [body[0] - 1, body[1]] };
+}
+
+const HOVER_TINT = 0xeef4fc;
+
+// The inventory region as a scene node; `hoverKey` tints the slot under the pointer and
+// `liftedKey` leaves a slot empty (its part is being dragged).
+export function inventoryNode(layout, hoverKey = null, liftedKey = null) {
+  const root = new THREE.Group();
+  root.name = "inventory";
+  const d = layout.divider;
+  root.add(rect(1, d.top - d.bottom, STYLE.grid.hole_color, d.x, (d.top + d.bottom) / 2, 0));
+  for (const t of layout.titles) {
+    const title = label(t.text, "editor-title", t.x, t.y, STYLE.labels.size + 1);
+    title.element.firstChild.style.transform = "translateX(50%)"; // left-aligned at x
+    root.add(title);
+  }
+  for (const slot of layout.slots) {
+    const node = new THREE.Group();
+    node.name = slot.key;
+    node.userData = { kind: "inventory", key: slot.key };
+    if (slot.key === hoverKey) node.add(rect(slot.w, slot.h, HOVER_TINT, slot.x, slot.y, 0.5));
+    if (slot.key !== liftedKey) node.add(slotSymbol(slot));
+    root.add(node);
+  }
+  return root;
+}
+
 export function disposeTree(object) {
   object.traverse((child) => {
     child.geometry?.dispose();
@@ -244,4 +386,28 @@ export function previewNode(item, planned, rotation) {
     node.add(ring);
   }
   return node;
+}
+
+// Ghost of a dragged item following the pointer freely (off the grid): no snapping, no targets.
+export function floatingNode(item, rotation, x, y) {
+  let ghost;
+  if (item.kind === "part") {
+    const [dx, dy] = DIRECTIONS[rotation];
+    const [first, second] = PIN_NAMES[item.type];
+    ghost = componentNode({ id: item.id, type: item.type, value: item.value, orientation: rotation,
+                            pins: { [first]: [dx, dy], [second]: [-dx, -dy] } });
+    ghost.position.set(x, y, 4);
+  } else {
+    ghost = wireNode({ id: "floating-wire", segments: wireSegments(item.shape, rotation, [0, 0]) });
+    ghost.position.set(x, y, 4);
+  }
+  ghost.name = "floating";
+  ghost.traverse((o) => {
+    if (o.material) {
+      o.material.transparent = true;
+      o.material.opacity = 0.55;
+    }
+    o.children = o.children.filter((c) => !c.isCSS2DObject && c.name !== "labels");
+  });
+  return ghost;
 }

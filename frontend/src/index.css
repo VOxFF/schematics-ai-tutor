@@ -323,7 +323,7 @@ button.danger {
   grid-area: work;
   min-width: 0;
   display: grid;
-  grid-template-columns: 1fr 220px;
+  grid-template-columns: minmax(0, 1fr); /* the inventory is drawn inside the editor */
   gap: 12px;
   min-height: 0;
 }
@@ -520,11 +520,19 @@ button:focus-visible {
   color: var(--text);
 }
 
-.editor-tools {
-  position: absolute;
-  top: 8px;
-  right: 8px;
+.editor-footer {
   display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.editor-footer .hint-bar {
+  flex: 1;
+}
+
+.editor-tools {
+  display: flex;
+  align-items: center;
   gap: 6px;
 }
 
@@ -533,58 +541,27 @@ button:focus-visible {
   font-size: 0.8rem;
 }
 
-/* Inventory and wire palette items are dragged onto the grid. */
-.palette {
-  list-style: none;
+/* Visually hidden, still read by screen readers. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
   padding: 0;
-  display: grid;
-  gap: 6px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-/* Parts: two tiles per row with the value underneath; wires: a row of small tiles. */
-.palette.parts {
-  grid-template-columns: repeat(2, 1fr);
-}
-
-.palette.wires {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.palette .tile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.palette .part-icon {
-  width: 100%;
-  height: 44px;
-}
-
-.palette .wire-icon {
-  width: 40px;
-  height: 40px;
-}
-
-.palette .caption {
-  font-size: 0.8rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.palette .draggable {
-  padding: 4px 6px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--panel);
+.grid-editor.over-item {
   cursor: grab;
-  user-select: none;
-  touch-action: none;
 }
 
-.palette .draggable:hover {
-  border-color: var(--accent);
+.editor-title {
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
 }
 
 body.dragging-item,

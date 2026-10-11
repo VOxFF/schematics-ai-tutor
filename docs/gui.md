@@ -146,7 +146,8 @@ A tutor highlight lasts until the next tutor message, or until the learner edits
 - **Fixed parts** can be selected, so they show the outline and the hint bar explains them, but they can't be dragged, rotated or deleted.
 - **Sending edits.** Each finished edit (drop, rotate, delete) sends one `board.update`. Dragging stays local until the drop.
 - **Anchor points.** A part is dropped by its **body** point; its pins land on the neighboring points in the direction of its orientation (new parts start horizontal, `E`). A wire piece is dropped by its **anchor**: the left end of a straight piece, or the shared point of a corner, T or +.
-- **Reset board** (top-right of the editor) puts the board back to the task's start; the learner's edited board is saved in the session until then.
+- **Reset board** (in the row under the editor, next to the JSON toggle) puts the board back to the task's start; the learner's edited board is saved in the session until then. Nothing sits on top of the canvas.
+- **Picking up a part.** Pressing an inventory part lifts it at once: its slot goes empty and a translucent ghost follows the pointer everywhere, snapping to the grid (with target points) only over the grid. After the drop the inventory closes the gap; a cancel puts the part back.
 - **Build status.** Dragging from the inventory and the wire palette is implemented. Selecting, moving and deleting placed elements comes next.
 
 ## 5. Hint bar
@@ -164,10 +165,19 @@ The frontend generates the hint text from the current UI state. Claude and the b
 
 ## 6. Inventory
 
+The inventory is drawn **inside the editor's three.js scene**, in a column right of the grid, so parts are the same size in the inventory and on the board by construction (they use the same builders).
+
 | Section | Items | Behavior |
 |---|---|---|
-| Parts | The level's `inventory`: resistors, meters, sources, drawn as their **symbols** (same style and color code as the grid) with the nominal value underneath (`20 Ω`, `4.7 kΩ`, `9 V`) or, for meters, the ID | **Depleting.** A placed part leaves the inventory, and a removed part returns. |
+| Parts | The level's `inventory`: resistors, meters, sources, drawn as their symbols with the nominal value underneath (`20 Ω`, `4.7 kΩ`, `9 V`) or, for meters, the ID | **Depleting.** A placed part leaves the inventory, and a removed part returns. |
 | Wire palette | Straight horizontal, straight vertical, corner, T, +, each drawn as its shape | **Never depletes.** Corner, T and + rotate with **R**. |
+
+**Layout rules**
+- **Two columns**, as bare symbols, not buttons; a light tint on hover and a grab cursor show they can be picked up.
+- **Fixed width:** two elements (pin dot to pin dot) plus a small gap between the columns and a margin each side.
+- **Fixed scale per task:** the scene's bounds (grid plus inventory) are computed **once from the task's starting board**, with the inventory column reserving the starting inventory's rows. Placing or removing parts never changes the scale; only a window resize refits the camera.
+- **Placement in the field:** the inventory column sits flush right; the grid is centered in the field left of it, and both columns share a vertical midline.
+- **Accessibility:** a visually hidden list mirrors the inventory for screen readers.
 
 ## 7. Chat
 

@@ -227,9 +227,9 @@ schematics-ai-tutor/
 │   │   │   └── TutorScreen.jsx  learning screen layout (header, task, editor, inventory, chat)
 │   │   ├── editor/
 │   │   │   ├── GridEditor.jsx three.js renderer, camera fit, label layer
-│   │   │   ├── scene.js       scene graph: one node per component and wire
+│   │   │   ├── scene.js       scene graph: one node per component and wire; the inventory region
 │   │   │   ├── placement.js   where a dragged part or wire piece goes, whether it fits, the new board
-│   │   │   ├── InventoryIcons.jsx  SVG symbols for the inventory and wire palette
+│   │   │   ├── naming.js      captions and names of inventory parts (20 Ω, 4.7 kΩ)
 │   │   │   ├── colorCode.js   resistor 4-band color code
 │   │   │   ├── schematic-style.yaml  sizes and colors of the schematic (wires, pins, symbols)
 │   │   │   └── style.js       loads the style file; grid spacing

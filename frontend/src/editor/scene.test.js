@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { resistorBands } from "./colorCode.js";
-import { buildBoard, toWorld } from "./scene.js";
+import { boardBounds, buildBoard, floatingNode, inventoryNode, layoutInventory, sceneBounds, slotAt, toWorld } from "./scene.js";
 import { CELL, STYLE } from "./style.js";
 
 describe("resistor color bands", () => {
@@ -168,5 +168,87 @@ describe("label nodes and battery signs", () => {
     expect(Math.sign(signs["+"].x - body.x)).toBe(Math.sign(signs["−"].x - body.x)); // same side
     const id = world(node.getObjectByName("labels").getObjectByName("id"));
     for (const sign of Object.values(signs)) expect(sign.distanceTo(id)).toBeGreaterThan(12);
+  });
+});
+
+describe("inventory region (same scene as the board)", () => {
+  const board = {
+    grid: { columns: 12, rows: 8 }, components: [], wires: [], targets: {},
+    inventory: [{ id: "R2", type: "resistor", value: 20 }, { id: "R3", type: "resistor", value: 4700 },
+                { id: "AM2", type: "ammeter" }],
+  };
+
+  test("slots sit right of the grid in two columns: parts, then the five wire pieces", () => {
+    const layout = layoutInventory(board);
+    const grid = boardBounds(board);
+    expect(layout.slots.map((s) => s.key)).toEqual([
+      "part:R2", "part:R3", "part:AM2", "wire:straight-h", "wire:straight-v", "wire:corner", "wire:T", "wire:plus"]);
+    expect(layout.slots.every((s) => s.x - s.w / 2 > grid.right)).toBe(true);
+    expect(new Set(layout.slots.map((s) => s.x)).size).toBe(2); // two columns
+    expect(layout.slots.find((s) => s.key === "part:R3").label).toBe("4.7 kΩ");
+  });
+
+  test("the camera bounds cover the grid and the inventory", () => {
+    const layout = layoutInventory(board);
+    const b = sceneBounds(board, layout);
+    expect(b.left).toBe(boardBounds(board).left);
+    expect(b.right).toBeGreaterThan(layout.bounds.right);
+  });
+
+  test("hit-testing finds the slot under a point", () => {
+    const layout = layoutInventory(board);
+    const r3 = layout.slots.find((s) => s.key === "part:R3");
+    expect(slotAt(layout, r3.x, r3.y).item).toMatchObject({ kind: "part", id: "R3", value: 4700 });
+    expect(slotAt(layout, 0, 0)).toBeNull(); // over the grid
+  });
+
+  test("inventory parts are drawn with the board's own builder, so they're the same size", () => {
+    const node = inventoryNode(layoutInventory(board));
+    const slot = node.getObjectByName("part:R2");
+    const part = slot.getObjectByName("R2");
+    expect(part.getObjectByName("symbol")).toBeDefined();
+    const bodies = [];
+    part.traverse((o) => o.isMesh && o.geometry.parameters?.width === STYLE.resistor.length && bodies.push(o));
+    expect(bodies).toHaveLength(1); // the same resistor body as on the board
+  });
+});
+
+describe("dragging from the inventory", () => {
+  const board = { grid: { columns: 12, rows: 8 }, components: [], wires: [], targets: {},
+                  inventory: [{ id: "R2", type: "resistor", value: 20 }] };
+
+  test("a lifted part leaves its slot empty", () => {
+    const node = inventoryNode(layoutInventory(board), null, "part:R2");
+    expect(node.getObjectByName("part:R2").getObjectByName("R2")).toBeUndefined();
+  });
+
+  test("the floating ghost sits under the pointer, without labels", () => {
+    const ghost = floatingNode({ kind: "part", id: "R2", type: "resistor", value: 20 }, "E", 600, -100);
+    expect([ghost.position.x, ghost.position.y]).toEqual([600, -100]);
+    const labels = [];
+    ghost.traverse((o) => o.isCSS2DObject && labels.push(o));
+    expect(labels).toHaveLength(0);
+  });
+
+  test("grid and inventory share a vertical midline", () => {
+    const tall = { ...board, inventory: Array.from({ length: 8 }, (_, i) => ({ id: `R${i + 2}`, type: "resistor", value: 20 })) };
+    const layout = layoutInventory(tall);
+    const g = boardBounds(tall);
+    expect((layout.bounds.top + layout.bounds.bottom) / 2).toBeCloseTo((g.top + g.bottom) / 2);
+    const b = sceneBounds(tall, layout);
+    expect(b.top).toBe(layout.bounds.top); // the taller column sets the height
+  });
+});
+
+describe("stable scale while placing parts", () => {
+  test("reserved rows keep the scene bounds the same after a part leaves the inventory", () => {
+    const start = { grid: { columns: 12, rows: 8 }, components: [], wires: [], targets: {},
+                    inventory: [1, 2, 3].map((i) => ({ id: `R${i}`, type: "resistor", value: 20 })) };
+    const placed = { ...start, inventory: start.inventory.slice(1) }; // R1 dragged onto the board
+    const before = sceneBounds(start, layoutInventory(start, 3));
+    const after = sceneBounds(placed, layoutInventory(placed, 3));
+    expect(after).toEqual(before);
+    // Without the reservation the column would shrink and the scale would jump.
+    expect(sceneBounds(placed, layoutInventory(placed))).not.toEqual(before);
   });
 });
