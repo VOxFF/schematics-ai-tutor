@@ -3,7 +3,7 @@
 import numpy as np
 
 GMIN = 1e-12  # siemens to ground on every net, keeps floating nets solvable
-MAX_CONDITION = 1e12
+RESIDUAL_TOLERANCE = 1e-6  # how closely a solution must satisfy the equations
 
 
 def solve(
@@ -53,7 +53,10 @@ def solve(
         x = np.linalg.solve(a, z)
     except np.linalg.LinAlgError:
         return None
-    if not np.all(np.isfinite(x)) or np.linalg.cond(a) > MAX_CONDITION:
+    # Contradictory sources make the matrix singular. Don't judge by the condition number:
+    # unconnected parts form islands held only by GMIN, which pushes it to ~1/GMIN even
+    # though the solution is exact (a false "short"). Check the solution itself instead.
+    if not np.all(np.isfinite(x)) or not np.allclose(a @ x, z, atol=RESIDUAL_TOLERANCE):
         return None
 
     voltages = {ground: 0.0} | {net: float(x[index[net]]) for net in nodes}

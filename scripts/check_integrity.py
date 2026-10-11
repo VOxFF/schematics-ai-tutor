@@ -28,6 +28,7 @@ STALE_TERMS = [
     "floating_component",
     "HoleId",
     "slotAt",
+    "MAX_CONDITION",
 ]
 # Split so this file doesn't match its own secret scan.
 KEY_PATTERN = re.compile("sk-" + r"ant-[A-Za-z0-9_\-]{8,}")

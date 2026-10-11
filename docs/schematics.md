@@ -291,7 +291,7 @@ A DC **modified nodal analysis (MNA)** over the nets, solved with `numpy.linalg.
 | `voltmeter` | Ideal voltmeter: infinite resistance, so it adds nothing | V(positive) − V(negative) |
 
 - **Signed readings.** Reversed meter probes give negative readings, as on a real multimeter. That is a useful teaching moment, and the tutor sees it.
-- **Floating nets** (not connected to ground through any element) would make the matrix singular. A tiny conductance to ground (gmin = 1e‑12 S) on every net keeps it solvable. Those nets read 0 V and carry no current, and after rounding the residue disappears (§1).
+- **Floating nets** (not connected to ground through any element) would make the matrix singular. A tiny conductance to ground (gmin = 1e‑12 S) on every net keeps it solvable. Those nets read 0 V and carry no current, and after rounding the residue disappears (§1). Parts connected to nothing form such islands; they push the matrix's condition number to about 1/gmin, so the solver never judges a solve by its condition number, only by whether the solution satisfies the equations.
 - **Unsolvable circuits.** Contradictory sources (two sources of different values in parallel) or a loop of sources and ammeters still make the matrix singular. The result is a `short_circuit` issue, with all readings `null`.
 
 ## 6. Structural checks and status
