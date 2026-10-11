@@ -10,8 +10,9 @@ function socketUrl() {
   return `${scheme}://${window.location.host}/ws/session`;
 }
 
-// level: the current Level (or null); chat: [{role, text, kind?}]; onChat: (nextChat) => void
-export function useTutorSession(level, chat, onChat) {
+// level: the current Level (or null); chat: [{role, text, kind?}]; onChat: (nextChat) => void;
+// board: the learner's current board, sent on every change so the evaluation stays live.
+export function useTutorSession(level, chat, onChat, board) {
   const [connected, setConnected] = useState(false);
   const [thinking, setThinking] = useState(false);
   const [evaluation, setEvaluation] = useState(null);
@@ -22,6 +23,9 @@ export function useTutorSession(level, chat, onChat) {
   chatRef.current = chat;
   const levelRef = useRef(level);
   levelRef.current = level;
+  const boardRef = useRef(board);
+  boardRef.current = board;
+  const seq = useRef(0);
 
   const append = useCallback((entry) => onChat([...chatRef.current, entry]), [onChat]);
 
@@ -31,7 +35,7 @@ export function useTutorSession(level, chat, onChat) {
       .filter((m) => m.role === "learner" || m.role === "tutor")
       .filter((m, i, all) => !(pending.current && i === all.length - 1 && m.role === "learner"))
       .map(({ role, text }) => ({ role, text }));
-    ws.send(JSON.stringify({ type: "session.start", level: levelRef.current, history }));
+    ws.send(JSON.stringify({ type: "session.start", level: levelRef.current, board: boardRef.current, history }));
   }, []);
 
   const sendRequest = useCallback((ws, text) => {
@@ -99,6 +103,14 @@ export function useTutorSession(level, chat, onChat) {
     };
     // Reconnect only when the task changes, not on every chat update.
   }, [level?.id]);
+
+  // Every edit: the server re-evaluates and replies with readings and status.
+  useEffect(() => {
+    const ws = socket.current;
+    if (!board || !ws || ws.readyState !== WebSocket.OPEN) return;
+    seq.current += 1;
+    ws.send(JSON.stringify({ type: "board.update", seq: seq.current, board }));
+  }, [board]);
 
   const send = useCallback(
     (text) => {

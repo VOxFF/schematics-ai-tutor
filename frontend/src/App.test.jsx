@@ -72,7 +72,7 @@ test("a new learner sees the start screen, then gets a task", async () => {
   fireEvent.click(screen.getByRole("button", { name: "JSON" })); // the grid needs WebGL; the JSON view doesn't
   expect(screen.getByLabelText("Editor").textContent).toContain('"id": "gen-1234"');
   expect(screen.getByLabelText("Skill level").textContent).toBe("Level 1");
-  expect(screen.getByLabelText("Inventory").textContent).toContain("R2 resistor 20");
+  expect(screen.getByLabelText("R2 resistor 20 Ω")).toBeDefined(); // drawn as a symbol, named for a11y
   expect(screen.getByRole("button", { name: "Next" }).disabled).toBe(false); // temporary: always enabled
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(JSON.parse(localStorage.getItem(SESSION_KEY)).level.id).toBe("gen-1234");
@@ -231,4 +231,23 @@ test("the header shows the curriculum level and the task within it", () => {
   render(<App />);
   expect(screen.getByLabelText("Skill level").textContent).toBe("Level 2");
   expect(screen.getByText("Task 1 of 2")).toBeDefined();
+});
+
+test("dragging from the inventory: hint bar guides, Esc cancels, and the board goes to the session", async () => {
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [] }));
+  render(<App />);
+  await screen.findByPlaceholderText("Ask the tutor…");
+  expect(FakeSocket.last.sent[0]).toMatchObject({ type: "session.start", board: LEVEL.board }); // unedited: the task board
+  const hintBar = () => document.querySelector(".hint-bar").textContent;
+  expect(hintBar()).toMatch(/^Drag a part/);
+
+  fireEvent.pointerDown(screen.getByLabelText("R2 resistor 20 Ω"));
+  expect(hintBar()).toMatch(/^Drop onto the highlighted points/);
+  fireEvent.keyDown(window, { key: "Escape" });
+  expect(hintBar()).toMatch(/^Drag a part/);
+
+  fireEvent.pointerDown(screen.getByLabelText("Corner"));
+  fireEvent.pointerUp(window); // released outside the grid: snaps back
+  expect(hintBar()).toMatch(/^Drag a part/);
+  expect(screen.getByLabelText("R2 resistor 20 Ω")).toBeDefined(); // still in the inventory
 });

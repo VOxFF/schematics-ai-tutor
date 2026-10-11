@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { resistorBands } from "./colorCode.js";
-import { buildBoard, toWorld } from "./scene.js";
+import { boardBounds, buildBoard, floatingNode, inventoryNode, layoutInventory, sceneBounds, slotAt, toWorld } from "./scene.js";
 import { CELL, STYLE } from "./style.js";
 
 describe("resistor color bands", () => {
@@ -47,7 +47,7 @@ describe("scene graph", () => {
     expect(texts).toContain("4 V");
     const r1Texts = [];
     r1.traverse((o) => o.isCSS2DObject && r1Texts.push(o.element.textContent));
-    expect(r1Texts).toContain("R1 40 Ω");
+    expect(r1Texts).toEqual(expect.arrayContaining(["R1", "40 Ω"]));
   });
 
   test("grid coordinates map to world space with row 1 at the top", () => {
@@ -105,5 +105,150 @@ describe("schematic style", () => {
     const signs = [];
     root.getObjectByName("V1").traverse((o) => o.isCSS2DObject && signs.push(o.element.textContent));
     expect(signs).toEqual(expect.arrayContaining(["+", "−"]));
+  });
+});
+
+describe("labels", () => {
+  const labels = (node) => {
+    const out = [];
+    node.traverse((o) => o.isCSS2DObject && o.element.firstChild?.classList?.contains("editor-label") || o.isCSS2DObject && o.element.firstChild?.classList?.contains("editor-reading")
+      ? out.push({ text: o.element.textContent, x: Math.round(o.position.x), y: Math.round(o.position.y),
+                   rotated: o.element.firstChild.style.transform.includes("rotate") })
+      : null);
+    return out;
+  };
+  const one = (component, readings = {}) =>
+    buildBoard({ grid: { columns: 12, rows: 8 }, wires: [], components: [component] }, readings).getObjectByName(component.id);
+
+  test("horizontal part: ID above, value below, not rotated", () => {
+    const [id, value] = labels(one({ id: "R1", type: "resistor", value: 40, orientation: "E", pins: { a: [7, 3], b: [5, 3] } }));
+    expect(id).toMatchObject({ text: "R1", x: 0, rotated: false });
+    expect(value).toMatchObject({ text: "40 Ω", x: 0, rotated: false });
+    expect(id.y).toBeGreaterThan(0);
+    expect(value.y).toBeLessThan(0);
+  });
+
+  test("vertical part: ID left, value right, both rotated", () => {
+    const [id, value] = labels(one({ id: "V1", type: "voltage_source", value: 12, orientation: "N", pins: { positive: [3, 3], negative: [3, 5] } }));
+    expect(id).toMatchObject({ text: "V1", y: 0, rotated: true });
+    expect(value).toMatchObject({ text: "12 V", y: 0, rotated: true });
+    expect(id.x).toBeLessThan(0);
+    expect(value.x).toBeGreaterThan(0);
+  });
+
+  test("vertical meter: the ID rotates, the reading stays horizontal", () => {
+    const [id, reading] = labels(one({ id: "AM1", type: "ammeter", orientation: "S", pins: { positive: [9, 5], negative: [9, 3] } }, { AM1: 0.2 }));
+    expect(id).toMatchObject({ text: "AM1", rotated: true });
+    expect(reading).toMatchObject({ text: "0.2 A", rotated: false });
+    expect(id.x).toBeLessThan(0);
+    expect(reading.x).toBeGreaterThan(0);
+  });
+});
+
+describe("label nodes and battery signs", () => {
+  const v1 = () => buildBoard({ grid: { columns: 12, rows: 8 }, wires: [], components: [
+    { id: "V1", type: "voltage_source", value: 12, orientation: "N", pins: { positive: [3, 3], negative: [3, 5] } }] }).getObjectByName("V1");
+
+  test("each part has a symbol node and a labels node with named labels", () => {
+    const node = v1();
+    expect(node.children.map((c) => c.name)).toEqual(["symbol", "labels"]);
+    expect(node.getObjectByName("labels").children.map((c) => c.name)).toEqual(["id", "value"]);
+  });
+
+  test("battery signs sit beside their plates, on the same side of the lead, clear of the labels", () => {
+    const node = v1(); // vertical: positive pin [3,3] above the body [3,4]
+    node.updateMatrixWorld(true);
+    const world = (o) => o.getWorldPosition(new THREE.Vector3());
+    const signs = {};
+    node.getObjectByName("symbol").traverse((o) => o.isCSS2DObject && (signs[o.element.textContent] = world(o)));
+    const body = new THREE.Vector3(3 * CELL, -4 * CELL, 0);
+    expect(signs["+"].y).toBeGreaterThan(body.y); // + on the positive plate's side
+    expect(signs["−"].y).toBeLessThan(body.y); // − on the negative plate's side
+    expect(signs["+"].distanceTo(body)).toBeLessThan(CELL / 2); // next to the plates, not the pins
+    expect(Math.sign(signs["+"].x - body.x)).toBe(Math.sign(signs["−"].x - body.x)); // same side
+    const id = world(node.getObjectByName("labels").getObjectByName("id"));
+    for (const sign of Object.values(signs)) expect(sign.distanceTo(id)).toBeGreaterThan(12);
+  });
+});
+
+describe("inventory region (same scene as the board)", () => {
+  const board = {
+    grid: { columns: 12, rows: 8 }, components: [], wires: [], targets: {},
+    inventory: [{ id: "R2", type: "resistor", value: 20 }, { id: "R3", type: "resistor", value: 4700 },
+                { id: "AM2", type: "ammeter" }],
+  };
+
+  test("slots sit right of the grid in two columns: parts, then the five wire pieces", () => {
+    const layout = layoutInventory(board);
+    const grid = boardBounds(board);
+    expect(layout.slots.map((s) => s.key)).toEqual([
+      "part:R2", "part:R3", "part:AM2", "wire:straight-h", "wire:straight-v", "wire:corner", "wire:T", "wire:plus"]);
+    expect(layout.slots.every((s) => s.x - s.w / 2 > grid.right)).toBe(true);
+    expect(new Set(layout.slots.map((s) => s.x)).size).toBe(2); // two columns
+    expect(layout.slots.find((s) => s.key === "part:R3").label).toBe("4.7 kΩ");
+  });
+
+  test("the camera bounds cover the grid and the inventory", () => {
+    const layout = layoutInventory(board);
+    const b = sceneBounds(board, layout);
+    expect(b.left).toBe(boardBounds(board).left);
+    expect(b.right).toBeGreaterThan(layout.bounds.right);
+  });
+
+  test("hit-testing finds the slot under a point", () => {
+    const layout = layoutInventory(board);
+    const r3 = layout.slots.find((s) => s.key === "part:R3");
+    expect(slotAt(layout, r3.x, r3.y).item).toMatchObject({ kind: "part", id: "R3", value: 4700 });
+    expect(slotAt(layout, 0, 0)).toBeNull(); // over the grid
+  });
+
+  test("inventory parts are drawn with the board's own builder, so they're the same size", () => {
+    const node = inventoryNode(layoutInventory(board));
+    const slot = node.getObjectByName("part:R2");
+    const part = slot.getObjectByName("R2");
+    expect(part.getObjectByName("symbol")).toBeDefined();
+    const bodies = [];
+    part.traverse((o) => o.isMesh && o.geometry.parameters?.width === STYLE.resistor.length && bodies.push(o));
+    expect(bodies).toHaveLength(1); // the same resistor body as on the board
+  });
+});
+
+describe("dragging from the inventory", () => {
+  const board = { grid: { columns: 12, rows: 8 }, components: [], wires: [], targets: {},
+                  inventory: [{ id: "R2", type: "resistor", value: 20 }] };
+
+  test("a lifted part leaves its slot empty", () => {
+    const node = inventoryNode(layoutInventory(board), null, "part:R2");
+    expect(node.getObjectByName("part:R2").getObjectByName("R2")).toBeUndefined();
+  });
+
+  test("the floating ghost sits under the pointer, without labels", () => {
+    const ghost = floatingNode({ kind: "part", id: "R2", type: "resistor", value: 20 }, "E", 600, -100);
+    expect([ghost.position.x, ghost.position.y]).toEqual([600, -100]);
+    const labels = [];
+    ghost.traverse((o) => o.isCSS2DObject && labels.push(o));
+    expect(labels).toHaveLength(0);
+  });
+
+  test("grid and inventory share a vertical midline", () => {
+    const tall = { ...board, inventory: Array.from({ length: 8 }, (_, i) => ({ id: `R${i + 2}`, type: "resistor", value: 20 })) };
+    const layout = layoutInventory(tall);
+    const g = boardBounds(tall);
+    expect((layout.bounds.top + layout.bounds.bottom) / 2).toBeCloseTo((g.top + g.bottom) / 2);
+    const b = sceneBounds(tall, layout);
+    expect(b.top).toBe(layout.bounds.top); // the taller column sets the height
+  });
+});
+
+describe("stable scale while placing parts", () => {
+  test("reserved rows keep the scene bounds the same after a part leaves the inventory", () => {
+    const start = { grid: { columns: 12, rows: 8 }, components: [], wires: [], targets: {},
+                    inventory: [1, 2, 3].map((i) => ({ id: `R${i}`, type: "resistor", value: 20 })) };
+    const placed = { ...start, inventory: start.inventory.slice(1) }; // R1 dragged onto the board
+    const before = sceneBounds(start, layoutInventory(start, 3));
+    const after = sceneBounds(placed, layoutInventory(placed, 3));
+    expect(after).toEqual(before);
+    // Without the reservation the column would shrink and the scale would jump.
+    expect(sceneBounds(placed, layoutInventory(placed))).not.toEqual(before);
   });
 });

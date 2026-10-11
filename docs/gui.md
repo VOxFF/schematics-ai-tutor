@@ -78,18 +78,20 @@ Rendered with three.js in an orthographic, top-down view (`frontend/src/editor/`
 - outline thickness
 - empty and connected pin-hole radius
 - resistor length, height, fill and band width
-- battery plate sizes and colors (the positive plate is red), and the size of the + and − marks
+- battery plate sizes and colors (the positive plate is red), and the size and placement (distance from the plate and from the wire) of the + and − marks
 - meter radius, outline thickness, fills per type (voltmeter light blue, ammeter light amber) and letter size
-- label size
+- label size and the gap between a part and its labels
 
 Editing the file and saving reloads the page in development.
 
-**Symbols.** Components are drawn as flat schematic symbols, each labeled with its `id` and value:
+**Symbols.** Components are drawn as flat schematic symbols, each labeled with its `id` and value.
+
+**Labels.** The ID goes on one side of a part and its value on the other: above and below a horizontal part, left and right of a vertical one. A meter shows its live reading where a value would go. Labels of vertical parts are rotated 90° to read bottom to top, **except** current and voltage readings, which stay horizontal so the numbers are easy to read. Each part's node has a `symbol` child and a `labels` child holding named `id`, `value` and `reading` labels.
 
 | Component | Symbol | Label |
 |---|---|---|
-| `voltage_source` | Battery symbol: a long red plate (positive) and a short dark plate (negative), marked + and − | `V1 12 V` |
-| `resistor` | Rectangle with its 4 color bands | `R1 20 Ω`, always shown |
+| `voltage_source` | Battery symbol: a long red plate (positive) and a short dark plate (negative); **+** and **−** beside their plates, both on the same side of the lead ([sketch](images/battery-sketch.png)) | `V1` and `12 V` on opposite sides |
+| `resistor` | Rectangle with its 4 color bands | `R1` and `20 Ω` on opposite sides, always shown |
 | `ammeter` | Light amber circle with a large **A** | Live reading beside it, e.g. `0.200 A` |
 | `voltmeter` | Light blue circle with a large **V** | Live reading beside it, e.g. `4.00 V` |
 
@@ -143,6 +145,10 @@ A tutor highlight lasts until the next tutor message, or until the learner edits
 
 - **Fixed parts** can be selected, so they show the outline and the hint bar explains them, but they can't be dragged, rotated or deleted.
 - **Sending edits.** Each finished edit (drop, rotate, delete) sends one `board.update`. Dragging stays local until the drop.
+- **Anchor points.** A part is dropped by its **body** point; its pins land on the neighboring points in the direction of its orientation (new parts start horizontal, `E`). A wire piece is dropped by its **anchor**: the left end of a straight piece, or the shared point of a corner, T or +.
+- **Reset board** (bottom-left corner of the editor field, next to the JSON toggle) puts the board back to the task's start; the learner's edited board is saved in the session until then.
+- **Picking up a part.** Pressing an inventory part lifts it at once: its slot goes empty and a translucent ghost follows the pointer everywhere, snapping to the grid (with target points) only over the grid. After the drop the inventory closes the gap; a cancel puts the part back.
+- **Build status.** Dragging from the inventory and the wire palette is implemented. Selecting, moving and deleting placed elements comes next.
 
 ## 5. Hint bar
 
@@ -159,10 +165,19 @@ The frontend generates the hint text from the current UI state. Claude and the b
 
 ## 6. Inventory
 
+The inventory is drawn **inside the editor's three.js scene**, in a column right of the grid, so parts are the same size in the inventory and on the board by construction (they use the same builders).
+
 | Section | Items | Behavior |
 |---|---|---|
-| Parts | The level's `inventory`: resistors, meters, sources | **Depleting.** A placed part leaves the inventory, and a removed part returns. |
-| Wire palette | Straight horizontal, straight vertical, corner, T, + | **Never depletes.** Corner, T and + rotate with **R**. |
+| Parts | The level's `inventory`: resistors, meters, sources, drawn as their symbols with the nominal value underneath (`20 Ω`, `4.7 kΩ`, `9 V`) or, for meters, the ID | **Depleting.** A placed part leaves the inventory, and a removed part returns. |
+| Wire palette | Straight horizontal, straight vertical, corner, T, +, each drawn as its shape | **Never depletes.** Corner, T and + rotate with **R**. |
+
+**Layout rules**
+- **Two columns**, as bare symbols, not buttons; a light tint on hover and a grab cursor show they can be picked up.
+- **Fixed width:** two elements (pin dot to pin dot) plus a small gap between the columns and a margin each side.
+- **Fixed scale per task:** the scene's bounds (grid plus inventory) are computed **once from the task's starting board**, with the inventory column reserving the starting inventory's rows. Placing or removing parts never changes the scale; only a window resize refits the camera.
+- **Placement in the field:** the inventory column sits flush right; the grid is centered in the field left of it, and both columns share a vertical midline.
+- **Accessibility:** a visually hidden list mirrors the inventory for screen readers.
 
 ## 7. Chat
 
