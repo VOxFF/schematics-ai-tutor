@@ -52,7 +52,33 @@ flowchart LR
 - **Frontend:** JavaScript + React. It owns the interactive workspace and displays the tutor's messages. It holds no secrets and does no grading.
 - **Backend:** Python. It owns the evaluator and all Claude API calls.
 - **Task flow:** Claude proposes a task. The evaluator validates it and computes its targets, and the frontend receives the resulting task. Details are in [schematics.md](schematics.md#3-task-flow).
-- **Request flow:** the frontend sends the learner's work. The backend runs the evaluator, passes its result together with the task context to Claude, and returns both the verdict and the tutor message.
+- **Two feedbacks per edit, fast and slow.** Every finished edit is sent to the backend.
+  - *Fast:* the evaluator runs at once, with no Claude call, and its readings and status reach the browser within a split second. The edit also clears Claude's highlights, which described the previous board.
+  - *Slow:* when editing pauses, the backend passes the evaluator's results and the task context to Claude, validates the reply, and sends Claude's text and new highlights.
+  - *Why:* readings must feel like a real meter, and Claude takes seconds. A reply is tagged with the board it is about, so one that arrives after a newer edit shows its text but never overwrites the fresh readings or draws highlights on a changed board ([contract.md](contract.md#1-frontend--backend)).
+
+  ```mermaid
+  sequenceDiagram
+      participant L as Learner
+      participant FE as Frontend
+      participant EV as Evaluator
+      participant C as Backend + Claude
+
+      L->>FE: edit (board #5)
+      FE->>FE: clear Claude's highlights
+      FE->>EV: board #5
+      EV-->>FE: readings + status (#5), within a split second
+      Note over FE,C: fast feedback ends here
+      Note over L,FE: learner pauses
+      Note over C: idle timer fires: reaction on board #5
+      L->>FE: edit (board #6) while Claude thinks
+      FE->>EV: board #6
+      EV-->>FE: readings + status (#6)
+      C-->>FE: reply about #5: text shown, highlights and readings dropped
+      Note over L,FE: learner pauses again
+      Note over C: idle timer fires: reaction on board #6
+      C-->>FE: reply about #6: text and highlights shown
+  ```
 - **Editor and inventory are one three.js widget.** The grid and the inventory are drawn in a single scene with a single camera, not as separate widgets.
   - *Why:* parts must look the same size in the inventory and on the board. With two widgets, each one's size depended on the other's (board scale → inventory size → editor width → board scale), and the layout kept resizing. In one scene they share a scale by construction.
   - *Scale:* the scene's bounds are computed once per task from its starting board (the inventory reserves the starting rows), so editing never rescales; only a window resize refits the camera.
@@ -88,6 +114,9 @@ flowchart LR
 The Claude models, behavior knobs, logging and pricing live in one YAML file, [`config.yaml`](../config.yaml) in the repo root, not in code. That lets us switch models, for example Opus vs. Haiku for reactions, and tune thresholds without code changes. The API key is never in this file; it comes from the environment.
 
 ```yaml
+public: false                  # true for a public deployment: hides debug features
+                               # (read by the frontend build; restart the dev server after a change)
+
 logs:
   enabled: true                # usage and cost log per backend run
   dir: logs
@@ -222,12 +251,13 @@ schematics-ai-tutor/
 │   ├── README.md
 │   ├── package.json           React app; Vite for dev server and build, Vitest for tests
 │   ├── package-lock.json
-│   ├── vite.config.js         dev server on :5173, proxies /api and /ws to the backend
+│   ├── vite.config.js         dev server on :5173, proxies /api and /ws to the backend; reads `public` from config.yaml
 │   ├── index.html
 │   ├── src/
 │   │   ├── main.jsx           entry point
 │   │   ├── App.jsx            screen switching, session, task fetching
 │   │   ├── App.test.jsx
+│   │   ├── public.test.jsx    a public build hides debug features
 │   │   ├── index.css          layout and styles
 │   │   ├── components/
 │   │   │   ├── StartScreen.jsx
@@ -236,7 +266,6 @@ schematics-ai-tutor/
 │   │   │   ├── GridEditor.jsx three.js renderer, camera fit, label layer
 │   │   │   ├── scene.js       scene graph: one node per component and wire; the inventory region; outlines and highlights
 │   │   │   ├── placement.js   where a dragged part or wire piece goes, whether it fits, the new board
-│   │   │   ├── highlights.js  which tutor highlights still show after the learner's edits
 │   │   │   ├── naming.js      captions and names of inventory parts (20 Ω, 4.7 kΩ)
 │   │   │   ├── colorCode.js   resistor 4-band color code
 │   │   │   ├── schematic-style.yaml  sizes and colors of the schematic (wires, pins, symbols)
@@ -245,7 +274,8 @@ schematics-ai-tutor/
 │   │       ├── api.js         backend calls
 │   │       ├── session.js     localStorage session
 │   │       ├── tutorSession.js WebSocket session hook (chat, live evaluation)
-│   │       └── jsonfmt.js     readable JSON, same rules as the backend formatter
+│   │       ├── jsonfmt.js     readable JSON, same rules as the backend formatter
+│   │       └── build.js       build-time settings from config.yaml (`public`)
 │   ├── node_modules/          npm packages, installed by start.sh (gitignored)
 │   └── dist/                  production build output (gitignored)
 ├── logs/                      usage and cost logs, one per run (gitignored)

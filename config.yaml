@@ -1,6 +1,10 @@
 # Schematics AI Tutor configuration. Documented in docs/design.md §5.
 # The API key is never stored here (see backend/keys/README.md).
 
+# true for a public deployment: hides debug features (e.g. the editor's JSON view).
+# Read by the frontend build (frontend/vite.config.js); restart the dev server after a change.
+public: false
+
 logs:
   enabled: true                # write a usage and cost log per backend run
   dir: logs                    # relative to the repo root; gitignored

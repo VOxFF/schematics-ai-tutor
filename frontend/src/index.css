@@ -3,7 +3,11 @@
   --bg: #f6f7f9;
   --panel: #ffffff;
   --border: #d0d7de;
-  --text: #1f2328;
+  /* Ink: headings, body text and the schematic's lines (schematic-style.yaml) share one dark gray. */
+  --text: #2d333b;
+  /* Info: task text, targets, progress and chat, a step lighter and smaller than the ink. */
+  --info: #57606a;
+  --info-size: 0.92rem;
   --muted: #656d76;
   --canvas: #fbfaf6; /* grid work area: faint paper tint */
   --canvas-dot: #d8d4c8;
@@ -41,6 +45,7 @@ button {
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--panel);
+  color: var(--text); /* the ink, not the browser's black */
   cursor: pointer;
 }
 
@@ -197,10 +202,7 @@ button.large {
   gap: 10px;
 }
 
-.header .title {
-  font-weight: 600;
-  font-size: 1.1rem;
-}
+
 
 .header .actions {
   display: flex;
@@ -269,8 +271,30 @@ button.danger {
 
 .task-targets h3 {
   margin: 0 0 6px;
-  font-size: 0.85rem;
-  color: var(--muted);
+}
+
+/* Headings share the Targets style: small, muted, uppercase, letter-spaced. */
+.header .title,
+.task h2,
+.task-targets h3,
+.chat h3,
+.start h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Inventory / Wires inside the editor: same style; the size comes from schematic-style.yaml. */
+.editor-title {
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* The start page's app title: same caps and spacing, at its own size and color. */
+.start h1 {
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -288,11 +312,20 @@ button.danger {
 
 .task h2 {
   margin: 0 0 6px;
-  font-size: 1.05rem;
 }
 
 .task p {
   margin: 0 0 6px;
+}
+
+/* Info text: a step lighter and smaller than the ink. */
+.task p,
+.task .targets,
+.header-meta .muted,
+.chat .tutor-message,
+.chat .learner-message {
+  color: var(--info);
+  font-size: var(--info-size);
 }
 
 .targets {
@@ -556,7 +589,6 @@ button:focus-visible {
 
 .editor-title {
   font-weight: 700;
-  color: var(--text);
   white-space: nowrap;
 }
 
@@ -601,4 +633,23 @@ body.dragging-item * {
   .spinner {
     animation-duration: 3s;
   }
+}
+
+/* Solved: a bright green check in the editor's top-left corner; it ignores the pointer (docs/gui.md §4). */
+.solved-check {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  pointer-events: none;
+}
+
+.solved-check svg {
+  display: block;
+  width: 192px;
+  height: 192px;
+  fill: none;
+  stroke: #22c55e; /* the grid's success highlight (schematic-style.yaml) */
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }

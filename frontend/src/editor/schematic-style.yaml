@@ -12,16 +12,16 @@ grid:
 
 wire:
   thickness: 2
-  color: "#2f3640"
+  color: "#2d333b"              # the ink (index.css --text)
 
 pin:
   connector_radius: 3.2        # dot on each component pin
   lead_thickness: 2            # line from the pin to the symbol body
-  color: "#1f2328"
+  color: "#2d333b"
 
 outline:
   thickness: 1.5               # border of resistor bodies
-  color: "#1f2328"
+  color: "#2d333b"
 
 resistor:
   length: 38                   # along the leads
@@ -36,7 +36,7 @@ battery:
   short_plate_thickness: 5
   gap: 9                       # distance between the plates
   positive_color: "#cf222e"    # the positive plate
-  negative_color: "#1f2328"
+  negative_color: "#2d333b"
   sign_size: 15                # font size (px) of the + and − marks
   sign_plate_offset: 9         # + and − sit this far out from their plate, along the lead
   sign_wire_offset: 9          # ...and this far from the wire, both on the same side

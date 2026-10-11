@@ -36,6 +36,8 @@ A reload or a closed tab must not lose anything. The browser saves the learner's
 
 On load, if a saved session exists, the app opens the learning screen and sends it with `session.start` ([contract.md](contract.md#websocket-session)), and the backend resumes from it. The server-side reference solution is lost if the reconnect lands on a different server instance. Grading is unaffected, and the tutor works without the reference.
 
+- **Preview (debug).** Opening `/start` shows the start screen without touching the saved session; Start Learning then returns to it. A public build ignores `/start`.
+
 ### Restart Learning
 
 The **Restart Learning** button in the header:
@@ -71,7 +73,7 @@ The sketch shows placement only; its values are placeholders.
 
 ## 4. Grid
 
-Rendered with three.js in an orthographic, top-down view (`frontend/src/editor/`). Every component and wire piece is its own scene node, a `THREE.Group` named by its `id` with `userData.kind`, ready for picking and highlights. Grid points are one instanced mesh. Labels and readings are HTML overlays (`CSS2DRenderer`), so text stays crisp at any zoom. A small **JSON** toggle in the corner shows the raw task for debugging.
+Rendered with three.js in an orthographic, top-down view (`frontend/src/editor/`). Every component and wire piece is its own scene node, a `THREE.Group` named by its `id` with `userData.kind`, ready for picking and highlights. Grid points are one instanced mesh. Labels and readings are HTML overlays (`CSS2DRenderer`), so text stays crisp at any zoom. A small **JSON** toggle in the corner shows the raw task for debugging; a public build (`public: true` in `config.yaml`) hides it.
 
 **Schematic style.** Sizes and colors of the drawing live in `frontend/src/editor/schematic-style.yaml`, in grid units where one grid step is 40:
 - wire thickness and color
@@ -108,7 +110,7 @@ Editing the file and saving reloads the page in development.
   Examples: 20 Ω = red, black, black, gold; 60 Ω = blue, black, black, gold; 120 Ω = brown, red, brown, gold.
 
   The bands always read left to right (horizontal parts) or top to bottom (vertical parts), with the gold band last, whatever the part's orientation.
-- **Solved.** When the status becomes `solved`, a big green checkmark appears over the grid and **Next** is enabled. The checkmark is a non-blocking overlay: semi-transparent and centered, and it ignores clicks, so the learner can still observe the readings and read the tutor's praise in the chat. Refinements are in polishing: fading out, and reacting when the solution is broken again.
+- **Solved.** When the status becomes `solved`, a bright green checkmark appears in the editor's top-left corner and **Next** is enabled. The checkmark is a non-blocking overlay that ignores clicks, so the learner can still observe the readings and read the tutor's praise in the chat. When an edit breaks the solution, the checkmark disappears and Next is disabled again. Fading out is a polishing refinement.
 - Meters show `--` when the reading is `null`.
 - `fixed` parts show a small lock and cannot be moved.
 
@@ -128,7 +130,7 @@ Editing the file and saving reloads the page in development.
 | Tutor `success` | Green outline | Claude points at what was done right |
 | Net hover | Light grey, on points and pins | Everything electrically connected to the hovered point |
 
-A tutor highlight lasts until the next tutor message, or until the learner edits the highlighted element. Highlights are a bottom layer: above the grid points, below every wire and part, so where a highlighted pinhole and a highlighted wire meet, the wire stays on top. A tutor highlight is wider than the selection outline and under it; on a selected element it goes around the selection outline, so both show in full. A highlighted grid point gets a ring in the highlight color. Colors and sizes are in `schematic-style.yaml` (`highlight`).
+A tutor highlight lasts until the next tutor message or the next edit: it describes the board Claude saw, so any change clears it, and Claude's follow-up brings new ones. Highlights are a bottom layer: above the grid points, below every wire and part, so where a highlighted pinhole and a highlighted wire meet, the wire stays on top. A tutor highlight is wider than the selection outline and under it; on a selected element it goes around the selection outline, so both show in full. A highlighted grid point gets a ring in the highlight color. Colors and sizes are in `schematic-style.yaml` (`highlight`).
 
 **Interaction**
 
@@ -168,6 +170,7 @@ The frontend generates the hint text from the current UI state. Claude and the b
 | UI state | Hint |
 |---|---|
 | Nothing selected | "Drag a part or a wire piece from the inventory onto the grid, or move one you placed" |
+| Nothing selected, task solved | "Solved! Press Next for the next task, or keep exploring" |
 | Part or wire selected | "R2 selected · drag to move · R to rotate · Del to remove · Esc to deselect" |
 | Fixed part or task wire selected | "V1 is part of the task: it can't be moved, rotated or removed · Esc to deselect" |
 | R pressed, but the turned element doesn't fit | "Can't rotate R2 here: the turned part would overlap or leave the grid" |
@@ -258,6 +261,8 @@ A bonus feature, built after everything else ([plan.md](plan.md#7-bonus)). It gi
 | Role | Color | Used for |
 |---|---|---|
 | Page / panels | `#f6f7f9` / `#ffffff`, borders `#d0d7de` | Layout |
+| Ink | `#2d333b` | Headings, body text, button text, and the schematic's lines (wires, pins, outlines; `schematic-style.yaml`) |
+| Info | `#57606a`, 0.92rem | Task text, targets, progress in the header, chat bubbles: a step lighter and smaller than the ink |
 | Canvas | `#fbfaf6` with `#d8d4c8` dots | The grid's work area |
 | Accent | `#0969da`, tint `#eef4fc` | Primary actions (Start, Next), the level badge, selection, tutor chat bubbles |
 | Success | `#1a7f37`, border `#4ac26b`, tint `#eaf7ee` | Solved, tutor `success`, the current learning-path step, and the background of the top boxes (header, task) |
@@ -269,6 +274,7 @@ A bonus feature, built after everything else ([plan.md](plan.md#7-bonus)). It gi
 - **Never color alone.** Meaning colors are paired with a shape or motion (pulse, icon, outline), so red/green colorblind learners lose nothing.
 - **Contrast:** text meets WCAG AA; muted grey is only for secondary text.
 - The colors are CSS variables in `frontend/src/index.css`, so the scheme can be tuned in one place.
+- **Headings** share one style, the Targets label's: 1rem, semibold, ink, uppercase, letter-spaced (header, task, Targets, Tutor, the start page's sections; Inventory and Wires in the editor).
 
 ## 11. Open points
 

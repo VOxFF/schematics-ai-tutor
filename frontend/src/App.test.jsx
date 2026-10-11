@@ -73,9 +73,22 @@ test("a new learner sees the start screen, then gets a task", async () => {
   expect(screen.getByLabelText("Editor").textContent).toContain('"id": "gen-1234"');
   expect(screen.getByLabelText("Skill level").textContent).toBe("Level 1");
   expect(screen.getByLabelText("R2 resistor 20 Ω")).toBeDefined(); // drawn as a symbol, named for a11y
-  expect(screen.getByRole("button", { name: "Next" }).disabled).toBe(false); // temporary: always enabled
+  expect(screen.getByRole("button", { name: "Next" }).disabled).toBe(true); // until the task is solved
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(JSON.parse(localStorage.getItem(SESSION_KEY)).level.id).toBe("gen-1234");
+});
+
+test("/start shows the start screen and keeps the saved progress", async () => {
+  const saved = { progress: { skill_level: 4, history: [] }, level: LEVEL, chat: [] };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(saved));
+  window.history.pushState(null, "", "/start");
+  const fetch = mockFetch(ok({}));
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Start Learning" }));
+  expect(screen.getByRole("heading", { name: "Share the voltage" })).toBeDefined(); // back to the saved task
+  expect(window.location.pathname).toBe("/");
+  expect(JSON.parse(localStorage.getItem(SESSION_KEY)).progress.skill_level).toBe(4);
+  expect(fetch).not.toHaveBeenCalled();
 });
 
 test("a returning learner resumes on the tutor screen without a new request", async () => {
@@ -189,6 +202,24 @@ test("a tutor reaction arrives unprompted, and a failed one ends quietly", async
   expect(JSON.parse(localStorage.getItem(SESSION_KEY)).chat.map((m) => m.role)).toEqual(["tutor"]);
 });
 
+test("a reply about an older board shows its text but not its readings", async () => {
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [] }));
+  render(<App />);
+  await screen.findByPlaceholderText("Ask the tutor…");
+  const ws = FakeSocket.last;
+  const reply = (seq, reading, text) => ws.serverSends({
+    type: "tutor.message", request_id: `react-${seq}`, seq,
+    evaluation: { status: "open_circuit", readings: { VM1: reading }, issues: [] },
+    message: { meta: { principle: "closed_loop", highlights: [], hint_level: 0, misconception: null },
+               chat: { kind: "question", text } },
+  });
+  reply(3, 9, "About a board that has changed since.");
+  expect(screen.getByText("About a board that has changed since.")).toBeDefined();
+  expect(screen.getByLabelText("Task and targets").textContent).not.toContain("VM1: 9");
+  reply(0, 7, "About the current board.");
+  expect(screen.getByLabelText("Task and targets").textContent).toContain("VM1: 7");
+});
+
 test("a tutor error shows in the chat", async () => {
   localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [] }));
   render(<App />);
@@ -231,11 +262,34 @@ test("a saved task the server rejects offers a new task, keeping progress", asyn
   expect(screen.queryByText(/can't be resumed/)).toBeNull();
 });
 
-test("Next (temporary) records the task, raises the level and fetches the next task", async () => {
+// The server reports the current board as solved.
+const solve = () => FakeSocket.last.serverSends({
+  type: "evaluation", seq: 0, evaluation: { status: "solved", readings: { VM1: 4 }, issues: [] },
+});
+
+test("Next unlocks when the task is solved: a checkmark shows and the hint points to Next", async () => {
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [] }));
+  render(<App />);
+  await screen.findByPlaceholderText("Ask the tutor…");
+  const next = screen.getByRole("button", { name: "Next" });
+  expect(next.disabled).toBe(true);
+  expect(screen.queryByLabelText("Solved")).toBeNull();
+  solve();
+  expect(next.disabled).toBe(false);
+  expect(screen.getByLabelText("Solved")).toBeDefined();
+  expect(document.querySelector(".hint-bar").textContent).toMatch(/^Solved! Press Next/);
+  FakeSocket.last.serverSends({ type: "evaluation", seq: 1, evaluation: { status: "open_circuit", readings: { VM1: 0 }, issues: [] } });
+  expect(next.disabled).toBe(true); // breaking the solution locks it again
+  expect(screen.queryByLabelText("Solved")).toBeNull();
+});
+
+test("Next records the solved task, raises the level and fetches the next task", async () => {
   const solvedLevel = { ...LEVEL, shape: "V + 2R + VM", difficulty: 3, signature: "sig-1" };
   localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 2, history: [] }, level: solvedLevel, chat: [] }));
   const fetch = mockFetch(ok({ level: { ...LEVEL, id: "gen-next", title: "Parallel paths" }, difficulty: 3, rationale: "", attempts: 1 }));
   render(<App />);
+  await screen.findByPlaceholderText("Ask the tutor…");
+  solve();
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
 
   expect(await screen.findByRole("heading", { name: "Parallel paths" })).toBeDefined();
@@ -262,6 +316,8 @@ test("while the next task loads, the header keeps the last curriculum level", as
   let arrive;
   vi.stubGlobal("fetch", vi.fn(() => new Promise((resolve) => { arrive = resolve; })));
   render(<App />);
+  await screen.findByPlaceholderText("Ask the tutor…");
+  solve();
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
   expect(screen.getByLabelText("Skill level").textContent).toBe("Level 3"); // not skill_level 8
   const next = { ...LEVEL, id: "gen-next", title: "Parallel paths", curriculum: { level: 4, task: 1, tasks: 2, concept: "parallel" } };

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import GridEditor from "../editor/GridEditor.jsx";
 import { partName } from "../editor/naming.js";
 import { WIRE_PALETTE, lift, nextOrientation, place, removeSelected, rotateSelected } from "../editor/placement.js";
+import { PUBLIC } from "../lib/build.js";
 import { readableJson } from "../lib/jsonfmt.js";
 import { useTutorSession } from "../lib/tutorSession.js";
 
@@ -48,8 +49,8 @@ function Header({ progress, curriculum, lastLevel, canNext, onNext, onRestart })
       <div className="actions-slot">
         <div className="actions" {...shownWhen(!confirming)}>
           <button onClick={() => setConfirming(true)}>Restart Learning</button>
-          {/* TEMPORARY: always enabled; will require status `solved`. */}
-          <button className="primary" disabled={!canNext} onClick={onNext} title="Temporary: counts the task as solved">
+          <button className="primary" disabled={!canNext} onClick={onNext}
+                  title={canNext ? "Go to the next task" : "Solve the task to continue"}>
             Next
           </button>
         </div>
@@ -120,7 +121,7 @@ function Editor({ level, board, evaluation, loading, error, startError, onRetry,
   else if (level)
     body = (
       <>
-        {showJson ? (
+        {showJson && !PUBLIC ? (
           <pre className="json">{readableJson({ ...level, board })}</pre>
         ) : (
           <GridEditor board={board} startBoard={level.board}
@@ -128,12 +129,18 @@ function Editor({ level, board, evaluation, loading, error, startError, onRetry,
                       onDrop={onDrop} onPlan={onPlan} selected={selected} onSelect={onSelect}
                       highlights={highlights} />
         )}
+        {evaluation?.status === "solved" && (
+          // Non-blocking: the learner can still read the meters and the tutor's praise (docs/gui.md §4).
+          <div className="solved-check" role="status" aria-label="Solved">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5" /></svg>
+          </div>
+        )}
         {/* Bottom-left corner of the editor field: free space beside the centered grid. */}
         <div className="editor-tools">
           <button onClick={onReset} title="Put the board back to the task's start">
             Reset board
           </button>
-          <button onClick={onToggleJson}>{showJson ? "Grid" : "JSON"}</button>
+          {!PUBLIC && <button onClick={onToggleJson}>{showJson ? "Grid" : "JSON"}</button>}
         </div>
       </>
     );
@@ -208,12 +215,13 @@ function Chat({ chat, connected, thinking, onSend }) {
 
 // Hint bar text for the current interaction (docs/gui.md §5); generated here, not by the backend.
 // `selection` is { id, editable, blocked } for the selected element, or null.
-function hint(drag, fits, selection) {
+function hint(drag, fits, selection, solved) {
   if (!drag && selection) {
     if (!selection.editable) return `${selection.id} is part of the task: it can't be moved, rotated or removed · Esc to deselect`;
     if (selection.blocked) return `Can't rotate ${selection.id} here: the turned part would overlap or leave the grid`;
     return `${selection.id} selected · drag to move · R to rotate · Del to remove · Esc to deselect`;
   }
+  if (!drag && solved) return "Solved! Press Next for the next task, or keep exploring";
   if (!drag) return "Drag a part or a wire piece from the inventory onto the grid, or move one you placed";
   if (fits === false) return "Can't place here: the spot is taken or off the grid";
   return "Drop onto the highlighted points to connect · R to rotate · Esc to cancel";
@@ -232,6 +240,7 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
   const [selected, setSelected] = useState(null); // { kind: "component" | "wire", id } on the board
   const [blocked, setBlocked] = useState(false); // the last R on the selection didn't fit
   const startBoard = level?.board;
+  const solved = tutor.evaluation?.status === "solved"; // Next unlocks only then
   // The selection only counts while its element is on the board (e.g. not after Reset board).
   const selection = selected && board &&
     (selected.kind === "component" ? board.components : board.wires).some((x) => x.id === selected.id)
@@ -298,7 +307,7 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
         progress={progress}
         curriculum={level?.curriculum}
         lastLevel={session.lastLevel}
-        canNext={Boolean(level) && !loading}
+        canNext={Boolean(level) && !loading && solved}
         onNext={onNext}
         onRestart={onRestart}
       />
@@ -324,7 +333,7 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
             startError={tutor.startError}
             onRetry={onRetry}
           />
-          <div className="hint-bar" aria-live="polite">{hint(drag, fits, selection && { id: selection.id, editable, blocked })}</div>
+          <div className="hint-bar" aria-live="polite">{hint(drag, fits, selection && { id: selection.id, editable, blocked }, solved)}</div>
         </div>
         <InventoryList board={board} onStartDrag={startDrag} />
       </div>

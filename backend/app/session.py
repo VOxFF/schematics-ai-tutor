@@ -27,6 +27,7 @@ class Session:
         self.id = uuid.uuid4().hex[:12]
         self.level: dict | None = None
         self.board: dict | None = None
+        self.seq = 0  # seq of the board in `self.board` (0: the board from session.start)
         self.history: list[dict] = []
         self.busy = False
         self.calls: deque[float] = deque()
@@ -68,6 +69,7 @@ class Session:
             return
         if not await self._set_board(message.get("board") or level["board"], code="session_rejected"):
             return
+        self.seq = 0
         self.level = level
         self.history = [t for t in message.get("history", []) if isinstance(t, dict)]
         self.usage_log.event("session_started", session_id=self.id, level_id=level.get("id"))
@@ -78,6 +80,7 @@ class Session:
             await self.error("no_session", "send session.start first")
             return
         if await self._set_board(message.get("board")):
+            self.seq = message.get("seq", 0)
             evaluation = self._evaluate()
             await self.send({"type": "evaluation", "seq": message.get("seq", 0), "evaluation": evaluation})
             self._record(message.get("seq", 0), evaluation)
@@ -151,18 +154,21 @@ class Session:
         """A tutor call for a learner message (`text`) or a reaction (`text` None)."""
         # Earlier boards since the last call; the current board is added by the tutor context.
         snapshots, self.snapshots = self.snapshots[:-1], []
+        board, seq = self.board, self.seq  # edits may arrive during the call; the reply is about this board
         try:
             reference = self.references.get(self.level.get("id"))
             reply, evaluation = await answer(
-                self.claude, self.config, self.usage_log, level=self.level, board=self.board,
+                self.claude, self.config, self.usage_log, level=self.level, board=board,
                 reference=reference, history=self.history, learner_text=text, snapshots=snapshots,
                 session_id=self.id,
             )
             if text is not None:
                 self.history.append({"role": "learner", "text": text})
             self.history.append({"role": "tutor", "text": reply["chat"]["text"]})
-            await self.send({"type": "tutor.message", "request_id": request_id, "evaluation": evaluation,
-                             "message": reply})
+            # `seq` names the board the reply is about: the client drops its highlights and
+            # evaluation when the learner has edited since.
+            await self.send({"type": "tutor.message", "request_id": request_id, "seq": seq,
+                             "evaluation": evaluation, "message": reply})
         except anthropic.APIError as e:
             purpose = "tutor_request" if text is not None else "tutor_reaction"
             self.usage_log.event("claude_error", purpose=purpose, session_id=self.id, error=str(e)[:300])

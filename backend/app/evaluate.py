@@ -107,9 +107,18 @@ def evaluate_graph(graph: dict, pin_points: dict, settings: dict | None = None) 
             issue("short_circuit", sources, [p for s in sources for p in (pin(s, 0), pin(s, 1))])
         else:
             voltages, currents = solution
+            # Conducting islands: nets joined through parts that carry current. A voltmeter
+            # whose leads sit on different islands (e.g. one lead connected to nothing) has no
+            # circuit through it and reads 0; the solver's tiny pull of floating nets to ground
+            # would otherwise turn that into the full source voltage.
+            islands = UnionFind()
+            for cid, c in components.items():
+                if c["type"] != "voltmeter":
+                    islands.union(nets[pin(cid, 0)], nets[pin(cid, 1)])
             for m in meters:
                 if components[m]["type"] == "voltmeter":
-                    raw = voltages[nets[pin(m, 0)]] - voltages[nets[pin(m, 1)]]
+                    joined = islands.find(nets[pin(m, 0)]) == islands.find(nets[pin(m, 1)])
+                    raw = voltages[nets[pin(m, 0)]] - voltages[nets[pin(m, 1)]] if joined else 0.0
                 else:
                     raw = currents[m]
                 readings[m] = round_reading(raw, components[m]["type"])

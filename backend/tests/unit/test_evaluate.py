@@ -99,6 +99,34 @@ def test_unused_wires_are_reported_without_changing_the_status():
     assert unused[0]["points"] == [[12, 7], [12, 8]]
 
 
+@pytest.mark.parametrize("loose", ["positive", "negative"])
+def test_a_voltmeter_with_a_loose_lead_reads_zero(loose):
+    """Regression: a lead connected to nothing read the voltage of the other lead's net
+    (here 4 V when the negative lead is loose)."""
+    g = grid()
+    vm1 = comp(g, "VM1")
+    point = vm1["pins"][loose]
+    # Cut the lead's wire: keep only wires that don't touch the lead's point.
+    g["wires"] = [w for w in g["wires"] if not any(point in seg for seg in w["segments"])]
+    result = evaluate(g)
+    assert result["status"] == "floating_part"
+    assert result["readings"]["VM1"] == 0.0
+
+
+def test_a_voltmeter_across_an_unconnected_part_reads_zero():
+    g = grid("closed_loop")
+    # VM2's positive sits on the loop's 12 V side; its negative is wired to R9, which touches nothing else.
+    g["components"] += [
+        {"id": "VM2", "type": "voltmeter", "fixed": False, "orientation": "N",
+         "pins": {"positive": [4, 3], "negative": [4, 5]}},
+        {"id": "R9", "type": "resistor", "value": 300, "fixed": False, "orientation": "W",
+         "pins": {"a": [4, 6], "b": [6, 6]}},
+    ]
+    g["wires"].append({"id": "W90", "segments": [[[4, 5], [4, 6]]]})
+    assert validate_grid(g) == []
+    assert evaluate(g)["readings"]["VM2"] == 0.0  # no circuit through it: it used to read 12 V
+
+
 def test_contradictory_sources_are_a_short():
     from app.solver import solve
     components = [{"id": "V1", "type": "voltage_source", "value": 9, "pins": ["positive", "negative"]},
