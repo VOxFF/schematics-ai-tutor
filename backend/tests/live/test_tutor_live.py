@@ -30,3 +30,18 @@ def test_tutor_answers_a_learner_question(config):
     print(f"cost: ${usage_log.totals['cost_usd']:.4f}")
     assert message["chat"]["text"]
     assert location_talk(message["chat"]["text"]) == []
+
+
+def test_tutor_reacts_to_an_edit(config):
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        pytest.skip("ANTHROPIC_API_KEY is not set (./test.sh live loads backend/keys/apikey.txt)")
+    usage_log = UsageLog.from_config(config, REPO_ROOT, "live-test")
+    level, spec = example_level()
+    message, evaluation = asyncio.run(answer(
+        anthropic.AsyncAnthropic(), config, usage_log, level=level, board=level["board"],
+        reference=spec["complete_board"], history=[], learner_text=None, session_id="live",
+    ))
+    print(json.dumps({"status": evaluation["status"], "message": message}, indent=2))
+    print(f"cost: ${usage_log.totals['cost_usd']:.4f}")
+    assert message["chat"]["text"]
+    assert location_talk(message["chat"]["text"]) == []

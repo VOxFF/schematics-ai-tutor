@@ -24,13 +24,25 @@ def test_schema_puts_meta_before_chat():
 
 def test_context_has_every_section_and_no_raw_reference_grid():
     level, spec = example_level()
-    context, evaluation = build_context(level, level["board"], spec["complete_board"], [], "Why 4 volts?", 6)
-    for tag in ("level", "reference", "summary", "snapshot", "history", "request"):
+    request = {"action": "message", "learner_text": "Why 4 volts?"}
+    context, evaluation = build_context(level, level["board"], spec["complete_board"], [], request, 6)
+    for tag in ("level", "reference", "summary", "snapshots", "history", "request"):
         assert f"<{tag}>" in context
     assert "status: meter_misuse" in context  # the task board alone: VM1 blocks the loop
     assert evaluation["status"] == "meter_misuse"
     reference = context.split("<reference>")[1].split("</reference>")[0]
     assert '"edges"' in reference and '"segments"' not in reference  # graph only, no layout
+
+
+def test_reaction_context_lists_earlier_snapshots_then_the_current_board():
+    level, spec = example_level()
+    earlier = [{"seq": 1, "t_ms": 900, "graph": {"components": []}, "evaluation": {"status": "open_circuit"}}]
+    context, _ = build_context(level, level["board"], spec["complete_board"], [], {"trigger": "reaction"}, 6,
+                               snapshots=earlier)
+    timeline = json.loads(context.split("<snapshots>")[1].split("</snapshots>")[0])
+    assert [s.get("seq") for s in timeline] == [1, None]
+    assert timeline[-1]["current"] is True and "grid" in timeline[-1]  # only the current board has the layout
+    assert "reaction" in context.split("<request>")[1]
 
 
 def test_clean_highlights_keeps_only_real_targets():
