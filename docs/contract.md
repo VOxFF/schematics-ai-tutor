@@ -234,8 +234,8 @@ interface ChatTurn {
 
 interface Snapshot {               // recorded by the server on every board.update
   seq: number;
-  t_ms: number;                      // milliseconds since the task started, so Claude sees the pace
-  grid: Board;
+  t_ms: number;                      // milliseconds since the session started, so Claude sees the pace
+  grid?: Board;                      // in the tutor context, only on the current board
   graph: Graph;
   evaluation: Evaluation;
 }
@@ -304,13 +304,13 @@ The backend makes three kinds of Claude calls: **tutoring** (2.1), **task genera
 
 The order runs from most stable to least stable, so the cached prefix stays valid.
 
-1. **System prompt (static, cached).** The tutor's role, principles, free-chat rules, guardrails and the output rules. The live text is `SYSTEM_PROMPT` in `backend/app/tutor.py`; the design draft is in [tutor.md](tutor.md#8-system-prompt-draft).
+1. **System prompt (static, cached).** The tutor's role, principles, reaction rules, free-chat rules, guardrails and the output rules. The live text is `SYSTEM_PROMPT` in `backend/app/tutor.py`; the design draft is in [tutor.md](tutor.md#8-system-prompt-draft).
 2. **One user turn per call.** Each call is self-contained; there is no multi-turn conversation. The turn contains:
    - `<level>`: concept, targets and intro text
    - `<reference>`: the reference solution's `graph` when available, so hints can point toward a solution without revealing it
    - `<summary>`: a one-line circuit description written by the backend, e.g. `parts: V1 12 V, R1 40 Ω, VM1; status: meter_misuse; readings: VM1=12.0`
    - `<history>`: the last `tutor.history_turns` tutor and learner chat turns, for continuity
-   - `<snapshots>` (today `<snapshot>`, the current board only, until the editor sends edits): every `Snapshot` (grid, graph, evaluation) recorded since the previous call, up to the last `tutor.max_snapshots`. Each grid is labeled "for highlight references only". They show Claude what the learner did and how the circuit changed. The evaluations are the only source of electrical values.
+   - `<snapshots>`: the `Snapshot`s recorded since the previous call, up to the last `tutor.max_snapshots`, oldest first. Earlier ones carry the graph and evaluation; the last is the current board (`"current": true`) and also carries its grid, labeled "for highlight references only". They show Claude what the learner did and how the circuit changed. The evaluations are the only source of electrical values.
    - `<request>`: either `trigger: "reaction"`, or the learner's `action`, the next allowed hint level and `learner_text`
 
 #### Response handling
