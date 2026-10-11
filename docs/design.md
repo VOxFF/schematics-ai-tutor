@@ -131,6 +131,27 @@ One module, [`rate_limits.py`](../backend/app/rate_limits.py), with its own conf
 | Board updates per session | 20 per second | Coalesced: the latest board waits until the limit allows, then it's evaluated; older ones in between are dropped |
 | Grid size | 30 × 30 points, 40 components, 300 wire pieces; learner boards and generated tasks | `error: bad_message` for a learner board; a generated task fails validation. This also bounds solver and validation time. |
 
+Where each limit applies on the way to Claude: a per-session or per-IP rate first, then the shared daily budget. Evaluation has no budget gate.
+
+```mermaid
+flowchart LR
+    subgraph IN["Requests"]
+        WS["WebSocket connect"]
+        GEN["POST /api/tasks/generate"]
+        BU["board.update"]
+        TR["tutor.request / reaction"]
+        PRE["Pre-generation<br/>(background)"]
+    end
+    WS -->|"sessions per IP<br/>30/h, 3 open"| S[Session]
+    GEN -->|"REST per IP 60/min<br/>generations per IP 10/h"| B1{"Budget<br/>< 100%?"}
+    BU -->|"20/s per session<br/>(coalesced) + grid size"| EV["Evaluator<br/>no Claude, never limited by budget"]
+    TR -->|"6/min per session<br/>one in flight"| B1
+    PRE --> B2{"Budget<br/>< 80%?"}
+    B1 -->|yes| C[(Claude)]
+    B2 -->|yes| C
+    C -->|"cost of each call"| BUD["Daily budget<br/>$20, resets 00:00 UTC<br/>state/claude-budget.json"]
+```
+
 - **Budget in dollars, not calls.** Calls differ a lot in cost (a generation turn costs about 2.5 times a reaction), so the budget counts the estimated spend that the usage log already computes from the `pricing` table in `config.yaml`. Every Claude call adds its cost as it completes. A call is only checked before it starts, so the last calls of the day can overshoot the cap slightly.
 - **Pre-generation stops first.** Background generations (the first-task pool, the next task) need the budget under `background_share`; a learner waiting for a task or the tutor can use the rest.
 - **The budget survives restarts.** The day's spend is kept in `state/claude-budget.json` (gitignored), on the Fly volume when deployed ([deployment.md](deployment.md#5-logs)), so a deploy doesn't reset it. All other counters are in memory and start from zero on a restart; that's harmless.
