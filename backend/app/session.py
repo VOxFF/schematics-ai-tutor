@@ -14,16 +14,18 @@ import anthropic
 from .evaluate import evaluate
 from .graph import to_graph
 from .grid import validate_grid
+from .task_cache import solved
 from .tutor import answer
 
 
 class Session:
-    def __init__(self, send, *, config: dict, claude, usage_log, references: dict):
+    def __init__(self, send, *, config: dict, claude, usage_log, references: dict, task_cache=None):
         self.send = send  # async callable taking a message dict
         self.config = config
         self.claude = claude
         self.usage_log = usage_log
         self.references = references
+        self.task_cache = task_cache  # pre-generation (docs/design.md §3), or None
         self.id = uuid.uuid4().hex[:12]
         self.level: dict | None = None
         self.board: dict | None = None
@@ -74,6 +76,15 @@ class Session:
         self.history = [t for t in message.get("history", []) if isinstance(t, dict)]
         self.usage_log.event("session_started", session_id=self.id, level_id=level.get("id"))
         await self.send({"type": "evaluation", "seq": 0, "evaluation": self._evaluate()})
+        # A resumed task (e.g. after a server restart, which empties the cache) gets its next
+        # task generated in the background too, so Next doesn't wait.
+        progress = message.get("progress")
+        if self.task_cache and isinstance(progress, dict) and isinstance(progress.get("history"), list):
+            try:
+                self.task_cache.pregenerate(solved({"skill_level": int(progress.get("skill_level", 1)),
+                                                    "history": progress["history"]}, level))
+            except (KeyError, TypeError, ValueError):
+                pass  # an incomplete saved level: Next generates on request
 
     async def update(self, message: dict) -> None:
         if self.level is None:

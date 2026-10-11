@@ -8,7 +8,7 @@ The app has three screens: the **start screen**, the **learning screen** (the tu
 
 | Learner | Lands on |
 |---|---|
-| New: no saved session in this browser | Start screen. **Start Learning** opens the first curated level on the learning screen. |
+| New: no saved session in this browser | Start screen. **Start Learning** opens a first task from the server's pool of pre-generated ones on the learning screen. |
 | Returning, or after a page reload | The learning screen directly, resumed exactly where they left off. Showing the start screen would feel like lost progress. |
 | After **Restart Learning** | Everything is wiped, then the start screen |
 
@@ -68,7 +68,7 @@ The sketch shows placement only; its values are placeholders.
 ## 3. Header
 
 - **Progress** shows the current skill level as a badge and the number of tasks solved.
-- **Next** is disabled until the status is `solved`. Clicking it sends `task.next`; the skill level goes up by one and the next task appears.
+- **Next** is disabled until the status is `solved`. Clicking it sends `task.next`; the skill level goes up by one and the next task appears. The solved task stays on screen for up to 300 ms while the next one arrives: a pre-generated task replaces it directly, without the wait view flashing in between; a slower one gets the wait view.
 - **Restart Learning** wipes all progress and history and returns to the start screen (§1).
 
 ## 4. Grid
@@ -225,7 +225,7 @@ flowchart TD
     RL["Restart Learning<br/>(confirm, wipe)"] -.-> SS
 ```
 
-1. **First visit.** The start screen explains what the tutor offers and the typical learning path. **Start Learning** opens the first curated level, so there's no waiting.
+1. **First visit.** The start screen explains what the tutor offers and the typical learning path. **Start Learning** opens a pre-generated first task, so there's no waiting.
 2. **Read.** The task panel states the goal in plain words, and each target shows its live reading.
 3. **Build.** The learner drags parts and wires onto the grid, and the hint bar explains the controls as they go.
 4. **Observe.** After each finished edit the status and meter readings update immediately, so cause and effect are visible.

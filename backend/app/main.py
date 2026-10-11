@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from .config import REPO_ROOT, config_path, load_config
 from .session import Session
+from .task_cache import TaskCache
 from .task_generation import generate_task
 from .usage_log import UsageLog
 
@@ -41,11 +42,31 @@ async def lifespan(app: FastAPI):
     app.state.references = References()
     # The SDK reads ANTHROPIC_API_KEY from the environment; without it, Claude features are off.
     app.state.claude = anthropic.AsyncAnthropic() if os.environ.get("ANTHROPIC_API_KEY") else None
+    app.state.task_cache = task_cache(app.state.claude, config, usage_log)
     usage_log.event("server_started", run_id=run_id, pid=os.getpid(), config=str(config_path()),
-                    claude=app.state.claude is not None)
+                    claude=app.state.claude is not None, pregeneration=app.state.task_cache is not None)
+    if app.state.task_cache:
+        app.state.task_cache.fill_first_task_pool()  # new learners don't wait at Start
     yield
+    if app.state.task_cache:
+        app.state.task_cache.close()
     usage_log.summary()
     usage_log.event("server_stopped", pid=os.getpid())
+
+
+def task_cache(claude, config: dict, usage_log: UsageLog) -> TaskCache | None:
+    """Pre-generation (docs/design.md §3), or None without Claude or when it's turned off."""
+    settings = config.get("pregeneration", {})
+    if claude is None or not settings.get("enabled", True):
+        return None
+
+    async def produce(progress: dict):
+        return await generate_task(claude, config, usage_log, skill_level=progress["skill_level"],
+                                   history=progress["history"])
+
+    return TaskCache(produce, first_task_pool=settings.get("first_task_pool", 2),
+                     max_entries=settings.get("max_entries", 50), ttl_s=settings.get("ttl_s", 3600),
+                     usage_log=usage_log)
 
 
 app = FastAPI(title="Schematics AI Tutor", lifespan=lifespan)
@@ -68,6 +89,10 @@ def get_references(conn: HTTPConnection) -> dict:
     return conn.app.state.references
 
 
+def get_task_cache(conn: HTTPConnection) -> TaskCache | None:
+    return getattr(conn.app.state, "task_cache", None)  # absent when the app runs without its lifespan
+
+
 @app.get("/api/health")
 def health() -> dict:
     return {"status": "ok"}
@@ -85,11 +110,17 @@ async def generate(
     usage_log: UsageLog = Depends(get_usage_log),
     claude=Depends(get_claude),
     references: dict = Depends(get_references),
+    cache: TaskCache | None = Depends(get_task_cache),
 ) -> dict:
-    """Ask Claude for the next task and return it as a Level (pipeline endpoint)."""
+    """The task for this progress as a Level: pre-generated when the cache has one, else generated
+    now. The task after it is then generated in the background (docs/design.md §3)."""
     if claude is None:
         raise HTTPException(503, "Claude is not configured: set ANTHROPIC_API_KEY or backend/keys/apikey.txt")
-    result = await generate_task(claude, config, usage_log, skill_level=body.skill_level, history=body.history)
+    progress = {"skill_level": body.skill_level, "history": body.history}
+    if cache is not None:
+        result = await cache.get(progress)
+    else:
+        result = await generate_task(claude, config, usage_log, skill_level=body.skill_level, history=body.history)
     if result.level is None:
         message = f"Sorry, I couldn't create a valid task after {result.attempts} attempts. Please try again."
         raise HTTPException(502, {"message": message, "attempts": result.attempts, "errors": result.errors})
@@ -109,6 +140,7 @@ async def session_socket(
     usage_log: UsageLog = Depends(get_usage_log),
     claude=Depends(get_claude),
     references: dict = Depends(get_references),
+    cache: TaskCache | None = Depends(get_task_cache),
 ) -> None:
     await websocket.accept()
 
@@ -118,7 +150,8 @@ async def session_socket(
         except (WebSocketDisconnect, RuntimeError):
             pass  # the learner left; nothing to deliver to
 
-    session = Session(send, config=config, claude=claude, usage_log=usage_log, references=references)
+    session = Session(send, config=config, claude=claude, usage_log=usage_log, references=references,
+                      task_cache=cache)
     try:
         while True:
             message = await websocket.receive_json()

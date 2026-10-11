@@ -16,7 +16,7 @@ The system separates deterministic code from Claude, with strictly divided respo
 
 **Rules:**
 - Claude never produces or overrides a verdict or a computed value. It receives the evaluator's output as input and reasons about the *learner*.
-- Everything Claude produces is untrusted input. Generated tasks pass the same validator as the learner's work, and the system falls back to curated content when they fail.
+- Everything Claude produces is untrusted input. Generated tasks pass the same validator as the learner's work, and the system falls back to curated content when they fail (curated levels are planned; today a failed generation shows an error with a retry).
 
 ## 2. The learner keeps agency
 
@@ -52,6 +52,30 @@ flowchart LR
 - **Frontend:** JavaScript + React. It owns the interactive workspace and displays the tutor's messages. It holds no secrets and does no grading.
 - **Backend:** Python. It owns the evaluator and all Claude API calls.
 - **Task flow:** Claude proposes a task. The evaluator validates it and computes its targets, and the frontend receives the resulting task. Details are in [schematics.md](schematics.md#3-task-flow).
+- **Tasks are pre-generated and cached on the backend.** A generated task takes 20–90 s depending on the level (first tasks ~25 s, level 14 ~60 s at `high` effort), which is too long to wait at Start or Next.
+  - *Cache by progress:* the cache key is the learner's progress (skill level and task history). A request for a progress gets the cached task at once; if that task is still being generated, it waits for the same generation instead of starting another; otherwise it generates one now. A task is removed from the cache when it's served, so the same progress later (e.g. after Restart Learning) gets a fresh task.
+  - *Next task in the background:* after serving a task, the backend generates the next one, for the progress as if the served task is solved. By the time the learner presses Next it's usually ready. A resumed task (e.g. after a server restart, which empties the cache) does the same when its session starts, from the progress the browser sends with `session.start`.
+  - *First-task pool:* for the start screen, the server keeps a small pool of ready first tasks, filled at startup and topped up as they are served, so even a first visit doesn't wait.
+  - *Bounds:* the cache has a size cap and an expiry, and pre-generation will count against the global Claude budget once that limit exists (§4).
+  - *Accepted loss:* the next task is generated before the current one is finished, so it doesn't know that task's hints or misconceptions. A wait at Next costs more.
+  - *Why the backend, not the browser:* the browser stays a plain client (it calls the generate endpoint as before), the cache survives reloads because the same progress gets the same entry, and every decision to spend a Claude call is made on the server, next to the rate limits and the budget. The cost is in-memory server state, lost on restart and not shared between instances, which is acceptable for one prototype server.
+
+  ```mermaid
+  sequenceDiagram
+      participant FE as Frontend
+      participant BE as Backend
+      participant C as Claude
+
+      Note over BE,C: startup: fill the first-task pool
+      FE->>BE: generate (progress: level 1)
+      BE-->>FE: task A, from the pool (no wait)
+      BE->>C: background: refill the pool
+      BE->>C: background: task after A (progress: A solved)
+      Note over FE: the learner solves A
+      FE->>BE: generate (progress: A solved)
+      BE-->>FE: task B, cached (no wait)
+      BE->>C: background: task after B
+  ```
 - **Two feedbacks per edit, fast and slow.** Every finished edit is sent to the backend.
   - *Fast:* the evaluator runs at once, with no Claude call, and its readings and status reach the browser within a split second. The edit also clears Claude's highlights, which described the previous board.
   - *Slow:* when editing pauses, the backend passes the evaluator's results and the task context to Claude, validates the reply, and sends Claude's text and new highlights.
@@ -86,7 +110,7 @@ flowchart LR
 - **Picking is by drawn shape, and one drag serves the inventory and the board.** Hit-testing walks the scene nodes' own meshes (planes, circles, rings), grown by 2 screen pixels, instead of slot rectangles or raycasts. A drag keeps the grab offset, so the element never jumps to the pointer.
   - *Why:* bounding boxes made empty space around symbols clickable, and a rectangular hotspot can't tell a thin wire from the gap next to it. One mechanism for every source keeps the inventory and the board behaving alike. Details are in [gui.md](gui.md#4-grid).
 - **Reference solutions stay on the server.** When a task is generated, the backend keeps its complete board in memory by level ID (bounded). The tutor uses it as `<reference>`; the browser only ever receives the task board.
-- **Transport:** REST for resources and task generation (`/api/levels`, `/api/tasks/generate`), and one WebSocket per learning session for the interactive loop: live evaluation on every board edit and validated tutor messages. Details are in [contract.md](contract.md).
+- **Transport:** REST for resources and task generation (`/api/tasks/generate`; `/api/levels` is planned with the curated levels), and one WebSocket per learning session for the interactive loop: live evaluation on every board edit and validated tutor messages. Details are in [contract.md](contract.md).
 
 ## 4. Security and operations
 
@@ -156,6 +180,12 @@ tutor:
 
 task_generation:
   recent_tasks: 10
+
+pregeneration:                 # tasks generated ahead of time and cached (§3)
+  enabled: true
+  first_task_pool: 2           # ready first tasks for new learners, filled at startup
+  max_entries: 50              # cached or running generations, oldest dropped first
+  ttl_s: 3600                  # a cached task older than this is dropped
 
 rate_limits:
   tutor_calls_per_session_per_min: 6
@@ -232,6 +262,7 @@ schematics-ai-tutor/
 │   │   ├── task_spec.py       TaskSpec schema, validation stages, targets, task-grid derivation
 │   │   ├── curriculum.py      skill level → curriculum level and task; level-fit and centering checks
 │   │   ├── task_generation.py Claude task generation with the validate_grid tool
+│   │   ├── task_cache.py      pre-generated tasks cached by progress; the first-task pool
 │   │   ├── tutor.py           tutor call: context, TutorMessage schema, backstop
 │   │   ├── session.py         WebSocket learning session
 │   │   └── jsonfmt.py         readable JSON formatting

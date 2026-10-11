@@ -5,12 +5,13 @@ import time
 
 from fastapi.testclient import TestClient
 
-from app.main import References, app, get_claude, get_config, get_references, get_usage_log
+from app.main import References, app, get_claude, get_config, get_references, get_task_cache, get_usage_log
+from app.task_cache import progress_key, solved
 from app.usage_log import UsageLog
 from tests.conftest import FakeClaude, example_level, tutor_reply
 
 
-def connect(config, claude):
+def connect(config, claude, cache=None):
     level, spec = example_level()
     references = References()
     references[level["id"]] = spec["complete_board"]
@@ -19,6 +20,7 @@ def connect(config, claude):
         get_config: lambda: config,
         get_usage_log: lambda: UsageLog(None),
         get_references: lambda: references,
+        get_task_cache: lambda: cache,
     }
     return TestClient(app), level
 
@@ -44,6 +46,23 @@ def test_chat_round_trip(config):
         assert reply["evaluation"]["readings"] == {"VM1": 12.0}
     context = fake.requests[0]["messages"][0]["content"]
     assert "<reference>" in context and "none" not in context.split("<reference>")[1][:10]
+
+
+def test_a_resumed_task_gets_its_next_task_pregenerated(config):
+    class Cache:
+        def __init__(self):
+            self.pregenerated = []
+
+        def pregenerate(self, progress, count=1):
+            self.pregenerated.append(progress)
+
+    cache = Cache()
+    client, level = connect(config, None, cache)
+    progress = {"skill_level": 4, "history": []}
+    with client.websocket_connect("/ws/session") as ws:
+        ws.send_json({"type": "session.start", "level": level, "progress": progress})
+        assert ws.receive_json()["type"] == "evaluation"
+    assert [progress_key(p) for p in cache.pregenerated] == [progress_key(solved(progress, level))]
 
 
 def test_request_before_start_is_no_session(config):

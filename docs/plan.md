@@ -36,7 +36,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Task generation: electrical validation (working circuit, reconstruction from the task board, not already solved) and computed target values
 - [ ] Curated fallback levels (tagged by curriculum level) when generation fails, validated by playtesting
 - [ ] Server-side refusal fallbacks for Claude calls
-- [ ] Background pre-generation of the next task
+- [x] Background pre-generation of the next task: a backend cache keyed by progress, and a pool of first tasks
 - [x] Skill level and task history (`Progress`): kept in the browser, sent with every generation request
 - [x] Repeat check against recent tasks (circuit signature)
 - [x] Variety for identical contexts: random variation hints (layout, source voltage, resistor range)

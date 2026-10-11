@@ -11,8 +11,9 @@ function socketUrl() {
 }
 
 // level: the current Level (or null); chat: [{role, text, kind?}]; onChat: (nextChat) => void;
-// board: the learner's current board, sent on every change so the evaluation stays live.
-export function useTutorSession(level, chat, onChat, board) {
+// board: the learner's current board, sent on every change so the evaluation stays live;
+// progress: sent with session.start, so the server can pre-generate the task after this one.
+export function useTutorSession(level, chat, onChat, board, progress) {
   const [connected, setConnected] = useState(false);
   const [thinking, setThinking] = useState(false);
   const [evaluation, setEvaluation] = useState(null);
@@ -28,6 +29,8 @@ export function useTutorSession(level, chat, onChat, board) {
   levelRef.current = level;
   const boardRef = useRef(board);
   boardRef.current = board;
+  const progressRef = useRef(progress);
+  progressRef.current = progress;
   const seq = useRef(0);
 
   const append = useCallback((entry) => onChat([...chatRef.current, entry]), [onChat]);
@@ -39,7 +42,8 @@ export function useTutorSession(level, chat, onChat, board) {
       .filter((m, i, all) => !(pending.current && i === all.length - 1 && m.role === "learner"))
       .map(({ role, text }) => ({ role, text }));
     seq.current = 0; // a new server session numbers boards from 0 (its session.start board)
-    ws.send(JSON.stringify({ type: "session.start", level: levelRef.current, board: boardRef.current, history }));
+    ws.send(JSON.stringify({ type: "session.start", level: levelRef.current, board: boardRef.current, history,
+                             progress: progressRef.current }));
   }, []);
 
   const sendRequest = useCallback((ws, text) => {
