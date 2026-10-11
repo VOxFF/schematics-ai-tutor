@@ -38,7 +38,7 @@ function ring(inner, outer, color, z = 0) {
 
 // HTML label at (x, y). CSS2DRenderer overwrites the outer element's transform to position it,
 // so rotation goes on an inner span; `vertical` turns the text 90° to read bottom to top.
-function label(text, className, x = 0, y = 0, size = STYLE.labels.size, vertical = false) {
+function label(text, className, x = 0, y = 0, size = STYLE.labels.size, vertical = false, anchorLeft = false) {
   const element = document.createElement("div");
   const inner = document.createElement("span");
   inner.className = className;
@@ -46,6 +46,8 @@ function label(text, className, x = 0, y = 0, size = STYLE.labels.size, vertical
   inner.style.fontSize = `${size}px`;
   inner.style.display = "inline-block";
   if (vertical) inner.style.transform = "rotate(-90deg)";
+  // Anchor by the left edge instead of the center (horizontal text beside a vertical part).
+  if (anchorLeft) inner.style.transform = "translateX(50%)";
   element.append(inner);
   const object = new CSS2DObject(element);
   object.position.set(x, y, 0);
@@ -120,7 +122,7 @@ function componentNode(component, reading) {
     resistor: STYLE.resistor.height / 2,
     voltage_source: STYLE.battery.long_plate / 2,
   }[component.type] ?? STYLE.meter.radius;
-  const clearance = halfSize + 12;
+  const clearance = halfSize + STYLE.labels.gap;
   const [idX, idY] = vertical ? [-clearance, 0] : [0, clearance];
   const [otherX, otherY] = vertical ? [clearance, 0] : [0, -clearance];
   const add = (name, object) => {
@@ -130,8 +132,8 @@ function componentNode(component, reading) {
   add("id", label(component.id, "editor-label", idX, idY, STYLE.labels.size, vertical));
   if (READING_UNITS[component.type]) {
     const text = reading == null ? "--" : `${reading} ${READING_UNITS[component.type]}`;
-    const offset = vertical ? 12 : 0; // horizontal text beside a vertical part needs a bit more room
-    add("reading", label(text, "editor-reading", otherX + offset, otherY, STYLE.labels.size, false));
+    // Beside a vertical part the reading stays horizontal, anchored by its left edge.
+    add("reading", label(text, "editor-reading", otherX, otherY, STYLE.labels.size, false, vertical));
   } else if (valueText) {
     add("value", label(valueText.trim(), "editor-label editor-value", otherX, otherY, STYLE.labels.size, vertical));
   }

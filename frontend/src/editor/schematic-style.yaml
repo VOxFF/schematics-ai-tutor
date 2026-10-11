@@ -50,3 +50,4 @@ meter:
 
 labels:
   size: 12                     # font size (px) of part labels and readings
+  gap: 7.2                     # space between a part's edge and its labels

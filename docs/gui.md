@@ -80,7 +80,7 @@ Rendered with three.js in an orthographic, top-down view (`frontend/src/editor/`
 - resistor length, height, fill and band width
 - battery plate sizes and colors (the positive plate is red), and the size and placement (distance from the plate and from the wire) of the + and − marks
 - meter radius, outline thickness, fills per type (voltmeter light blue, ammeter light amber) and letter size
-- label size
+- label size and the gap between a part and its labels
 
 Editing the file and saving reloads the page in development.
 
