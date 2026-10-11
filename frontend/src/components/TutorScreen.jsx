@@ -89,7 +89,7 @@ function TaskPanel({ level, evaluation }) {
   );
 }
 
-function Editor({ level, board, evaluation, loading, error, startError, onRetry, drag, onStartDrag, onDrop, onPlan, selected, onSelect, showJson, onToggleJson, onReset }) {
+function Editor({ level, board, evaluation, loading, error, startError, onRetry, drag, onStartDrag, onDrop, onPlan, selected, onSelect, highlights, showJson, onToggleJson, onReset }) {
   let body;
   if (loading)
     body = (
@@ -122,7 +122,8 @@ function Editor({ level, board, evaluation, loading, error, startError, onRetry,
         ) : (
           <GridEditor board={board} startBoard={level.board}
                       readings={evaluation?.readings} drag={drag} onStartDrag={onStartDrag}
-                      onDrop={onDrop} onPlan={onPlan} selected={selected} onSelect={onSelect} />
+                      onDrop={onDrop} onPlan={onPlan} selected={selected} onSelect={onSelect}
+                      highlights={highlights} />
         )}
         {/* Bottom-left corner of the editor field: free space beside the centered grid. */}
         <div className="editor-tools">
@@ -309,6 +310,7 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
             onPlan={setFits}
             selected={selection}
             onSelect={select}
+            highlights={tutor.highlights}
             showJson={showJson}
             onToggleJson={() => setShowJson((v) => !v)}
             onReset={() => onBoard(null)}

@@ -77,6 +77,16 @@ def test_answer_returns_a_clean_message(config, usage_log):
     assert "Why does VM1 show 12 V?" in request["messages"][0]["content"]
 
 
+def test_answer_logs_returned_and_kept_highlights(config, usage_log):
+    returned = [{"component": "VM1", "wire": None, "point": None, "style": "attention"},
+                {"component": "R9", "wire": None, "point": None, "style": "error"}]
+    ask(FakeClaude([tutor_reply(highlights=returned)]), config, usage_log)
+    records = [json.loads(line) for line in usage_log.path.read_text().splitlines()]
+    logged = next(r for r in records if r["event"] == "tutor_highlights")
+    assert logged["returned"] == returned
+    assert logged["kept"] == [{"target": {"component": "VM1"}, "style": "attention"}]
+
+
 def test_location_talk_regenerates_then_falls_back(config, usage_log):
     client = FakeClaude([tutor_reply("Connect R1.b to VM1."), tutor_reply("Look at row 3.")])
     message, evaluation = ask(client, config, usage_log)

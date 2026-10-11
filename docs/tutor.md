@@ -34,6 +34,12 @@ A reaction is Claude's response when the learner pauses editing ([contract.md](c
 
 If the status hasn't changed since the last reaction, the reply is a single short line.
 
+**Highlights on a problem.** Whenever the status shows a problem, the reply highlights it, so the words can stay on the physics:
+- **What's wrong, by ID:** a misplaced wire or part, the parts on a short path, the misused meter.
+- **Where a connection belongs:** for a missing or misplaced connection, the two grid points that should be connected, as two `point` highlights. A misplaced wire gets its ID plus the two points it should connect instead.
+
+`tutor_highlights` in the run log records what Claude returned and what survived the board check.
+
 ## 3. Hint ladder
 
 > **Later phase.** The hint ladder is built after the core workflow runs end to end ([plan.md](plan.md#5-learning-depth)). Until then, the tutor helps through reactions and free chat only.

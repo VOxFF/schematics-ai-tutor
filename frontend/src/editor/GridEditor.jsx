@@ -8,8 +8,8 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import { lift, plan } from "./placement.js";
-import { boardBounds, buildBoard, disposeTree, floatingNode, inventoryNode, layoutInventory, outline, pickAt, previewNode,
-         sceneBounds, slotAnchor, toWorld } from "./scene.js";
+import { boardBounds, buildBoard, disposeTree, floatingNode, drawHighlight, inventoryNode, layoutInventory, outline, pickAt,
+         previewNode, sceneBounds, slotAnchor, toWorld } from "./scene.js";
 import { CELL, STYLE } from "./style.js";
 
 const MARGIN = 1.04; // a little air around the grid
@@ -20,11 +20,14 @@ const DRAG_THRESHOLD_PX = 4; // a press on the board that moves less than this i
 // `onStartDrag(drag)` starts one, `onDrop(point)` ends it on a grid point, and `onPlan(fits)`
 // reports whether the ghost fits (null off the grid). `selected` ({ kind, id } or null) is the
 // selected board element, drawn with an outline; `onSelect(selection)` changes it.
+// `highlights` are the tutor's ({ target: { component | wire | point }, style }), drawn as
+// outlines in their style's color (docs/gui.md §4).
 // `startBoard` is the task's starting board: the scene's bounds (and so its scale) are computed
 // from it once per task and never change while the learner edits `board`. It also tells the
 // task's own wires (not movable) from the ones the learner placed. While a placed
 // element is being moved, `board` is the board without it.
-export default function GridEditor({ board, startBoard, readings, drag, onStartDrag, onDrop, onPlan, selected, onSelect }) {
+export default function GridEditor({ board, startBoard, readings, drag, onStartDrag, onDrop, onPlan, selected, onSelect,
+                                     highlights }) {
   const capacity = startBoard?.inventory?.length ?? 0;
   const host = useRef(null);
   const view = useRef(null);
@@ -105,12 +108,13 @@ export default function GridEditor({ board, startBoard, readings, drag, onStartD
       disposeTree(state.root);
     }
     state.root = buildBoard(board, readings ?? {});
+    for (const h of highlights ?? []) drawHighlight(state.root, h, selected);
     const node = selected && state.root.getObjectByName(selected.id);
     if (node && node.userData.kind === selected.kind) outline(node);
     state.scene.add(state.root);
     state.layout = layoutInventory(board, capacity);
     state.render();
-  }, [board, capacity, readings, selected, unsupported]);
+  }, [board, capacity, readings, selected, highlights, unsupported]);
 
   // Scene bounds: once per task, from its starting board. The inventory column reserves the
   // starting inventory's rows, so its width and height never change during the task.

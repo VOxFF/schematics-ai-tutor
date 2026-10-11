@@ -77,6 +77,7 @@ flowchart LR
 | REST requests per IP | 60 per minute | `429` |
 | Global Claude budget | 5,000 calls per day | Tutor calls return `error: tutor_unavailable`; generation serves curated levels. Evaluation is unaffected. |
 
+- **Build status.** Implemented: tutor calls per session (one call in flight, 6 per minute), and the grid size limits for generated tasks only; learner boards aren't size-checked yet. The other limits are planned for deployment ([plan.md](plan.md#2-backend)).
 - **Implementation.** In-memory token buckets in the single backend process. Running several instances would need a shared store such as Redis; that is noted for scale, not built for the prototype.
 - **Configuration.** All limits are settings in `config.yaml` (§5).
 - **Usage and cost log.** When `logs.enabled` is on, the backend writes one JSON-lines file per run, `logs/run-<timestamp>.jsonl` (gitignored). It records server start and stop, every Claude call (purpose, model, learner session ID, token usage, estimated cost from the `pricing` table) and a run summary with totals. Each `./start.sh` is one run; code reloads append to the same file.
@@ -233,8 +234,9 @@ schematics-ai-tutor/
 │   │   │   └── TutorScreen.jsx  learning screen layout (header, task, editor, inventory, chat)
 │   │   ├── editor/
 │   │   │   ├── GridEditor.jsx three.js renderer, camera fit, label layer
-│   │   │   ├── scene.js       scene graph: one node per component and wire; the inventory region
+│   │   │   ├── scene.js       scene graph: one node per component and wire; the inventory region; outlines and highlights
 │   │   │   ├── placement.js   where a dragged part or wire piece goes, whether it fits, the new board
+│   │   │   ├── highlights.js  which tutor highlights still show after the learner's edits
 │   │   │   ├── naming.js      captions and names of inventory parts (20 Ω, 4.7 kΩ)
 │   │   │   ├── colorCode.js   resistor 4-band color code
 │   │   │   ├── schematic-style.yaml  sizes and colors of the schematic (wires, pins, symbols)

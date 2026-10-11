@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { resistorBands } from "./colorCode.js";
-import { boardBounds, buildBoard, floatingNode, inventoryNode, layoutInventory, outline, pickAt, sceneBounds, slotAnchor, toWorld } from "./scene.js";
+import { HIGHLIGHT_Z, SELECTION_Z, boardBounds, buildBoard, drawHighlight, floatingNode, inventoryNode, layoutInventory, outline, pickAt, sceneBounds, slotAnchor, toWorld } from "./scene.js";
 import { CELL, STYLE } from "./style.js";
 
 describe("resistor color bands", () => {
@@ -82,7 +82,7 @@ describe("selection outline", () => {
     const copies = [];
     node.traverse((o) => o.isMesh && o.userData.outline && copies.push(o));
     expect(copies).toHaveLength(shapes.length);
-    expect(copies.every((c) => c.position.z < 0)).toBe(true);
+    expect(copies.every((c) => c.getWorldPosition(new THREE.Vector3()).z === SELECTION_Z)).toBe(true);
     expect(copies[0].material.color.getHexString()).toBe(STYLE.selection.color.slice(1));
     const body = copies.find((c) => c.geometry.parameters.width === STYLE.resistor.length + 2 * STYLE.selection.width);
     expect(body).toBeDefined();
@@ -118,6 +118,54 @@ describe("band order on screen", () => {
   ])("%s: digit bands first, gold last, reading left→right or top→bottom", (orientation, pins, axis) => {
     const order = bandPositions(orientation, pins).map((p) => (axis === "x" ? p.x : -p.y));
     expect(order).toEqual([...order].sort((a, b) => a - b));
+  });
+});
+
+describe("tutor highlights", () => {
+  const board = { grid: { columns: 8, rows: 6 }, inventory: [], targets: {},
+                  wires: [{ id: "W1", segments: [[[4, 3], [6, 3]]] }],
+                  components: [{ id: "R1", type: "resistor", value: 20, fixed: false, orientation: "E", pins: { a: [4, 3], b: [2, 3] } }] };
+  const copies = (node) => {
+    const found = [];
+    node.traverse((o) => o.isMesh && o.userData.outline && found.push(o));
+    return found;
+  };
+
+  test("a component or wire highlight outlines it in the style's color, behind a selection outline", () => {
+    const root = buildBoard(board);
+    expect(drawHighlight(root, { target: { component: "R1" }, style: "error" })).toBe(true);
+    expect(drawHighlight(root, { target: { wire: "W1" }, style: "success" })).toBe(true);
+    const r1 = copies(root.getObjectByName("R1"));
+    expect(r1[0].material.color.getHexString()).toBe(STYLE.highlight.error.slice(1));
+    // One layer under every wire and part, and under the selection outline.
+    const depths = [...r1, ...copies(root.getObjectByName("W1"))].map((c) => c.getWorldPosition(new THREE.Vector3()).z);
+    expect(depths.every((z) => Math.abs(z - HIGHLIGHT_Z) < 1e-9)).toBe(true);
+    expect(HIGHLIGHT_Z).toBeLessThan(SELECTION_Z);
+    expect(SELECTION_Z).toBeLessThan(root.getObjectByName("W1").position.z);
+    expect(copies(root.getObjectByName("W1"))[0].material.color.getHexString()).toBe(STYLE.highlight.success.slice(1));
+  });
+
+  test("on the selected element, the highlight goes around the selection outline", () => {
+    const root = buildBoard(board);
+    drawHighlight(root, { target: { component: "R1" }, style: "attention" }, { kind: "component", id: "R1" });
+    const grown = STYLE.resistor.length + 2 * (STYLE.highlight.width + STYLE.selection.width);
+    expect(copies(root.getObjectByName("R1")).some((c) => c.geometry.parameters.width === grown)).toBe(true);
+  });
+
+  test("a point highlight is a ring around the grid point, not pickable", () => {
+    const root = buildBoard(board);
+    drawHighlight(root, { target: { point: [7, 5] }, style: "attention" });
+    const ring = root.children.find((o) => o.geometry?.type === "RingGeometry");
+    expect(ring.position.x).toBe(toWorld([7, 5]).x);
+    expect(ring.position.z).toBe(HIGHLIGHT_Z);
+    expect(ring.material.color.getHexString()).toBe(STYLE.highlight.attention.slice(1));
+    expect(pickAt([root], ring.position.x, ring.position.y)).toBeNull();
+  });
+
+  test("a highlight on a missing element draws nothing", () => {
+    const root = buildBoard(board);
+    expect(drawHighlight(root, { target: { component: "R9" }, style: "error" })).toBe(false);
+    expect(drawHighlight(root, { target: { wire: "R1" }, style: "error" })).toBe(false);
   });
 });
 
