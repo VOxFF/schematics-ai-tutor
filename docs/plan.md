@@ -121,6 +121,7 @@ Not Boring Chat ([design.md](design.md#4-tutoring-experience-learning-path-learn
 
 Other polishing:
 
+- [ ] Improve tutoring for complex circuits (Level 6 and up): learner feedback from testing said "the feedback is not sufficient for complex schematics like level 6"
 - [ ] Solved checkmark fades out after ~2 s and leaves a small green check in the Task / Targets panel
 - [x] If the learner breaks a solved circuit, the checkmark disappears and Next is disabled again
 - [ ] Tutor highlights: glow and pulsing (`attention` pulses)
