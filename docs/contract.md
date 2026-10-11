@@ -83,7 +83,7 @@ Every message is a JSON object with a `type` field.
 
 | `type` | Payload | Effect |
 |---|---|---|
-| `session.start` | `progress?`, `level?`, `board?`, `history?` | Starts a session (the server sends `task.ready` with the curated level for the skill level) or resumes one (`level` given). The server also replies with `evaluation`. |
+| `session.start` | `progress?`, `level?`, `board?`, `history?` | Starts a session (the server sends `task.ready` with the curated level for the skill level) or resumes one (`level` given). The server also replies with `evaluation`. With `progress` and `level`, the server pre-generates the task after this one ([design.md](design.md#3-system-architecture)). |
 | `task.next` | — | Asks for the next task, usually after the current one is solved |
 | `summary.request` | — | Bonus: asks for the learner's skill summary (Learning Path screen) |
 | `board.update` | `seq`, `board` | Sent on each finished edit (a part dropped, a wire piece placed or removed). The server records a snapshot, re-evaluates and replies with `evaluation` carrying the same `seq`. |

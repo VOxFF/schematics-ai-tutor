@@ -231,7 +231,7 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
   const { progress, level } = session;
   const chat = session.chat ?? [];
   const board = session.board ?? level?.board ?? null;
-  const tutor = useTutorSession(level, chat, onChat, board);
+  const tutor = useTutorSession(level, chat, onChat, board, progress);
   // { item, rotation, base?, origin? }: `base` is the board without a placed element being moved,
   // `origin` its anchor and rotation before the move.
   const [drag, setDrag] = useState(null);

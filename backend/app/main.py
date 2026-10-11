@@ -90,7 +90,7 @@ def get_references(conn: HTTPConnection) -> dict:
 
 
 def get_task_cache(conn: HTTPConnection) -> TaskCache | None:
-    return conn.app.state.task_cache
+    return getattr(conn.app.state, "task_cache", None)  # absent when the app runs without its lifespan
 
 
 @app.get("/api/health")
@@ -140,6 +140,7 @@ async def session_socket(
     usage_log: UsageLog = Depends(get_usage_log),
     claude=Depends(get_claude),
     references: dict = Depends(get_references),
+    cache: TaskCache | None = Depends(get_task_cache),
 ) -> None:
     await websocket.accept()
 
@@ -149,7 +150,8 @@ async def session_socket(
         except (WebSocketDisconnect, RuntimeError):
             pass  # the learner left; nothing to deliver to
 
-    session = Session(send, config=config, claude=claude, usage_log=usage_log, references=references)
+    session = Session(send, config=config, claude=claude, usage_log=usage_log, references=references,
+                      task_cache=cache)
     try:
         while True:
             message = await websocket.receive_json()
