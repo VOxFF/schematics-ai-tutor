@@ -131,14 +131,14 @@ A **topic** is either a fundamental **principle** ("current needs a complete pat
 
 | Curriculum level | Principles | Terms |
 |---|---|---|
-| 1 Closed loop | `closed_loop` | circuit, current, voltage source, open circuit |
+| 1 Closed loop | `closed_loop` | circuit, current, voltage source, open circuit, short circuit |
 | 2 Ohm's law | `ohms_law` | resistance, ohm, volt, ampere |
 | 3 Ohm's law, more choices | — | resistor color code |
 | 4 Series resistors | `series_voltage_division` | series, voltage drop |
 | 5 Parallel resistors | `parallel_branches` | parallel, branch, junction |
 | 6 Series–parallel | — | equivalent resistance |
 | 7 Measuring right | `meter_usage` | measuring across, measuring in the loop |
-| 8 Power and safety | `power_safety` | power, watt, short circuit |
+| 8 Power and safety | `power_safety` | power, watt |
 | First on the board | — | ammeter, voltmeter |
 
 - The principles are the existing `meta.principle` labels ([tutor.md](tutor.md#5-labels)), so there is one list of principles.

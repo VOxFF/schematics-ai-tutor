@@ -17,6 +17,9 @@ topics:
       definition: A battery or supply that pushes current from its + side around to its − side. }
   - { id: open_circuit, name: Open circuit, type: term, level: 1,
       definition: A loop with a gap, so no current can flow anywhere in it. }
+  # A learner can short the source from the first task.
+  - { id: short_circuit, name: Short circuit, type: term, level: 1,
+      definition: A path with almost no resistance from + to −, so a dangerous current flows. }
 
   # Level 2: Ohm's law
   - { id: ohms_law, name: Ohm's law, type: principle, level: 2,
@@ -73,8 +76,6 @@ topics:
       definition: How fast a part turns electrical energy into heat; P = V × I. }
   - { id: watt, name: Watt (W), type: term, level: 8,
       definition: The unit of power. }
-  - { id: short_circuit, name: Short circuit, type: term, level: 8,
-      definition: A path with almost no resistance from + to −, so a dangerous current flows. }
 
   # Components, the first time one is on the board
   - { id: ammeter, name: Ammeter, type: term, component: ammeter,

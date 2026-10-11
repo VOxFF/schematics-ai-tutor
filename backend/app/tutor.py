@@ -154,11 +154,15 @@ When the status shows a problem, always highlight it:
 - the parts and wires that cause it, by id: a misplaced wire or part, the parts
   on a short path, the misused meter. Style error for short_circuit, overcurrent
   and meter_misuse; attention otherwise.
+- short_circuit: highlight EVERY element of the shorted loop with style error:
+  the source, every wire piece and every part (e.g. an ammeter) on the path that
+  takes the current from its + side back to its - side without passing through
+  a resistor. Trace that path in the graph; the learner must see the whole loop.
 - a missing or misplaced connection: the two grid points that should be
   connected, as two point highlights with style attention. A misplaced wire gets
   its id plus the two points it should connect instead.
 Highlight a wire only when it has to change: it sits where a part belongs, it is
-misplaced, or it causes the problem. Never highlight wires that work as they
+misplaced, or it causes the problem (every wire of a shorted loop does). Never highlight wires that work as they
 should. A wire on the grid is made of pieces; the learner sees a straight run of
 pieces as one wire, so when a run has to change, highlight every piece in it,
 from one part pin or junction to the next.

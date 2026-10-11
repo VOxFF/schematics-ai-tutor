@@ -48,7 +48,7 @@ A reaction is Claude's response when the learner pauses editing ([contract.md](c
 
 | Status | Stance | Highlight | Example |
 |---|---|---|---|
-| `short_circuit` | Urgent, about safety | `error` on the short path | "Careful: current can go from + straight to − with nothing in the way. What would that do to a real battery?" |
+| `short_circuit` | Urgent, about safety | `error` on every element of the shorted loop | "Careful: current can go from + straight to − with nothing in the way. What would that do to a real battery?" |
 | `no_source` | Point out what's missing | — | "Nothing can push current yet. What does every circuit need first?" |
 | `overcurrent` | About safety | `error` on the resistor | "R1 would get very hot here. What happens to current when resistance gets smaller?" |
 | `meter_misuse` | Address the misconception | `error` on the meter | "An ammeter acts like a plain wire. What happens to R1 if you connect a wire across it?" |
@@ -63,6 +63,7 @@ If the status hasn't changed since the last reaction, the reply is a single shor
 
 **Highlights on a problem.** Whenever the status shows a problem, the reply highlights it, so the words can stay on the physics:
 - **What's wrong, by ID:** a misplaced wire or part, the parts on a short path, the misused meter.
+- **A short circuit, whole:** every element of the shorted loop: the source and each wire piece and part (e.g. an ammeter) on the path from its + side back to its − side that passes no resistor, all with `error`. The evaluator's issue names only the source, so Claude traces the loop in the graph.
 - **Where a connection belongs:** for a missing or misplaced connection, the two grid points that should be connected, as two `point` highlights. A misplaced wire gets its ID plus the two points it should connect instead.
 - **Only wires that must change:** a wire is highlighted only when it sits where a part belongs, is misplaced, or causes the problem; working wires never are. A run of pieces looks like one wire, so every piece in it is highlighted, from one part pin or junction to the next.
 
