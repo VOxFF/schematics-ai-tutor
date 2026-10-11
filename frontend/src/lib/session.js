@@ -2,6 +2,8 @@
 
 const KEY = "schematics-tutor.session";
 
+// { progress, level, board?, chat, lastLevel? }: `lastLevel` is the previous task's curriculum
+// level, shown in the header while the next task loads.
 export const newSession = () => ({ progress: { skill_level: 1, history: [] }, level: null, chat: [] });
 
 export function loadSession() {

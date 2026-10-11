@@ -7,7 +7,8 @@ from .solver import solve
 RESOLUTION = {"voltmeter": 0.01, "ammeter": 0.0001}
 DECIMALS = {"voltmeter": 2, "ammeter": 4}
 
-# Most severe first (docs/schematics.md §6).
+# Most severe first (docs/schematics.md §6). Issues missing from ISSUE_STATUS (unused_wire)
+# are reported but never set the status.
 STATUS_ORDER = ["short_circuit", "no_source", "overcurrent", "meter_misuse", "open_circuit", "floating_part", "bypassed"]
 ISSUE_STATUS = {
     "short_circuit": "short_circuit",
@@ -30,7 +31,8 @@ def default_tolerance(value: float, meter_type: str) -> float:
 
 
 def evaluate(grid: dict, settings: dict | None = None) -> dict:
-    """Evaluate a format-valid grid. Returns {status, readings, issues}."""
+    """Evaluate a format-valid grid. Returns {status, readings, issues}: the graph checks and
+    solve (evaluate_graph), plus one `unused_wire` issue per leftover wire piece, found on the grid."""
     graph, pin_points = to_graph(grid)
     result = evaluate_graph(graph, pin_points, settings)
     # Leftover wire pieces don't change the circuit, so they don't change the status either.

@@ -1,4 +1,4 @@
-"""Grid → graph conversion (docs/schematics.md §2)."""
+"""Grid → graph conversion (docs/schematics.md §2), nets, and leftover wire pieces (§6)."""
 
 from .grid import PIN_NAMES
 

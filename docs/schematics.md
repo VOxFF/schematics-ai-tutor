@@ -279,7 +279,8 @@ flowchart LR
 3. **Build nets.** A union-find over the pins in `edges` gives the nets. Each net is one electrical node, and every component sits between the nets of its two pins. A pin that appears in no edge gets its own single-pin net.
 4. **Choose ground.** The net of the `negative` pin of the first `voltage_source`, by `id`, is the reference at 0 V.
 5. **Check structure** (§6), then **solve** (§5), unless a blocking issue makes the circuit unsolvable.
-6. **Report** one `status`, the readings of every placed meter (rounded to resolution) and all issues (§6).
+6. **Find leftover wires** on the grid itself: `unused_wire` issues (§6), which don't affect the status.
+7. **Report** one `status`, the readings of every placed meter (rounded to resolution) and all issues (§6).
 
 ## 5. Solver
 
@@ -302,7 +303,7 @@ The evaluator returns one **status**, the **readings** of all placed meters, and
 
 ### Issues
 
-Each check reads the graph and its nets. Each issue lists the pins involved, which the backend maps to grid points for highlighting (§2).
+Each check reads the graph and its nets, except `unused_wire`, which reads the grid. Each issue lists the pins involved, which the backend maps to grid points for highlighting (§2).
 
 | Issue | Detection | Status |
 |---|---|---|

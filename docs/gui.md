@@ -32,6 +32,7 @@ A reload or a closed tab must not lose anything. The browser saves the learner's
 - the current `Level`
 - the current grid
 - the chat history
+- the previous task's curriculum level, shown in the header while the next task loads
 
 On load, if a saved session exists, the app opens the learning screen and sends it with `session.start` ([contract.md](contract.md#websocket-session)), and the backend resumes from it. The server-side reference solution is lost if the reconnect lands on a different server instance. Grading is unaffected, and the tutor works without the reference.
 
