@@ -21,5 +21,5 @@ COPY config.yaml ratelimiting.yaml ./
 COPY --from=frontend /app/frontend/dist frontend/dist
 WORKDIR /app/backend
 EXPOSE 8080
-# One worker: rate limits, the task cache and reference solutions are in memory (docs/design.md §5).
+# One worker: rate limits, the task cache and reference solutions are in memory (docs/design.md §6).
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--proxy-headers", "--forwarded-allow-ips", "*"]

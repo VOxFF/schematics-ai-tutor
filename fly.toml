@@ -1,4 +1,4 @@
-# Fly.io deployment (docs/design.md §5). Deploy with: fly deploy
+# Fly.io deployment (docs/design.md §6). Deploy with: fly deploy
 app = "schematics-ai-tutor"
 primary_region = "sjc"
 
@@ -7,7 +7,7 @@ primary_region = "sjc"
 
 [env]
   SCHEMATICS_LOGS_DIR = "/data/logs"   # logs and their history on the volume (docs/deployment.md §5)
-  SCHEMATICS_STATE_DIR = "/data/state" # the day's Claude spend survives deploys (docs/design.md §5)
+  SCHEMATICS_STATE_DIR = "/data/state" # the day's Claude spend survives deploys (docs/design.md §6)
 
 # Persistent disk for the logs; a deploy replaces everything else on the machine.
 [mounts]

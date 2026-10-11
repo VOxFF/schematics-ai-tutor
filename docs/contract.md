@@ -327,7 +327,7 @@ interface Highlight {
 
 ## 2. Backend ↔ Claude API
 
-The backend makes three kinds of Claude calls: **tutoring** (2.1), **task generation** (2.2) and, as a bonus, the **skill summary** (2.3). Models, effort and limits are read from the root `config.yaml` ([design.md](design.md#6-configuration)); the values below are the defaults.
+The backend makes three kinds of Claude calls: **tutoring** (2.1), **task generation** (2.2) and, as a bonus, the **skill summary** (2.3). Models, effort and limits are read from the root `config.yaml` ([design.md](design.md#7-configuration)); the values below are the defaults.
 
 ### 2.1 Tutor call
 
@@ -354,9 +354,9 @@ The order runs from most stable to least stable, so the cached prefix stays vali
    - `<level>`: concept, targets and intro text
    - `<reference>`: the reference solution's `graph` when available, so hints can point toward a solution without revealing it
    - `<summary>`: a one-line circuit description written by the backend, e.g. `parts: V1 12 V, R1 40 Ω, VM1; status: meter_misuse; readings: VM1=12.0`
-   - `<history>`: the last `tutor.history_turns` tutor and learner chat turns, for continuity
    - `<snapshots>`: the `Snapshot`s recorded since the previous call, up to the last `tutor.max_snapshots`, oldest first. Earlier ones carry the graph and evaluation; the last is the current board (`"current": true`) and also carries its grid, labeled "for highlight references only". They show Claude what the learner did and how the circuit changed. The evaluations are the only source of electrical values.
    - `<profile>`: the learner's skill level and up to 8 focus topics from the `LearnerProfile`, each with its scores and `tasks_ago` ([design.md](design.md#learner-profile))
+   - `<history>`: the last `tutor.history_turns` tutor and learner chat turns, for continuity
    - `<request>`: either `trigger: "reaction"`, or the learner's `action`, the next allowed hint level and `learner_text`
 
 #### Response handling

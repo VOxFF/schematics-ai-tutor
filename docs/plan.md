@@ -126,7 +126,12 @@ Other polishing:
 - [ ] Tutor highlights: glow and pulsing (`attention` pulses)
 - [ ] Tutor highlights: different visuals for "remove this" and "connect here" (e.g. a dashed line between the two points); if Claude still highlights part of a wire run, extend wire highlights to the whole run in the backend
 - [ ] Status display on the learning screen (e.g. a colored badge in the Task / Targets panel)
-- [ ] Learner experience collection from the deployed app (moved from §4: product work, not deployment)
+- [ ] Learner experience research ([design.md](design.md#5-learner-experience-research)):
+  - [x] Design: consent, records, the 🔔 feedback prompt, the `research.py` interface, collection
+  - [ ] `research.py`: `ResearchLog` and `Research`, wired into the session; config in `config.yaml`
+  - [ ] 🔔 feedback prompt and the feedback conversation (own Claude prompt)
+  - [ ] Start screen: consent checkbox and name; `research` in the session; the `experience` chat kind
+  - [ ] `research.sh pull` and `delete`; `research/` gitignored; `/data/research` on Fly
 - [ ] Event log for measuring success: task started/solved, status changes, tutor calls, misconception labels
 - [ ] State the supported devices (desktop: mouse and keyboard)
 - [ ] Revisit the redundancy of component `orientation` and `pins`

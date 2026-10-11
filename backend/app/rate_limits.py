@@ -1,4 +1,4 @@
-"""Rate limits and the daily Claude budget (docs/design.md §5), configured in the root ratelimiting.yaml.
+"""Rate limits and the daily Claude budget (docs/design.md §6), configured in the root ratelimiting.yaml.
 
 They protect the cost of Claude calls and the server. Evaluation never depends on Claude, so
 when a Claude limit is hit the grid, readings and status keep working; only the tutor goes quiet

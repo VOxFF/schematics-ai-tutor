@@ -1,4 +1,4 @@
-# Rate limits and the daily Claude budget. Documented in docs/design.md §5.
+# Rate limits and the daily Claude budget. Documented in docs/design.md §6.
 # They protect the cost of Claude calls and the server; evaluation never depends on Claude.
 # Read by the backend at startup (backend/app/rate_limits.py); restart it after a change.
 

@@ -236,7 +236,8 @@ flowchart TD
     LV --> S{"status = solved?"}
     S -- yes --> N["Next is enabled<br/>(tutor praises, asks a reflection question)"]
     N --> G["Next task, generated in the background"]
-    G --> B
+    G --> WM["Tutor's welcome in the chat"]
+    WM --> B
     RL["Restart Learning<br/>(confirm, wipe)"] -.-> SS
 ```
 
@@ -246,7 +247,7 @@ flowchart TD
 4. **Observe.** After each finished edit the status and meter readings update immediately, so cause and effect are visible.
 5. **Get feedback.** When the learner pauses, the tutor reacts: a nudge after a misstep and encouragement after progress, with highlights pointing at the spot. The learner can also ask questions in the chat at any time.
 6. **Solve.** When every target is met, Next is enabled, and the tutor praises the strategy and asks one optional reflection question.
-7. **Advance.** Next increases the skill level and loads the next task, which was generated in the background and suits the learner's history.
+7. **Advance.** Next increases the skill level and loads the next task, which was generated in the background and suits the learner's history. The tutor's welcome in the chat names what's new in it.
 8. **Return.** The session is saved in the browser. A reload or a later visit resumes exactly where the learner left off.
 9. **Restart.** Restart Learning wipes everything after confirmation and returns to the start screen.
 
