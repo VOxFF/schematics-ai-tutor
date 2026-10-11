@@ -78,6 +78,19 @@ test("a new learner sees the start screen, then gets a task", async () => {
   expect(JSON.parse(localStorage.getItem(SESSION_KEY)).level.id).toBe("gen-1234");
 });
 
+test("/start shows the start screen and keeps the saved progress", async () => {
+  const saved = { progress: { skill_level: 4, history: [] }, level: LEVEL, chat: [] };
+  localStorage.setItem(SESSION_KEY, JSON.stringify(saved));
+  window.history.pushState(null, "", "/start");
+  const fetch = mockFetch(ok({}));
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Start Learning" }));
+  expect(screen.getByRole("heading", { name: "Share the voltage" })).toBeDefined(); // back to the saved task
+  expect(window.location.pathname).toBe("/");
+  expect(JSON.parse(localStorage.getItem(SESSION_KEY)).progress.skill_level).toBe(4);
+  expect(fetch).not.toHaveBeenCalled();
+});
+
 test("a returning learner resumes on the tutor screen without a new request", async () => {
   localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 4, history: [] }, level: LEVEL }));
   const fetch = mockFetch(ok({}));

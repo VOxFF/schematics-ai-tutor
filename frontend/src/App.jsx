@@ -2,11 +2,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import StartScreen from "./components/StartScreen.jsx";
 import TutorScreen from "./components/TutorScreen.jsx";
 import { generateTask } from "./lib/api.js";
+import { PUBLIC } from "./lib/build.js";
 import { clearSession, loadSession, newSession, saveSession } from "./lib/session.js";
 
 // New learners see the start screen; a saved session resumes on the tutor screen (docs/gui.md §1).
+// Debug (hidden in a public build): /start shows the start screen without touching the saved
+// session; Start Learning then returns to it, or starts fresh if there is none.
+const previewStart = () => !PUBLIC && window.location.pathname === "/start";
+
 export default function App() {
   const [session, setSession] = useState(() => loadSession());
+  const [preview, setPreview] = useState(previewStart);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const inFlight = useRef(false); // one generation at a time (each costs a Claude call)
@@ -35,6 +41,11 @@ export default function App() {
   }, [session, loading, error, fetchTask]);
 
   const start = () => {
+    if (preview) {
+      window.history.replaceState(null, "", "/");
+      setPreview(false);
+      if (session) return; // back to the saved session, progress intact
+    }
     const fresh = newSession();
     saveSession(fresh);
     setSession(fresh);
@@ -89,7 +100,7 @@ export default function App() {
     });
   }, []);
 
-  if (!session) return <StartScreen onStart={start} />;
+  if (!session || preview) return <StartScreen onStart={start} />;
   return (
     <TutorScreen
       session={session}

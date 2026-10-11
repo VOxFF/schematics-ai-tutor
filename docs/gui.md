@@ -36,6 +36,8 @@ A reload or a closed tab must not lose anything. The browser saves the learner's
 
 On load, if a saved session exists, the app opens the learning screen and sends it with `session.start` ([contract.md](contract.md#websocket-session)), and the backend resumes from it. The server-side reference solution is lost if the reconnect lands on a different server instance. Grading is unaffected, and the tutor works without the reference.
 
+- **Preview (debug).** Opening `/start` shows the start screen without touching the saved session; Start Learning then returns to it. A public build ignores `/start`.
+
 ### Restart Learning
 
 The **Restart Learning** button in the header:
@@ -259,6 +261,8 @@ A bonus feature, built after everything else ([plan.md](plan.md#7-bonus)). It gi
 | Role | Color | Used for |
 |---|---|---|
 | Page / panels | `#f6f7f9` / `#ffffff`, borders `#d0d7de` | Layout |
+| Ink | `#2d333b` | Headings, body text, button text, and the schematic's lines (wires, pins, outlines; `schematic-style.yaml`) |
+| Info | `#57606a`, 0.92rem | Task text, targets, progress in the header, chat bubbles: a step lighter and smaller than the ink |
 | Canvas | `#fbfaf6` with `#d8d4c8` dots | The grid's work area |
 | Accent | `#0969da`, tint `#eef4fc` | Primary actions (Start, Next), the level badge, selection, tutor chat bubbles |
 | Success | `#1a7f37`, border `#4ac26b`, tint `#eaf7ee` | Solved, tutor `success`, the current learning-path step, and the background of the top boxes (header, task) |
@@ -270,6 +274,7 @@ A bonus feature, built after everything else ([plan.md](plan.md#7-bonus)). It gi
 - **Never color alone.** Meaning colors are paired with a shape or motion (pulse, icon, outline), so red/green colorblind learners lose nothing.
 - **Contrast:** text meets WCAG AA; muted grey is only for secondary text.
 - The colors are CSS variables in `frontend/src/index.css`, so the scheme can be tuned in one place.
+- **Headings** share one style, the Targets label's: 1rem, semibold, ink, uppercase, letter-spaced (header, task, Targets, Tutor, the start page's sections; Inventory and Wires in the editor).
 
 ## 11. Open points
 
