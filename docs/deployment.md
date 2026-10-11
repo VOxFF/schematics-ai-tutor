@@ -63,7 +63,7 @@ flowchart LR
 | `rollback` | Redeploys the recorded image with `main`'s commit, then smoke tests it | Run fails; manual recovery (§6) |
 | `report` | Always: removes the label and comments on the PR with the result and the failed step | — |
 
-- **Rollback to the recorded image, not a rebuild.** `fly deploy --image <last good>` skips the build, so production is back in about 30 s, on exactly the release that was live before. That release is `main`, because only a passed ship changes production.
+- **Rollback to the recorded image, not a rebuild.** A rebuild of `main` could differ from what ran (new base image, new package versions); the recorded image is byte-for-byte the release that was live before. `fly deploy --image <last good>` also skips the build, so production is back in about 30 s. That release is `main`, because only a passed ship changes production.
 - **Retry:** fix the PR and add the label again. The label is always removed at the end, so adding it is always a fresh start.
 - **One ship at a time:** `concurrency: deploy-production`. A second label waits for the first run to finish.
 - **By hand:** `deploy.yml` keeps `workflow_dispatch`, which deploys `main` and smoke tests it, e.g. after a manual Merge.
@@ -78,7 +78,7 @@ flowchart LR
 | New machine fails Fly's health check | **Down** | Rolled back; PR open | ✅ |
 | Deploy succeeds, smoke fails | **Broken** | Rolled back; PR open | ✅ |
 | Rollback fails | **Down or broken** | Run fails, GitHub emails you; manual recovery (§6) | ❌ until recovered |
-| Smoke passes, merge fails (e.g. a conflict or a push during the run) | New release, healthy | PR open, comment; live runs the PR | ❌ until the PR is merged, or `main` is deployed by hand |
+| Smoke passes, merge fails (e.g. a conflict or a push during the run) | New release, healthy | PR open, comment; live runs the PR. Resolve the conflict or push the fix, then add the label again | ❌ until the PR ships again, or `main` is deployed by hand |
 
 - **Exposure window:** at worst, production is broken from the moment the new machine starts until the rollback's smoke passes: up to ~60 s of smoke retries, plus ~30 s for the rollback.
 - **Why not Fly's safer rollouts:** bluegreen and canary deploys start a second machine next to the old one, and Fly doesn't allow them for machines with volumes. With one machine, a broken release is visible until it's rolled back.
