@@ -89,7 +89,7 @@ function TaskPanel({ level, evaluation }) {
   );
 }
 
-function Editor({ level, board, evaluation, loading, error, startError, onRetry, drag, onStartDrag, onDrop, onPlan, showJson }) {
+function Editor({ level, board, evaluation, loading, error, startError, onRetry, drag, onStartDrag, onDrop, onPlan, showJson, onToggleJson, onReset }) {
   let body;
   if (loading)
     body = (
@@ -124,6 +124,13 @@ function Editor({ level, board, evaluation, loading, error, startError, onRetry,
                       readings={evaluation?.readings} drag={drag} onStartDrag={onStartDrag}
                       onDrop={onDrop} onPlan={onPlan} />
         )}
+        {/* Bottom-left corner of the editor field: free space beside the centered grid. */}
+        <div className="editor-tools">
+          <button onClick={onReset} title="Put the board back to the task's start">
+            Reset board
+          </button>
+          <button onClick={onToggleJson}>{showJson ? "Grid" : "JSON"}</button>
+        </div>
       </>
     );
   return (
@@ -257,24 +264,15 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
             onDrop={drop}
             onPlan={setFits}
             showJson={showJson}
+            onToggleJson={() => setShowJson((v) => !v)}
+            onReset={() => onBoard(null)}
             evaluation={tutor.evaluation}
             loading={loading}
             error={error}
             startError={tutor.startError}
             onRetry={onRetry}
           />
-          {/* Below the editor, so nothing sits on top of the canvas: hint left, tools right. */}
-          <div className="editor-footer">
-            <div className="hint-bar" aria-live="polite">{hint(drag, fits)}</div>
-            {level && !loading && (
-              <div className="editor-tools">
-                <button onClick={() => onBoard(null)} title="Put the board back to the task's start">
-                  Reset board
-                </button>
-                <button onClick={() => setShowJson((v) => !v)}>{showJson ? "Grid" : "JSON"}</button>
-              </div>
-            )}
-          </div>
+          <div className="hint-bar" aria-live="polite">{hint(drag, fits)}</div>
         </div>
         <InventoryList board={board} onStartDrag={startDrag} />
       </div>

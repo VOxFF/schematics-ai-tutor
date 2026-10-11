@@ -520,19 +520,11 @@ button:focus-visible {
   color: var(--text);
 }
 
-.editor-footer {
-  display: flex;
-  align-items: stretch;
-  gap: 8px;
-}
-
-.editor-footer .hint-bar {
-  flex: 1;
-}
-
 .editor-tools {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
   display: flex;
-  align-items: center;
   gap: 6px;
 }
 

@@ -146,7 +146,7 @@ A tutor highlight lasts until the next tutor message, or until the learner edits
 - **Fixed parts** can be selected, so they show the outline and the hint bar explains them, but they can't be dragged, rotated or deleted.
 - **Sending edits.** Each finished edit (drop, rotate, delete) sends one `board.update`. Dragging stays local until the drop.
 - **Anchor points.** A part is dropped by its **body** point; its pins land on the neighboring points in the direction of its orientation (new parts start horizontal, `E`). A wire piece is dropped by its **anchor**: the left end of a straight piece, or the shared point of a corner, T or +.
-- **Reset board** (in the row under the editor, next to the JSON toggle) puts the board back to the task's start; the learner's edited board is saved in the session until then. Nothing sits on top of the canvas.
+- **Reset board** (bottom-left corner of the editor field, next to the JSON toggle) puts the board back to the task's start; the learner's edited board is saved in the session until then.
 - **Picking up a part.** Pressing an inventory part lifts it at once: its slot goes empty and a translucent ghost follows the pointer everywhere, snapping to the grid (with target points) only over the grid. After the drop the inventory closes the gap; a cancel puts the part back.
 - **Build status.** Dragging from the inventory and the wire palette is implemented. Selecting, moving and deleting placed elements comes next.
 
