@@ -35,6 +35,8 @@ flowchart LR
         TG[Task generator]
         E["Evaluator (deterministic)"]
         TS[Tutor service]
+        RC[Reply composer]
+        LP[(Learner profile)]
     end
     C[(Claude API)]
 
@@ -44,9 +46,11 @@ flowchart LR
     TG -- "task" --> W
     W -- "learner's work" --> E
     E -- verdict + results --> TS
-    TS -- task context + results --> C
-    C -- feedback / hint --> TS
-    TS -- verdict + tutor message --> T
+    LP -- "focus topics + scores" --> TS
+    TS -- "task context + results + profile" --> C
+    C -- "feedback / hint / knowledge<br/>+ topic updates" --> RC
+    RC -- "clamped score changes, new topics" --> LP
+    RC -- "verdict + composed message + profile" --> T
 ```
 
 - **Frontend:** JavaScript + React. It owns the interactive workspace and displays the tutor's messages. It holds no secrets and does no grading.
@@ -56,7 +60,7 @@ flowchart LR
   - *Cache by progress:* the cache key is the learner's progress (skill level and task history). A request for a progress gets the cached task at once; if that task is still being generated, it waits for the same generation instead of starting another; otherwise it generates one now. A task is removed from the cache when it's served, so the same progress later (e.g. after Restart Learning) gets a fresh task.
   - *Next task in the background:* after serving a task, the backend generates the next one, for the progress as if the served task is solved. By the time the learner presses Next it's usually ready. A resumed task (e.g. after a server restart, which empties the cache) does the same when its session starts, from the progress the browser sends with `session.start`.
   - *First-task pool:* for the start screen, the server keeps a small pool of ready first tasks, filled at startup and topped up as they are served, so even a first visit doesn't wait.
-  - *Bounds:* the cache has a size cap and an expiry, and pre-generation counts against the daily Claude budget: it stops at 80% of it, leaving the rest for learners who are waiting (§4).
+  - *Bounds:* the cache has a size cap and an expiry, and pre-generation counts against the daily Claude budget: it stops at 80% of it, leaving the rest for learners who are waiting (§5).
   - *Accepted loss:* the next task is generated before the current one is finished, so it doesn't know that task's hints or misconceptions. A wait at Next costs more.
   - *Why the backend, not the browser:* the browser stays a plain client (it calls the generate endpoint as before), the cache survives reloads because the same progress gets the same entry, and every decision to spend a Claude call is made on the server, next to the rate limits and the budget. The cost is in-memory server state, lost on restart and not shared between instances, which is acceptable for one prototype server.
 
@@ -78,7 +82,7 @@ flowchart LR
   ```
 - **Two feedbacks per edit, fast and slow.** Every finished edit is sent to the backend.
   - *Fast:* the evaluator runs at once, with no Claude call, and its readings and status reach the browser within a split second. The edit also clears Claude's highlights, which described the previous board.
-  - *Slow:* when editing pauses, the backend passes the evaluator's results and the task context to Claude, validates the reply, and sends Claude's text and new highlights.
+  - *Slow:* when editing pauses, the backend passes the evaluator's results, the task context and the learner's profile to Claude, validates the reply, composes it (§4), and sends the composed message and new highlights.
   - *Why:* readings must feel like a real meter, and Claude takes seconds. A reply is tagged with the board it is about, so one that arrives after a newer edit shows its text but never overwrites the fresh readings or draws highlights on a changed board ([contract.md](contract.md#1-frontend--backend)).
 
   ```mermaid
@@ -112,7 +116,108 @@ flowchart LR
 - **Reference solutions stay on the server.** When a task is generated, the backend keeps its complete board in memory by level ID (bounded). The tutor uses it as `<reference>`; the browser only ever receives the task board.
 - **Transport:** REST for resources and task generation (`/api/tasks/generate`; `/api/levels` is planned with the curated levels), and one WebSocket per learning session for the interactive loop: live evaluation on every board edit and validated tutor messages. Details are in [contract.md](contract.md).
 
-## 4. Security and operations
+## 4. Tutoring experience: learning path, learner profile, reply composer
+
+**Problem.** Claude only gets the task, the board and the evaluation, so it can only coach the task. Every reply sounds the same: a question about the circuit. Claude doesn't know which ideas are new to the learner, which ones it has already explained, or which ones the learner has shown they understand. So it can't decide when to stop asking and teach a fundamental rule instead.
+
+**Decision.** The learner gets a **profile** of the topics they have met, with two scores per topic. Claude reads the recent and weak topics with every call, decides what to teach, and reports how the scores change. A backend step, the **reply composer**, applies those changes within strict bounds and prepares the message for the chat.
+
+### Learning path: topics
+
+A **topic** is either a fundamental **principle** ("current needs a complete path") or a **term** ("ammeter", "resistance"). A catalog, `backend/data/topics.yaml`, lists the topics with an ID, name, type, a one-line definition, and where the learner first meets each one: a curriculum level, or a component type first seen on the board.
+
+| Curriculum level | Principles | Terms |
+|---|---|---|
+| 1 Closed loop | `closed_loop` | circuit, current, voltage source, open circuit |
+| 2 Ohm's law | `ohms_law` | resistance, ohm, volt, ampere |
+| 3 Ohm's law, more choices | — | resistor color code |
+| 4 Series resistors | `series_voltage_division` | series, voltage drop |
+| 5 Parallel resistors | `parallel_branches` | parallel, branch, junction |
+| 6 Series–parallel | — | equivalent resistance |
+| 7 Measuring right | `meter_usage` | measuring across, measuring in the loop |
+| 8 Power and safety | `power_safety` | power, watt, short circuit |
+| First on the board | — | ammeter, voltmeter |
+
+- The principles are the existing `meta.principle` labels ([tutor.md](tutor.md#5-labels)), so there is one list of principles.
+- **Claude can add topics.** When a reply teaches something the catalog doesn't have (e.g. "conductor"), Claude can add it as a new topic: an ID, a name, a type and a one-line definition. Claude can also bring a catalog topic forward, e.g. "short circuit" when the learner makes one at level 1. Either way the topic joins this learner's profile only; the catalog doesn't change.
+
+### Learner profile
+
+The profile is the learner's knowledge list: every topic they have met, with two scores from 0 to 3.
+
+| Field | Meaning |
+|---|---|
+| `id`, `name`, `type` | The topic (`principle` or `term`) |
+| `introduced` | The skill level at which the learner met it; recency is measured from it |
+| `understanding` | What the learner has shown: 0 not yet seen, 1 shaky, 2 mostly, 3 solid |
+| `explained` | How much the tutor has explained it: 0 never, 1 mentioned, 2 explained, 3 explained more than once |
+| `source` | `catalog` or `claude` |
+
+- **Joining:** when a task starts, the topics of its curriculum level, and of any component type new on its board, join the profile with both scores at 0. Topics from Claude join when it adds them.
+- **Stored with the session.** Like the progress and the chat, the profile is kept in the browser's `localStorage`, sent with `session.start`, and returned with each tutor message. A reload or a server restart loses nothing.
+- **Focus.** Claude doesn't get the whole profile, only up to 8 **focus topics**: the most recently introduced first, then any older ones with `understanding` 0 or 1. Recent topics are what the current tasks teach. Old weak ones are what keeps tripping the learner up.
+
+### Rules for Claude
+
+The system prompt gives Claude the rules for the scores and lets it decide what to do with them in each reply:
+
+- **Raise `understanding`** (+1) only on evidence: the learner fixed a problem without a hint, answered a reflection question correctly, or explained the idea in their own words. **Lower it** (−1) when a mistake or a misconception shows a gap in that topic.
+- **Raise `explained`** (+1) when this reply explains the topic.
+- **Choosing the reply:**
+
+  | Topic state | What the tutor does |
+  |---|---|
+  | `explained` 0, and the moment touches it | Teach it: a `knowledge` message, two sentences tied to what's on the grid ("An ammeter has almost no resistance, so current flows through it. That's why it goes in the loop.") |
+  | `explained` ≥ 1, `understanding` ≤ 1 | Don't re-explain. Ask a question that tests it ("Do you need a larger or a smaller resistance?") |
+  | `understanding` ≥ 2 | Keep it short: confirm, or praise the strategy, and move on |
+
+- **Safety first:** for `short_circuit` and `overcurrent` the reply is about safety. A `knowledge` message waits until that's settled.
+- **At most one topic** is taught per reply, and at most one new topic is added.
+- The tutor's other rules don't change: physics, not placement; no invented numbers; the hint ladder ([tutor.md](tutor.md)).
+
+### Reply composer
+
+The tutor service validates Claude's reply and runs the backstop ([tutor.md](tutor.md#6-guardrails-physics-not-placement)). The reply composer then turns it into what the chat shows:
+
+1. **Score changes:** each change must name a topic in the profile, or the topic Claude added. Changes are clamped to ±1 per reply and kept within 0–3, and `explained` never goes down. Anything else is dropped and logged.
+2. **New topic:** its ID must be new and its name and definition short. It joins the profile with `source: claude`.
+3. **Presentation:** it adds the icon for the message's kind and, for a `knowledge` message, the topic's name as a title.
+4. **Message:** it sends the composed chat message and the updated profile in `tutor.message`.
+
+The composer is plain code, so it is unit tested like the evaluator. It is also the place for later changes to presentation and tone (e.g. not opening three replies in a row with a question), with no change to the prompt.
+
+**Message kinds.** `knowledge` joins the existing kinds. Each kind has its own tint and icon, so a lesson, a hint and praise look different at a glance:
+
+| Kind | Purpose | Tint | Icon |
+|---|---|---|---|
+| `praise` | Praise the strategy | green | 🎉 |
+| `nudge` | Point at a misstep | orange | 👉 |
+| `feedback` | Comment on the circuit | blue | 💡 |
+| `question` | Ask the learner to reason | pink | ❓ |
+| `knowledge` | Teach a principle or a term | gold | 📘 |
+| `hint` | A step of the hint ladder | purple | 🔑 |
+
+```mermaid
+flowchart LR
+    subgraph IN["Context for Claude"]
+        L[Task + evaluation]
+        F["Focus topics<br/>(recent, weak)"]
+        H[Chat history]
+    end
+    IN --> C[(Claude)]
+    C -- "kind, text, highlights,<br/>topic updates, new topic" --> V["Validate + backstop"]
+    V --> RC["Reply composer"]
+    RC -- "clamp, apply" --> P[(Learner profile)]
+    RC -- "icon, title" --> M["Composed message"]
+    M --> FE["Chat bubble<br/>(tint by kind)"]
+    P -- "returned to the browser,<br/>sent back with session.start" --> F
+```
+
+- **Why Claude decides and the code bounds it.** Judging evidence of understanding from a learner's edits and words is what Claude is good at. Code can't do it. But scores that drift by several points per reply, or topics added in bulk, would make the profile meaningless. So the backend clamps every change, the same split as for verdicts and readings (§1).
+- **Build status.** Designed; not built yet ([plan.md](plan.md#6-polishing)). The interfaces go into [contract.md](contract.md) and the prompt rules into [tutor.md](tutor.md) as each part is built.
+- **Later uses.** The profile is ready to feed task generation (target weak topics) and the Learning Path screen ([gui.md](gui.md#9-learning-path-screen-bonus)). Neither is part of this change.
+
+## 5. Security and operations
 
 - The Claude API key exists only on the backend, loaded from the environment or the gitignored `backend/keys/apikey.txt`.
 - The deployed prototype is public and uses our API key, so the backend enforces the rate limits below. They protect the cost of Claude calls and the server. **Evaluation never depends on Claude**, so when a Claude limit is hit, the grid, the readings and the status keep working. Only the tutor goes quiet, or generation pauses.
@@ -192,9 +297,9 @@ grid:                          # learner boards and generated tasks; also bounds
 - **Deployment.** Fly.io: one Docker image on one always-on machine, shipped from GitHub Actions with the `deploy` label: deployed, smoke tested live, then merged, or rolled back. Details are in [deployment.md](deployment.md).
 - **Message size.** No fixed limit yet; the grid size caps already bound it indirectly. Typical message sizes will be observed in practice before a limit is set.
 
-## 5. Configuration
+## 6. Configuration
 
-The Claude models, behavior knobs, logging and pricing live in one YAML file, [`config.yaml`](../config.yaml) in the repo root, not in code. Rate limits have a file of their own, [`ratelimiting.yaml`](../ratelimiting.yaml) (§4). That lets us switch models, for example Opus vs. Haiku for reactions, and tune thresholds without code changes. The API key is never in this file; it comes from the environment.
+The Claude models, behavior knobs, logging and pricing live in one YAML file, [`config.yaml`](../config.yaml) in the repo root, not in code. Rate limits have a file of their own, [`ratelimiting.yaml`](../ratelimiting.yaml) (§5). That lets us switch models, for example Opus vs. Haiku for reactions, and tune thresholds without code changes. The API key is never in this file; it comes from the environment.
 
 ```yaml
 public: false                  # true for a public deployment: hides debug features
@@ -258,7 +363,7 @@ evaluator:
 
 The values above are the defaults, as described in [contract.md](contract.md). The backend reads the file at startup, so changes need a restart (`./stop.sh && ./start.sh`).
 
-## 6. Stack
+## 7. Stack
 
 | Layer | Choice | Status |
 |---|---|---|
@@ -270,7 +375,7 @@ The values above are the defaults, as described in [contract.md](contract.md). T
 
 **Why three.js:** every component and wire is its own scene node, so the learner can select, move and edit any of them individually.
 
-## 7. Repository layout
+## 8. Repository layout
 
 A snapshot of the repository; it is updated as the structure changes. Entries marked *(gitignored)* exist only locally.
 
@@ -278,8 +383,8 @@ A snapshot of the repository; it is updated as the structure changes. Entries ma
 schematics-ai-tutor/
 ├── README.md                  project overview and how to run
 ├── LICENSE
-├── config.yaml                models, knobs, logging, pricing (§5)
-├── ratelimiting.yaml          rate limits and the daily Claude budget (§4)
+├── config.yaml                models, knobs, logging, pricing (§6)
+├── ratelimiting.yaml          rate limits and the daily Claude budget (§5)
 ├── Dockerfile                 production image: built frontend + backend (docs/deployment.md)
 ├── fly.toml                   Fly.io app: region, one always-on machine, health check
 ├── .dockerignore

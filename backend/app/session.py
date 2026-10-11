@@ -3,7 +3,7 @@
 Every board.update records a snapshot; when editing pauses for `tutor.idle_threshold_ms`, the
 tutor reacts to the snapshots since its last call. A learner message or hint request cancels a
 pending reaction. The session runs the task's hint ladder (docs/tutor.md §3). Its tutor calls,
-board updates and board size are rate limited (rate_limits.py, docs/design.md §4).
+board updates and board size are rate limited (rate_limits.py, docs/design.md §5).
 """
 
 import asyncio

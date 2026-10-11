@@ -1,6 +1,6 @@
 # Deployment
 
-How the prototype is hosted and how changes reach it. The security and rate-limit design is in [design.md](design.md#4-security-and-operations).
+How the prototype is hosted and how changes reach it. The security and rate-limit design is in [design.md](design.md#5-security-and-operations).
 
 ## 1. Hosting
 
@@ -120,7 +120,7 @@ Each ship is a deploy, and a failed one is two (the rollback), so frequent ships
 
 Every log the backend writes survives deploys, is compressed, and stays within one size budget:
 
-- the usage and cost log, `run-*` ([design.md](design.md#4-security-and-operations))
+- the usage and cost log, `run-*` ([design.md](design.md#5-security-and-operations))
 - the event log for measuring success, `events-*`: task started and solved, status changes, tutor calls, misconception labels (planned, [plan.md](plan.md#6-polishing))
 
 Each log is a family of JSON-lines files with its own prefix, and the archive treats every family the same way.
@@ -170,7 +170,7 @@ flowchart LR
 - **Why in the backend, not a deploy step or cron.** Fly's `release_command` runs on a temporary machine without the volume, and the image has no cron. There is one uvicorn worker, so exactly one process writes and archives.
 - **Off the request path.** The size check is the byte count the writer already keeps, not a file stat. Compression and cleanup run in a background thread.
 - **A run id seen before continues at its next part.** Locally, a code reload keeps `./start.sh`'s run id, so it goes on in a new part, and the startup archive compresses the previous one.
-- **Settings**, in the `logs` section of `config.yaml` ([design.md](design.md#5-configuration)):
+- **Settings**, in the `logs` section of `config.yaml` ([design.md](design.md#6-configuration)):
 
 ```yaml
 logs:

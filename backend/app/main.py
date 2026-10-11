@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI):
         archive.on_archived = lambda result: usage_log.event("logs_archived", **result)
         await asyncio.to_thread(archive.archive, "startup")
         nightly = asyncio.create_task(archive.nightly())
-    # Rate limits and the daily Claude budget (ratelimiting.yaml, docs/design.md §4).
+    # Rate limits and the daily Claude budget (ratelimiting.yaml, docs/design.md §5).
     limits = RateLimiter.from_settings(config.get("rate_limits", {}))
     usage_log.on_cost = limits.budget.spend
     app.state.limits = limits
@@ -156,7 +156,7 @@ async def generate(
     now. The task after it is then generated in the background (docs/design.md §3)."""
     if claude is None:
         raise HTTPException(503, "Claude is not configured: set ANTHROPIC_API_KEY or backend/keys/apikey.txt")
-    # Curated levels will be served here once they exist (docs/design.md §4); until then, a 429.
+    # Curated levels will be served here once they exist (docs/design.md §5); until then, a 429.
     if not limits.claude_allowed():
         usage_log.event("generation_refused", reason="claude_budget")
         raise HTTPException(429, "Task generation has reached today's limit; please try again tomorrow.")
