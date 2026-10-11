@@ -198,6 +198,8 @@ The inventory is drawn **inside the editor's three.js scene**, in a column right
 - The chat shows tutor messages, styled by `chat.kind`: nudge, praise, feedback and so on.
 - While a call is running, it shows "tutor is thinking".
 - The learner can type at any time. Sending creates a `tutor.request` with `action: "message"`.
+- **Hint button** beside the chat input, labelled with the next level: "Hint 1/3", "Hint 2/3", "Hint 3/3". It sends a `tutor.request` with `action: "hint"`, and the chat shows the request as the learner's line ("Hint 1/3, please"). After level 3 it stays "Hint 3/3" and repeats that level in other words. It is disabled while the tutor is thinking or disconnected.
+- **Offered hint:** when the tutor offers a hint (`hint_offered`), the Hint button turns amber until it is used or the next task starts.
 - There is no separate Check button. The status updates live, and the tutor reacts when the learner pauses.
 
 ## 8. Concept of operations: the learner's journey

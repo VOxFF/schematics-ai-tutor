@@ -653,3 +653,15 @@ body.dragging-item * {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+/* Hint button beside the chat input (docs/gui.md §7); amber while the tutor offers a hint. */
+.chat form {
+  gap: 6px;
+}
+
+.chat .hint.offered {
+  border-color: var(--attention);
+  background: var(--attention-tint);
+  color: var(--attention);
+  font-weight: 600;
+}

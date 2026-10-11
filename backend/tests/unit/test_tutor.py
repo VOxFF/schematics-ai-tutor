@@ -97,6 +97,14 @@ def test_location_talk_regenerates_then_falls_back(config, usage_log):
     assert events.count("tutor_backstop") == 2 and events.count("claude_call") == 2
 
 
+def test_a_hint_that_keeps_describing_locations_falls_back_as_a_hint(config, usage_log):
+    client = FakeClaude([tutor_reply("Look at row 3."), tutor_reply("Check R1.a again.")])
+    level, spec = example_level()
+    message, _ = asyncio.run(answer(client, config, usage_log, level=level, board=level["board"],
+                                    reference=spec["complete_board"], history=[], hint_level=2))
+    assert message["meta"]["hint_level"] == 2 and message["chat"]["kind"] == "hint"
+
+
 def test_location_talk_then_clean_reply(config, usage_log):
     client = FakeClaude([tutor_reply("Connect R1.b to VM1."), tutor_reply("What does a voltmeter need around it?")])
     message, _ = ask(client, config, usage_log)

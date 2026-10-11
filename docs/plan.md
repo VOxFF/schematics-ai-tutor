@@ -97,8 +97,8 @@ The major steps to build the product. A step is checked off when it is complete,
 
 Built after the core workflow runs end to end.
 
-- [ ] Hint ladder: three levels, server-side enforcement, hint button in the UI
-- [ ] Offer a hint after stalled reactions
+- [x] Hint ladder: three levels, server-side enforcement, hint button in the UI
+- [x] Offer a hint after stalled reactions
 - [ ] Optional: predict, then measure (hide a new meter's reading until the learner predicts)
 
 ## 6. Polishing

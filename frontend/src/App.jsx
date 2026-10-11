@@ -34,7 +34,8 @@ export default function App() {
     const timer = quietMs ? setTimeout(wait, quietMs) : wait();
     try {
       const { level } = await generateTask(current.progress);
-      const next = { ...current, level, board: null }; // a new task starts from its own board
+      // A new task starts from its own board, with a fresh hint ladder (docs/tutor.md §3).
+      const next = { ...current, level, board: null, hint_level: 0, hint_offered: false, misconceptions: [] };
       saveSession(next);
       setSession(next);
     } catch (e) {
@@ -80,8 +81,8 @@ export default function App() {
       concept: level.concept,
       shape: level.shape ?? "",
       difficulty: level.difficulty ?? progress.skill_level,
-      hints_used: 0,
-      misconceptions: [],
+      hints_used: session.hint_level ?? 0,
+      misconceptions: session.misconceptions ?? [],
       signature: level.signature ?? "",
     };
     const advanced = {
@@ -100,6 +101,15 @@ export default function App() {
   const setBoard = useCallback((board) => {
     setSession((current) => {
       const next = { ...current, board };
+      saveSession(next);
+      return next;
+    });
+  }, []);
+
+  // Update the current task's record (hint level, offered hint, misconceptions) and save it.
+  const updateTask = useCallback((update) => {
+    setSession((current) => {
+      const next = { ...current, ...update(current) };
       saveSession(next);
       return next;
     });
@@ -124,6 +134,7 @@ export default function App() {
       onChat={setChat}
       onNext={next}
       onBoard={setBoard}
+      onTask={updateTask}
     />
   );
 }

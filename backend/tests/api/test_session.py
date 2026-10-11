@@ -154,3 +154,52 @@ def test_reaction_is_skipped_over_the_rate_limit(config):
         ws.receive_json()
         time.sleep(0.2)
     assert fake.requests == []
+
+
+def ask_hint(ws, request_id):
+    ws.send_json({"type": "tutor.request", "request_id": request_id, "action": "hint"})
+    assert ws.receive_json()["type"] == "tutor.started"
+    return ws.receive_json()
+
+
+def test_hints_climb_the_ladder_one_level_at_a_time_up_to_three(config):
+    highlight = [{"component": "VM1", "wire": None, "point": None, "style": "attention"}]
+    fake = FakeClaude([tutor_reply(f"Hint {n}", highlights=highlight) for n in range(4)])
+    client, level = connect(config, fake)
+    with client.websocket_connect("/ws/session") as ws:
+        ws.send_json({"type": "session.start", "level": level})
+        ws.receive_json()
+        replies = [ask_hint(ws, f"h{n}")["message"] for n in range(4)]
+    assert [r["meta"]["hint_level"] for r in replies] == [1, 2, 3, 3]  # Claude said 2 every time
+    assert {r["chat"]["kind"] for r in replies} == {"hint"}
+    assert replies[0]["meta"]["highlights"] == []  # level 1 names the concept only
+    assert replies[1]["meta"]["highlights"] == [{"target": {"component": "VM1"}, "style": "attention"}]
+    requests = [r["messages"][0]["content"].split("<request>")[1] for r in fake.requests]
+    assert ['"hint_level": 1' in requests[0], '"hint_level": 3' in requests[3]] == [True, True]
+
+
+def test_a_resumed_session_continues_the_ladder(config):
+    fake = FakeClaude([tutor_reply("Method")])
+    client, level = connect(config, fake)
+    with client.websocket_connect("/ws/session") as ws:
+        ws.send_json({"type": "session.start", "level": level, "hint_level": 2})
+        ws.receive_json()
+        assert ask_hint(ws, "h1")["message"]["meta"]["hint_level"] == 3
+
+
+def test_reactions_without_progress_offer_a_hint(config):
+    config = fast_reactions(config)
+    config = {**config, "tutor": {**config["tutor"], "offer_hint_after_reactions": 2}}
+    fake = FakeClaude([tutor_reply(f"Reaction {n}") for n in range(3)])
+    client, level = connect(config, fake)
+    offered = []
+    with client.websocket_connect("/ws/session") as ws:
+        ws.send_json({"type": "session.start", "level": level})
+        ws.receive_json()
+        for seq in (1, 2, 3):  # the same board each time: the status never improves
+            ws.send_json({"type": "board.update", "seq": seq, "board": level["board"]})
+            assert ws.receive_json()["type"] == "evaluation"
+            assert ws.receive_json()["type"] == "tutor.started"
+            offered.append(ws.receive_json()["hint_offered"])
+    assert offered == [False, False, True]  # the first sets the best status; then two without progress
+    assert '"offer_hint": true' in fake.requests[2]["messages"][0]["content"]

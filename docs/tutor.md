@@ -43,8 +43,6 @@ If the status hasn't changed since the last reaction, the reply is a single shor
 
 ## 3. Hint ladder
 
-> **Later phase.** The hint ladder is built after the core workflow runs end to end ([plan.md](plan.md#5-learning-depth)). Until then, the tutor helps through reactions and free chat only.
-
 Hints are given **only when the learner asks**, one level at a time. The backend enforces the order, and the ladder resets with each task.
 
 | Level | Purpose | Highlights | Example (voltage divider, VM1 must read 4 V) |
@@ -54,7 +52,11 @@ Hints are given **only when the learner asks**, one level at a time. The backend
 | 3. Method | Walk through the reasoning with the learner's numbers, stopping one step before the answer | `attention` | "R2 must take 4 of the 12 V, a third. So R2 is a third of the total. With R1 = 40 Ω, what does R2 need to be?" |
 
 - **No "show the answer" level.** Level 3 still leaves the last step and the placement to the learner, so the learner keeps the agency.
-- **Offering a hint:** after `tutor.offer_hint_after_reactions` reactions (default 3) without the status improving, the tutor may *offer* a hint ("Want a hint?"). It never gives one unasked.
+- **After level 3:** another request repeats level 3 in different words; it never goes further.
+- **One ladder per task.** The level reached carries over to a new problem within the same task (hints build on each other) and resets only with a new task. It survives reloads and reconnects: the browser keeps it and sends it with `session.start`.
+- **Enforced by the backend:** the session decides the level of each hint (one above the highest given, at most 3); Claude's `meta.hint_level` is overwritten with it, a level-1 hint's highlights are dropped, and messages and reactions always get `hint_level` 0.
+- **Offering a hint:** "without the status improving" means the status didn't get better than the best one reached in this task, by the precedence order ([schematics.md](schematics.md#6-structural-checks-and-status)). After `tutor.offer_hint_after_reactions` such reactions in a row (default 3), the next reaction ends by *offering* a hint ("Want a hint?") and the Hint button is highlighted; the count then starts over. The tutor never gives a hint unasked, and there is no offer once the task is solved or level 3 is reached.
+- **Recorded:** the task's summary in the learner's history gets `hints_used` (the level reached) and the misconception labels the tutor reported during the task, which later task generation uses.
 
 ## 4. Free chat
 
@@ -115,7 +117,7 @@ When the learner places a meter from the inventory, the tutor asks "What do you 
 
 ## 8. System prompt draft
 
-The live prompt is `SYSTEM_PROMPT` in `backend/app/tutor.py`. It follows this draft, adds the reaction rules from §2 and the free-chat rules from §4, and leaves out hints until the hint ladder exists.
+The live prompt is `SYSTEM_PROMPT` in `backend/app/tutor.py`. It follows this draft and adds the reaction rules from §2, the hint offer and levels from §3, and the free-chat rules from §4.
 
 ```text
 You are a patient electronics tutor for complete beginners. The learner builds
