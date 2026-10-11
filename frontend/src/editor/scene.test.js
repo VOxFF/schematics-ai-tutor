@@ -155,18 +155,18 @@ describe("label nodes and battery signs", () => {
     expect(node.getObjectByName("labels").children.map((c) => c.name)).toEqual(["id", "value"]);
   });
 
-  test("battery signs sit by their pins, away from the labels", () => {
-    const node = v1();
+  test("battery signs sit beside their plates, on the same side of the lead, clear of the labels", () => {
+    const node = v1(); // vertical: positive pin [3,3] above the body [3,4]
     node.updateMatrixWorld(true);
     const world = (o) => o.getWorldPosition(new THREE.Vector3());
     const signs = {};
     node.getObjectByName("symbol").traverse((o) => o.isCSS2DObject && (signs[o.element.textContent] = world(o)));
-    const pin = (p) => new THREE.Vector3(p[0] * CELL, -p[1] * CELL, 0);
-    expect(signs["+"].distanceTo(pin([3, 3]))).toBeLessThan(CELL / 2);
-    expect(signs["−"].distanceTo(pin([3, 5]))).toBeLessThan(CELL / 2);
-    const labelY = world(node.getObjectByName("labels").getObjectByName("id")).y;
-    for (const sign of Object.values(signs)) expect(Math.abs(sign.y - labelY)).toBeGreaterThan(CELL / 2);
-    // Opposite sides of the vertical lead (x = 3 * CELL).
-    expect(Math.sign(signs["+"].x - 3 * CELL)).toBe(-Math.sign(signs["−"].x - 3 * CELL));
+    const body = new THREE.Vector3(3 * CELL, -4 * CELL, 0);
+    expect(signs["+"].y).toBeGreaterThan(body.y); // + on the positive plate's side
+    expect(signs["−"].y).toBeLessThan(body.y); // − on the negative plate's side
+    expect(signs["+"].distanceTo(body)).toBeLessThan(CELL / 2); // next to the plates, not the pins
+    expect(Math.sign(signs["+"].x - body.x)).toBe(Math.sign(signs["−"].x - body.x)); // same side
+    const id = world(node.getObjectByName("labels").getObjectByName("id"));
+    for (const sign of Object.values(signs)) expect(sign.distanceTo(id)).toBeGreaterThan(12);
   });
 });

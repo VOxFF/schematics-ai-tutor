@@ -81,11 +81,11 @@ function symbol(component) {
     lead(-half, -CELL);
     g.add(rect(battery.long_plate_thickness, battery.long_plate, battery.positive_color, half, 0, 0.2));
     g.add(rect(battery.short_plate_thickness, battery.short_plate, battery.negative_color, -half, 0, 0.2));
-    // Signs sit near their pins, on opposite sides of the lead, so they never meet the labels
-    // (which stay level with the body).
-    const along = CELL - battery.sign_pin_offset;
+    // Signs next to their plates, both on the same side of the lead (docs/images/battery-sketch.png):
+    // + beside the long (positive) plate, − beside the short one, the plates between them.
+    const along = half + battery.sign_plate_offset;
     g.add(label("+", "editor-sign editor-plus", along, battery.sign_wire_offset, battery.sign_size));
-    g.add(label("−", "editor-sign editor-minus", -along, -battery.sign_wire_offset, battery.sign_size));
+    g.add(label("−", "editor-sign editor-minus", -along, battery.sign_wire_offset, battery.sign_size));
   } else {
     lead(CELL, meter.radius);
     lead(-meter.radius, -CELL);
