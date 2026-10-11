@@ -18,7 +18,7 @@ export default function App() {
     setError(null);
     try {
       const { level } = await generateTask(current.progress);
-      const next = { ...current, level };
+      const next = { ...current, level, board: null }; // a new task starts from its own board
       saveSession(next);
       setSession(next);
     } catch (e) {
@@ -64,11 +64,21 @@ export default function App() {
       ...session,
       progress: { skill_level: progress.skill_level + 1, history: [...progress.history, summary] },
       level: null, // the resume effect fetches the next task
+      board: null,
       chat: [...(session.chat ?? []), { role: "notice", text: `Next task (after “${level.title}”)` }],
     };
     saveSession(advanced);
     setSession(advanced);
   };
+
+  // The learner's edited board; null means the task's starting board.
+  const setBoard = useCallback((board) => {
+    setSession((current) => {
+      const next = { ...current, board };
+      saveSession(next);
+      return next;
+    });
+  }, []);
 
   const setChat = useCallback((chat) => {
     setSession((current) => {
@@ -88,6 +98,7 @@ export default function App() {
       onRetry={() => fetchTask(session)}
       onChat={setChat}
       onNext={next}
+      onBoard={setBoard}
     />
   );
 }

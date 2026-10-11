@@ -228,6 +228,7 @@ schematics-ai-tutor/
 │   │   ├── editor/
 │   │   │   ├── GridEditor.jsx three.js renderer, camera fit, label layer
 │   │   │   ├── scene.js       scene graph: one node per component and wire
+│   │   │   ├── placement.js   where a dragged part or wire piece goes, whether it fits, the new board
 │   │   │   ├── colorCode.js   resistor 4-band color code
 │   │   │   ├── schematic-style.yaml  sizes and colors of the schematic (wires, pins, symbols)
 │   │   │   └── style.js       loads the style file; grid spacing

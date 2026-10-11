@@ -3,10 +3,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import GridEditor from "../editor/GridEditor.jsx";
+import { WIRE_PALETTE, nextOrientation, place } from "../editor/placement.js";
 import { readableJson } from "../lib/jsonfmt.js";
 import { useTutorSession } from "../lib/tutorSession.js";
 
-const WIRE_PALETTE = ["Straight (horizontal)", "Straight (vertical)", "Corner", "T", "+"];
 
 // Hidden but still taking space: invisible, unreachable by keyboard and screen readers.
 const shownWhen = (visible) => (visible ? {} : { style: { visibility: "hidden" }, "aria-hidden": true, inert: true });
@@ -88,7 +88,7 @@ function TaskPanel({ level, evaluation }) {
   );
 }
 
-function Editor({ level, evaluation, loading, error, startError, onRetry }) {
+function Editor({ level, board, evaluation, loading, error, startError, onRetry, drag, onDrop, onPlan, onReset }) {
   const [showJson, setShowJson] = useState(false);
   let body;
   if (loading)
@@ -118,13 +118,16 @@ function Editor({ level, evaluation, loading, error, startError, onRetry }) {
     body = (
       <>
         {showJson ? (
-          <pre className="json">{readableJson(level)}</pre>
+          <pre className="json">{readableJson({ ...level, board })}</pre>
         ) : (
-          <GridEditor board={level.board} readings={evaluation?.readings} />
+          <GridEditor board={board} readings={evaluation?.readings} drag={drag} onDrop={onDrop} onPlan={onPlan} />
         )}
-        <button className="json-toggle" onClick={() => setShowJson((v) => !v)}>
-          {showJson ? "Grid" : "JSON"}
-        </button>
+        <div className="editor-tools">
+          <button onClick={onReset} title="Put the board back to the task's start">
+            Reset board
+          </button>
+          <button onClick={() => setShowJson((v) => !v)}>{showJson ? "Grid" : "JSON"}</button>
+        </div>
       </>
     );
   return (
@@ -134,30 +137,36 @@ function Editor({ level, evaluation, loading, error, startError, onRetry }) {
   );
 }
 
-function Inventory({ level }) {
-  const parts = level?.board?.inventory ?? [];
+// Press on an item to drag it onto the grid (docs/gui.md §4).
+function Inventory({ board, onStartDrag }) {
+  const parts = board?.inventory ?? [];
+  const start = (item) => (event) => {
+    event.preventDefault(); // no text selection while dragging
+    onStartDrag(item);
+  };
   return (
     <aside className="inventory" aria-label="Inventory">
       <h3>Inventory</h3>
-      <ul>
+      <ul className="palette">
         {parts.length === 0 && <li className="muted">No parts</li>}
         {parts.map((p) => (
-          <li key={p.id}>
+          <li key={p.id} className="draggable" onPointerDown={start({ kind: "part", ...p })}>
             {p.id} {p.type}
             {p.value != null ? ` ${p.value}` : ""}
           </li>
         ))}
       </ul>
       <h3>Wires</h3>
-      <ul>
+      <ul className="palette">
         {WIRE_PALETTE.map((w) => (
-          <li key={w}>{w}</li>
+          <li key={w.key} className="draggable" onPointerDown={start({ kind: "wire", shape: w.shape, rotation: w.rotation })}>
+            {w.label}
+          </li>
         ))}
       </ul>
     </aside>
   );
 }
-
 function Chat({ chat, connected, thinking, onSend }) {
   const [draft, setDraft] = useState("");
   const end = useRef(null);
@@ -197,10 +206,47 @@ function Chat({ chat, connected, thinking, onSend }) {
   );
 }
 
-export default function TutorScreen({ session, loading, error, onRestart, onRetry, onChat, onNext }) {
+// Hint bar text for the current interaction (docs/gui.md §5); generated here, not by the backend.
+function hint(drag, fits) {
+  if (!drag) return "Drag a part or a wire piece from the inventory onto the grid";
+  if (fits === false) return "Can't place here: the spot is taken or off the grid";
+  return "Drop onto the highlighted points to connect · R to rotate · Esc to cancel";
+}
+
+export default function TutorScreen({ session, loading, error, onRestart, onRetry, onChat, onNext, onBoard }) {
   const { progress, level } = session;
   const chat = session.chat ?? [];
-  const tutor = useTutorSession(level, chat, onChat);
+  const board = session.board ?? level?.board ?? null;
+  const tutor = useTutorSession(level, chat, onChat, board);
+  const [drag, setDrag] = useState(null); // { item, rotation }
+  const [fits, setFits] = useState(null);
+
+  // While dragging: R rotates, Esc cancels, releasing anywhere but the grid snaps back.
+  useEffect(() => {
+    if (!drag) return undefined;
+    const key = (e) => {
+      if (e.key === "Escape") setDrag(null);
+      else if (e.key === "r" || e.key === "R") {
+        setDrag((d) => d && { ...d, rotation: d.item.kind === "part" ? nextOrientation(d.rotation) : (d.rotation + 1) % 4 });
+      }
+    };
+    const release = () => setDrag(null);
+    window.addEventListener("keydown", key);
+    window.addEventListener("pointerup", release);
+    document.body.classList.add("dragging-item");
+    return () => {
+      window.removeEventListener("keydown", key);
+      window.removeEventListener("pointerup", release);
+      document.body.classList.remove("dragging-item");
+    };
+  }, [drag]);
+
+  const startDrag = (item) => setDrag({ item, rotation: item.kind === "part" ? "E" : item.rotation });
+  const drop = (point) => {
+    const next = drag && board && place(board, drag.item, point, drag.rotation);
+    setDrag(null);
+    if (next) onBoard(next);
+  };
   return (
     <div className="tutor">
       <Header
@@ -215,15 +261,20 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
         <div className="editor-column">
           <Editor
             level={level}
+            board={board}
+            drag={drag}
+            onDrop={drop}
+            onPlan={setFits}
+            onReset={() => onBoard(null)}
             evaluation={tutor.evaluation}
             loading={loading}
             error={error}
             startError={tutor.startError}
             onRetry={onRetry}
           />
-          <div className="hint-bar">Click or drag an element on the grid, or drag one from the inventory</div>
+          <div className="hint-bar" aria-live="polite">{hint(drag, fits)}</div>
         </div>
-        <Inventory level={level} />
+        <Inventory board={board} onStartDrag={startDrag} />
       </div>
       <Chat chat={chat} connected={tutor.connected} thinking={tutor.thinking} onSend={tutor.send} />
     </div>

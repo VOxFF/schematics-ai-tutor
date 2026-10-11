@@ -143,6 +143,9 @@ A tutor highlight lasts until the next tutor message, or until the learner edits
 
 - **Fixed parts** can be selected, so they show the outline and the hint bar explains them, but they can't be dragged, rotated or deleted.
 - **Sending edits.** Each finished edit (drop, rotate, delete) sends one `board.update`. Dragging stays local until the drop.
+- **Anchor points.** A part is dropped by its **body** point; its pins land on the neighboring points in the direction of its orientation (new parts start horizontal, `E`). A wire piece is dropped by its **anchor**: the left end of a straight piece, or the shared point of a corner, T or +.
+- **Reset board** (top-right of the editor) puts the board back to the task's start; the learner's edited board is saved in the session until then.
+- **Build status.** Dragging from the inventory and the wire palette is implemented. Selecting, moving and deleting placed elements comes next.
 
 ## 5. Hint bar
 

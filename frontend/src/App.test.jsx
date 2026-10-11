@@ -232,3 +232,22 @@ test("the header shows the curriculum level and the task within it", () => {
   expect(screen.getByLabelText("Skill level").textContent).toBe("Level 2");
   expect(screen.getByText("Task 1 of 2")).toBeDefined();
 });
+
+test("dragging from the inventory: hint bar guides, Esc cancels, and the board goes to the session", async () => {
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [] }));
+  render(<App />);
+  await screen.findByPlaceholderText("Ask the tutor…");
+  expect(FakeSocket.last.sent[0]).toMatchObject({ type: "session.start", board: LEVEL.board }); // unedited: the task board
+  const hintBar = () => document.querySelector(".hint-bar").textContent;
+  expect(hintBar()).toMatch(/^Drag a part/);
+
+  fireEvent.pointerDown(screen.getByText("R2 resistor 20"));
+  expect(hintBar()).toMatch(/^Drop onto the highlighted points/);
+  fireEvent.keyDown(window, { key: "Escape" });
+  expect(hintBar()).toMatch(/^Drag a part/);
+
+  fireEvent.pointerDown(screen.getByText("Corner"));
+  fireEvent.pointerUp(window); // released outside the grid: snaps back
+  expect(hintBar()).toMatch(/^Drag a part/);
+  expect(screen.getByText("R2 resistor 20")).toBeDefined(); // still in the inventory
+});

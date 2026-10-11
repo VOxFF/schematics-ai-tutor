@@ -182,3 +182,41 @@ export function disposeTree(object) {
     if (child.isCSS2DObject) child.element.remove();
   });
 }
+
+// Drop target colors (docs/gui.md §4): blue where the item fits, red where it doesn't.
+const TARGET_OK = 0x0969da;
+const TARGET_BAD = 0xcf222e;
+
+// Ghost of a dragged item plus its target points, from a placement plan (placement.js).
+export function previewNode(item, planned, rotation) {
+  const node = new THREE.Group();
+  node.name = "preview";
+  let ghost;
+  if (item.kind === "part") {
+    const [first, second] = PIN_NAMES[item.type];
+    ghost = componentNode({ id: item.id, type: item.type, value: item.value, orientation: rotation,
+                            pins: { [first]: planned.points[0], [second]: planned.points[2] } });
+  } else {
+    ghost = wireNode({ id: "preview-wire", segments: planned.segments });
+  }
+  ghost.traverse((o) => {
+    if (o.material) {
+      o.material.transparent = true;
+      o.material.opacity = 0.45;
+    }
+  });
+  ghost.children = ghost.children.filter((c) => !c.isCSS2DObject); // no labels on the ghost
+  ghost.traverse((o) => { o.children = o.children.filter((c) => !c.isCSS2DObject); });
+  node.add(ghost);
+  const blocked = new Set(planned.blocked.map((p) => p.join(",")));
+  for (const p of planned.pins) {
+    const w = toWorld(p);
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(5, 8, 32),
+      new THREE.MeshBasicMaterial({ color: planned.valid && !blocked.has(p.join(",")) ? TARGET_OK : TARGET_BAD }),
+    );
+    ring.position.set(w.x, w.y, 3);
+    node.add(ring);
+  }
+  return node;
+}
