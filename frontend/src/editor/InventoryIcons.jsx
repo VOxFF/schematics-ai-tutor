@@ -6,12 +6,8 @@ import { CELL, STYLE } from "./style.js";
 
 const { pin, outline, resistor, battery, meter, wire } = STYLE;
 
-// Icons are drawn in the board's world units; `scale` (pixels per unit, from the editor)
-// makes them exactly as large as the same element on the board.
-const sized = (width, height, scale) => (scale ? { width: width * scale, height: height * scale } : {});
-
 // A part drawn horizontally, pins at x = ±CELL, centered on (0, 0).
-export function PartIcon({ item, scale }) {
+export function PartIcon({ item }) {
   const lead = (from, to) => (
     <line x1={from} y1={0} x2={to} y2={0} stroke={pin.color} strokeWidth={pin.lead_thickness} />
   );
@@ -60,8 +56,7 @@ export function PartIcon({ item, scale }) {
     );
   }
   return (
-    <svg viewBox={`${-CELL - 6} -24 ${2 * CELL + 12} 48`} className="part-icon" aria-hidden="true"
-         {...sized(2 * CELL + 12, 48, scale)}>
+    <svg viewBox={`${-CELL - 6} -24 ${2 * CELL + 12} 48`} className="part-icon" aria-hidden="true">
       {body}
       <circle cx={-CELL} cy={0} r={pin.connector_radius} fill={pin.color} />
       <circle cx={CELL} cy={0} r={pin.connector_radius} fill={pin.color} />
@@ -75,24 +70,19 @@ const rotate = ([dx, dy], times) => {
   return v;
 };
 
-// A wire piece, one grid step per arm, framed by its own shape so it sits centered in its tile.
-export function WireIcon({ shape, rotation, scale }) {
+// A wire piece around its anchor, one grid step per arm.
+export function WireIcon({ shape, rotation }) {
   const arms = WIRE_SHAPES[shape].map((arm) => rotate(arm, rotation).map((d) => d * CELL));
-  const xs = [0, ...arms.map(([x]) => x)];
-  const ys = [0, ...arms.map(([, y]) => y)];
-  const pad = 10;
-  const box = [Math.min(...xs) - pad, Math.min(...ys) - pad, Math.max(...xs) - Math.min(...xs) + 2 * pad,
-               Math.max(...ys) - Math.min(...ys) + 2 * pad];
-  const joint = STYLE.grid.connected_hole_radius;
+  const joint = STYLE.grid.connected_hole_radius * 3; // icons are small: joints scaled up to stay visible
+  const ends = arms.map(([x, y]) => <circle key={`${x},${y}`} cx={x} cy={y} r={joint} fill={wire.color} />);
   return (
-    <svg viewBox={box.join(" ")} className="wire-icon" aria-hidden="true" {...sized(box[2], box[3], scale)}>
+    <svg viewBox={`${-CELL - 8} ${-CELL - 8} ${2 * CELL + 16} ${2 * CELL + 16}`} className="wire-icon" aria-hidden="true">
       {arms.map(([x, y]) => (
-        <line key={`${x},${y}`} x1={0} y1={0} x2={x} y2={y} stroke={wire.color} strokeWidth={wire.thickness}
+        <line key={`${x},${y}`} x1={0} y1={0} x2={x} y2={y} stroke={wire.color} strokeWidth={wire.thickness * 4}
               strokeLinecap="round" />
       ))}
-      {[[0, 0], ...arms].map(([x, y]) => (
-        <circle key={`j${x},${y}`} cx={x} cy={y} r={joint} fill={wire.color} />
-      ))}
+      <circle r={joint} fill={wire.color} />
+      {ends}
     </svg>
   );
 }
