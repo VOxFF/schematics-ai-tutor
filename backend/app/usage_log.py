@@ -1,4 +1,5 @@
-"""Usage and cost log: one JSON-lines file per backend run, under logs/.
+"""Usage and cost log: one JSON-lines log per backend run, under logs/, written in parts and
+archived by log_archive.py (`run-<run id>.<part>.jsonl`).
 
 Each line is one event. Claude calls carry the token usage reported by the API
 and a cost estimate from the `pricing` table in config.yaml.
@@ -9,6 +10,8 @@ import os
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
+
+from .log_archive import LogArchive, LogFile
 
 USAGE_FIELDS = (
     "input_tokens",
@@ -26,31 +29,38 @@ PRICE_KEYS = {
 
 
 class UsageLog:
-    def __init__(self, path: Path | None, pricing: dict | None = None):
-        self.path = path
+    def __init__(self, file: LogFile | None, pricing: dict | None = None):
+        self.file = file
         self.pricing = pricing or {}
         self._lock = threading.Lock()
         self.totals = {"claude_calls": 0, **{f: 0 for f in USAGE_FIELDS}, "cost_usd": 0.0}
 
     @classmethod
-    def from_config(cls, config: dict, root: Path, run_id: str) -> "UsageLog":
+    def from_config(cls, config: dict, root: Path, run_id: str, archive: LogArchive | None = None) -> "UsageLog":
+        """The run's log, archived by `archive`; without one (e.g. live tests), a plain log in logs.dir."""
         logs = config.get("logs") or {}
         if not logs.get("enabled"):
             return cls(None)
-        directory = root / logs.get("dir", "logs")
-        directory.mkdir(parents=True, exist_ok=True)
-        return cls(directory / f"run-{run_id}.jsonl", config.get("pricing"))
+        if archive is None:
+            directory = root / logs.get("dir", "logs")
+            directory.mkdir(parents=True, exist_ok=True)
+            return cls(LogFile(directory, "run", run_id), config.get("pricing"))
+        return cls(archive.open("run", run_id), config.get("pricing"))
 
     @property
     def enabled(self) -> bool:
-        return self.path is not None
+        return self.file is not None
+
+    @property
+    def path(self) -> Path | None:
+        """The current part."""
+        return self.file.path if self.file else None
 
     def event(self, kind: str, **fields) -> None:
         if not self.enabled:
             return
         record = {"ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds"), "event": kind, **fields}
-        with self._lock, open(self.path, "a") as f:
-            f.write(json.dumps(record) + "\n")
+        self.file.write(json.dumps(record))
 
     def cost_usd(self, model: str, usage: dict) -> float | None:
         """Estimated cost of one call; None when the model has no pricing entry."""

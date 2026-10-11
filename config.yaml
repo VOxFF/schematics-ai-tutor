@@ -6,9 +6,13 @@
 # SCHEMATICS_PUBLIC=true|false overrides it; the Dockerfile sets true for the deployed build.
 public: false
 
-logs:
+logs:                          # archived at startup, by size and nightly (docs/deployment.md §5)
   enabled: true                # write a usage and cost log per backend run
-  dir: logs                    # relative to the repo root; gitignored
+  dir: logs                    # relative to the repo root; gitignored. SCHEMATICS_LOGS_DIR overrides it (Fly: /data/logs)
+  history_dir: history         # gzipped earlier parts, inside dir
+  max_file_mb: 20              # archive when a log's current part grows past this
+  history_max_mb: 200          # history budget for all logs; oldest files deleted first
+  nightly_utc: "10:00"         # daily archive (3 am Pacific)
 
 # USD per million tokens, used for cost estimates in the logs.
 # Check against the current Anthropic pricing page when changing models.

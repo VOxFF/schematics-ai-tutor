@@ -69,11 +69,78 @@ Every deploy replaces the one machine. Learners keep their progress, because it'
 | Task cache and reference solutions | The next task is generated on request; the tutor has no `<reference>` for a resumed task |
 | First-task pool | Refilled at startup: 2 task generations |
 | Rate-limit counters | Start from zero |
-| Usage log (`logs/run-*.jsonl`) | Written inside the machine; lost unless collected first |
+| Nothing in the logs | They're on the volume (§5); the next startup archives the previous run's last part |
 
 Frequent merges add a little Claude cost and interrupt anyone mid-task. That's acceptable for the prototype.
 
-## 5. Manual operations
+## 5. Logs
+
+Every log the backend writes survives deploys, is compressed, and stays within one size budget:
+
+- the usage and cost log, `run-*` ([design.md](design.md#4-security-and-operations))
+- the event log for measuring success, `events-*`: task started and solved, status changes, tutor calls, misconception labels (planned, [plan.md](plan.md#6-polishing))
+
+Each log is a family of JSON-lines files with its own prefix, and the archive treats every family the same way.
+
+### Storage
+
+A deploy replaces the machine's filesystem, so the logs live on a **Fly volume**, `logs_data` (1 GB, `sjc`, encrypted, daily snapshots kept 5 days), attached to the one machine and mounted at `/data` (`[mounts]` in `fly.toml`).
+
+| Path | Holds |
+|---|---|
+| `/data/logs/` | The current part of each log: `<log>-<run id>.<part>.jsonl`, e.g. `run-20261011-172121.003.jsonl` |
+| `/data/logs/history/` | Archived parts of all logs, gzipped: `<log>-<run id>.<part>.jsonl.gz` |
+
+- `SCHEMATICS_LOGS_DIR=/data/logs` (`[env]` in `fly.toml`) overrides `logs.dir` in `config.yaml`. Locally the same code uses the repo's `logs/` folder.
+- A 1 GB volume is plenty: the history is capped well below it (`history_max_mb`), and it costs about $0.15 a month.
+- File names sort in time order: the run id is the start time, and the part number grows within a run.
+
+### Archive
+
+One operation in the backend process ([`log_archive.py`](../backend/app/log_archive.py)); each run is itself logged as a `logs_archived` event (reason, files archived and deleted, history size):
+
+1. Close the current part of each log and open the next one at once, so logging never pauses.
+2. Gzip the closed parts into `history/`, then delete the uncompressed file. JSON lines compress about 10×.
+3. Delete the oldest files in `history/`, across all logs, until it fits within `history_max_mb`. The parts just archived are never deleted.
+
+Three triggers run it:
+
+```mermaid
+flowchart LR
+    T1["Startup<br/>(each deploy or restart)"] --> A
+    T2["Size<br/>any current part > max_file_mb"] --> A
+    T3["Nightly<br/>at nightly_utc"] --> A
+    subgraph A[Archive]
+        direction TB
+        R["1. Roll: close the current part<br/>of each log, open the next"] --> Z["2. Gzip it into history/,<br/>delete the .jsonl"]
+        Z --> C["3. Delete the oldest .gz<br/>while history/ > history_max_mb"]
+    end
+```
+
+| Trigger | When | Why |
+|---|---|---|
+| Startup | The backend starts: every deploy, and every crash restart | Archives whatever the previous run left, even if it never shut down cleanly |
+| Size | Any log's current part passes `max_file_mb` | The machine is always on, so one run can last weeks; this bounds a single file in busy periods |
+| Nightly | Once a day at `nightly_utc` | Quiet periods: no day's log stays uncompressed. Done in the running server, so it never needs a deploy |
+
+- **Why in the backend, not a deploy step or cron.** Fly's `release_command` runs on a temporary machine without the volume, and the image has no cron. There is one uvicorn worker, so exactly one process writes and archives.
+- **Off the request path.** The size check is the byte count the writer already keeps, not a file stat. Compression and cleanup run in a background thread.
+- **A run id seen before continues at its next part.** Locally, a code reload keeps `./start.sh`'s run id, so it goes on in a new part, and the startup archive compresses the previous one.
+- **Settings**, in the `logs` section of `config.yaml` ([design.md](design.md#5-configuration)):
+
+```yaml
+logs:
+  enabled: true
+  dir: logs                   # overridden on Fly to /data/logs
+  history_dir: history        # inside dir
+  max_file_mb: 20             # roll the current part above this
+  history_max_mb: 200         # compressed history of all logs; oldest files deleted first
+  nightly_utc: "10:00"        # daily archive (3 am Pacific)
+```
+
+- **Reading the logs:** `fly ssh sftp get /data/logs/history/<file>` copies a file to your machine, and `zcat` reads it.
+
+## 6. Manual operations
 
 ```sh
 fly deploy                         # deploy the working tree by hand (first deploy, hotfix)
@@ -84,9 +151,10 @@ fly releases --image               # past releases and their images
 fly deploy --image <image>         # roll back to a past release's image
 fly ssh console                    # shell on the machine
 fly secrets list                   # names only, never values
+fly ssh sftp get /data/logs/history/<file>   # copy an archived log (§5)
 ```
 
-## 6. Status
+## 7. Status
 
 - [x] `Dockerfile`, `fly.toml`, `.dockerignore`; the backend serves the built frontend
 - [x] Fly app created
@@ -95,5 +163,9 @@ fly secrets list                   # names only, never values
 - [x] Playthrough in the browser on the public URL: a couple of tasks solved, task generation and the tutor working
 - [x] Deploy token in GitHub secrets (2026-10-11)
 - [x] `deploy.yml` workflow: `deploy` and `smoke` jobs after `check` passes on `main`; `./smoke.sh`
-- [ ] First automatic deploy, on the merge that adds `deploy.yml`
-- [ ] Logs and learner experience collection (to be designed)
+- [x] First automatic deploy, on the merge that adds `deploy.yml` (2026-10-11, release v2): `deploy` and `smoke` passed
+- [x] Log archive designed (§5)
+- [x] Fly volume `logs_data` created (2026-10-11); mounted at `/data`, with the log path override, in `fly.toml`
+- [x] Archive: startup, size and nightly triggers; history cap (`log_archive.py`)
+- [ ] First deploy with the volume: the machine is recreated with the mount, and the startup archive runs on it
+- [ ] Learner experience collection (to be designed)

@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .config import REPO_ROOT, config_path, load_config
+from .log_archive import LogArchive
 from .session import Session
 from .task_cache import TaskCache
 from .task_generation import generate_task
@@ -37,7 +38,14 @@ async def lifespan(app: FastAPI):
     config = load_config()
     # start.sh sets one run id per ./start.sh, so code reloads keep writing to the same file.
     run_id = os.environ.get("SCHEMATICS_RUN_ID") or datetime.now().strftime("%Y%m%d-%H%M%S")
-    usage_log = UsageLog.from_config(config, REPO_ROOT, run_id)
+    # Logs: archive what earlier runs left, then archive by size and nightly (docs/deployment.md §5).
+    archive = LogArchive.from_config(config, REPO_ROOT)
+    usage_log = UsageLog.from_config(config, REPO_ROOT, run_id, archive)
+    nightly = None
+    if archive:
+        archive.on_archived = lambda result: usage_log.event("logs_archived", **result)
+        await asyncio.to_thread(archive.archive, "startup")
+        nightly = asyncio.create_task(archive.nightly())
     app.state.config = config
     app.state.usage_log = usage_log
     app.state.references = References()
@@ -51,6 +59,8 @@ async def lifespan(app: FastAPI):
     yield
     if app.state.task_cache:
         app.state.task_cache.close()
+    if nightly:
+        nightly.cancel()
     usage_log.summary()
     usage_log.event("server_stopped", pid=os.getpid())
 
