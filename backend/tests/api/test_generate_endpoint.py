@@ -4,7 +4,8 @@ import pytest
 
 pytestmark = pytest.mark.usefixtures("any_level")
 
-from app.main import References, app, get_claude, get_config, get_references, get_usage_log
+from app.task_generation import GenerationResult
+from app.main import References, app, get_claude, get_config, get_references, get_task_cache, get_usage_log
 from app.usage_log import UsageLog
 from tests.conftest import FakeClaude, as_claude_output, load_example, text_response
 
@@ -12,12 +13,13 @@ from tests.conftest import FakeClaude, as_claude_output, load_example, text_resp
 REFERENCES = References()
 
 
-def client_with(claude, config):
+def client_with(claude, config, cache=None):
     app.dependency_overrides = {
         get_claude: lambda: claude,
         get_config: lambda: config,
         get_usage_log: lambda: UsageLog(None),
         get_references: lambda: REFERENCES,
+        get_task_cache: lambda: cache,  # None: generate on request; the cache has its own tests
     }
     return TestClient(app)
 
@@ -31,6 +33,24 @@ def test_generate_returns_a_level(config):
     assert body["level"]["board"]["inventory"][0]["id"] == "R2"
     assert body["difficulty"] == 3 and body["attempts"] == 1
     assert body["level"]["id"] in REFERENCES  # reference kept server-side for the tutor
+
+
+def test_generate_serves_from_the_cache(config):
+    class Cache:
+        def __init__(self):
+            self.requested = []
+
+        async def get(self, progress):
+            self.requested.append(progress)
+            spec = load_example()
+            level = {"id": "gen-cached", "order": progress["skill_level"], "title": "t", "board": {}}
+            return GenerationResult(spec=spec, level=level, attempts=1)
+
+    cache = Cache()
+    response = client_with(FakeClaude([]), config, cache).post("/api/tasks/generate", json={"skill_level": 2})
+    assert response.status_code == 200 and response.json()["level"]["id"] == "gen-cached"
+    assert cache.requested == [{"skill_level": 2, "history": []}]
+    assert "gen-cached" in REFERENCES
 
 
 def test_generate_without_claude_is_503(config):

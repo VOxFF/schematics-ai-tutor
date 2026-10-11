@@ -8,7 +8,7 @@ The app has three screens: the **start screen**, the **learning screen** (the tu
 
 | Learner | Lands on |
 |---|---|
-| New: no saved session in this browser | Start screen. **Start Learning** opens the first curated level on the learning screen. |
+| New: no saved session in this browser | Start screen. **Start Learning** opens a first task from the server's pool of pre-generated ones on the learning screen. |
 | Returning, or after a page reload | The learning screen directly, resumed exactly where they left off. Showing the start screen would feel like lost progress. |
 | After **Restart Learning** | Everything is wiped, then the start screen |
 
@@ -225,7 +225,7 @@ flowchart TD
     RL["Restart Learning<br/>(confirm, wipe)"] -.-> SS
 ```
 
-1. **First visit.** The start screen explains what the tutor offers and the typical learning path. **Start Learning** opens the first curated level, so there's no waiting.
+1. **First visit.** The start screen explains what the tutor offers and the typical learning path. **Start Learning** opens a pre-generated first task, so there's no waiting.
 2. **Read.** The task panel states the goal in plain words, and each target shows its live reading.
 3. **Build.** The learner drags parts and wires onto the grid, and the hint bar explains the controls as they go.
 4. **Observe.** After each finished edit the status and meter readings update immediately, so cause and effect are visible.

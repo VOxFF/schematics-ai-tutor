@@ -49,6 +49,12 @@ tutor:
 task_generation:
   recent_tasks: 10
 
+pregeneration:                 # tasks generated ahead of time and cached (docs/design.md §3)
+  enabled: true
+  first_task_pool: 2           # ready first tasks for new learners, filled at startup
+  max_entries: 50              # cached or running generations, oldest dropped first
+  ttl_s: 3600                  # a cached task older than this is dropped
+
 rate_limits:
   tutor_calls_per_session_per_min: 6
   task_generations_per_session_per_hour: 10
