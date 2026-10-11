@@ -85,17 +85,17 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Tutor panel: chat bubbles, thinking indicator, errors; live readings in the Task panel
 - [x] Backend integration: task generation over REST, session, evaluation and tutor over the WebSocket
 
-## 4. Integration and deployment
+## 4. Integration and deployment ✅
 
-- [ ] End-to-end playthrough of all levels
 - [x] `public` flag in `config.yaml`: a public build hides debug features (the editor's JSON view)
 - [x] Hosting decision: Fly.io ([deployment.md](deployment.md))
 - [x] Deploy backend and frontend: `Dockerfile` and `fly.toml`, one image serving both, at https://schematics-ai-tutor.fly.dev
 - [x] Continuous deployment: GitHub Actions deploys each pull request and smoke tests it before the merge (replaced by the `deploy` label, below)
 - [x] Ship with the `deploy` label: merge only after a live smoke test passes; automatic rollback on failure ([deployment.md](deployment.md#3-continuous-deployment))
 - [x] Log archive on a Fly volume: startup, size and nightly triggers, compressed history with a size cap ([deployment.md](deployment.md#5-logs))
-- [ ] Learner experience collection from the deployed app
 - [x] Smoke test on the public URL
+- [x] Rate limiting and the daily Claude budget, live ([design.md](design.md#rate-limits))
+- [x] Rollback drill: a deliberately failing smoke test, rolled back automatically ([deployment.md](deployment.md#7-status))
 
 ## 5. Learning depth
 
@@ -112,6 +112,7 @@ Built after the core workflow runs end to end.
 - [ ] Tutor highlights: glow and pulsing (`attention` pulses)
 - [ ] Tutor highlights: different visuals for "remove this" and "connect here" (e.g. a dashed line between the two points); if Claude still highlights part of a wire run, extend wire highlights to the whole run in the backend
 - [ ] Status display on the learning screen (e.g. a colored badge in the Task / Targets panel)
+- [ ] Learner experience collection from the deployed app (moved from §4: product work, not deployment)
 - [ ] Event log for measuring success: task started/solved, status changes, tutor calls, misconception labels
 - [ ] State the supported devices (desktop: mouse and keyboard)
 - [ ] Revisit the redundancy of component `orientation` and `pins`
@@ -135,6 +136,7 @@ Built only if time allows; nothing else depends on it.
 
 ## 8. Submission
 
+- [ ] End-to-end playthrough of all levels on the public URL (moved from §4: the final sign-off)
 - [ ] Written design rationale
 - [ ] Walkthrough video (8 minutes or less)
 - [ ] Export Claude transcripts
