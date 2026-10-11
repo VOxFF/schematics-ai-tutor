@@ -86,7 +86,7 @@ fly secrets list                   # names only, never values
 - [x] Fly app created
 - [x] `ANTHROPIC_API_KEY` set as a Fly secret
 - [x] First deploy, by hand (2026-10-11): health, page, assets, HTTPS redirect and WebSocket upgrade checked
-- [ ] Playthrough in the browser on the public URL (Claude: task generation and tutor)
+- [x] Playthrough in the browser on the public URL: a couple of tasks solved, task generation and the tutor working
 - [ ] Deploy token in GitHub secrets
 - [ ] `deploy` job with the smoke test in `.github/workflows/check.yml`
 - [ ] Logs and learner experience collection (to be designed)
