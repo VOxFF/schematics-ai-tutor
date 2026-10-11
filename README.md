@@ -5,7 +5,7 @@ A Claude-based tutor for learning electric circuits and schematics on an interac
 ## Structure
 
 - Full layout: [docs/design.md](docs/design.md#7-repository-layout)
-- [`docs/`](docs/): design documents. Start with [task.md](docs/task.md), then [design.md](docs/design.md), [contract.md](docs/contract.md), [schematics.md](docs/schematics.md), [tutor.md](docs/tutor.md), [gui.md](docs/gui.md) and [plan.md](docs/plan.md).
+- [`docs/`](docs/): design documents. Start with [task.md](docs/task.md), then [design.md](docs/design.md), [contract.md](docs/contract.md), [schematics.md](docs/schematics.md), [tutor.md](docs/tutor.md), [gui.md](docs/gui.md), [deployment.md](docs/deployment.md) and [plan.md](docs/plan.md).
 - [`frontend/`](frontend/): grid editor and tutor UI
 - [`backend/`](backend/): circuit evaluator and Claude API integration
 
@@ -18,6 +18,17 @@ A Claude-based tutor for learning electric circuits and schematics on an interac
 ```
 
 Open http://127.0.0.1:5173. Server output goes to `.run/backend.log` and `.run/frontend.log`. Usage and cost logs go to `logs/run-<timestamp>.jsonl` (toggle `logs.enabled` in [`config.yaml`](config.yaml)). Details are in [backend/README.md](backend/README.md).
+
+## Deploy
+
+Hosted on [Fly.io](https://fly.io) at https://schematics-ai-tutor.fly.dev. A merge to `main` deploys automatically once checks pass, then `./smoke.sh` checks the live app; details are in [docs/deployment.md](docs/deployment.md).
+
+```sh
+fly secrets set ANTHROPIC_API_KEY=...   # once
+fly deploy                              # builds the Dockerfile remotely and rolls out
+fly logs
+./smoke.sh                              # smoke test the live app
+```
 
 ## Tests
 

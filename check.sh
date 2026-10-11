@@ -13,7 +13,7 @@ echo "== docs, config, layout, secrets"
 "$PY" scripts/check_integrity.py
 
 echo "== shell scripts"
-for script in start.sh stop.sh check.sh test.sh; do
+for script in start.sh stop.sh check.sh test.sh smoke.sh; do
   bash -n "$script"
 done
 echo "scripts: ok"

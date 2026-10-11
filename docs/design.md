@@ -131,6 +131,7 @@ flowchart LR
 - **Implementation.** In-memory token buckets in the single backend process. Running several instances would need a shared store such as Redis; that is noted for scale, not built for the prototype.
 - **Configuration.** All limits are settings in `config.yaml` (§5).
 - **Usage and cost log.** When `logs.enabled` is on, the backend writes one JSON-lines file per run, `logs/run-<timestamp>.jsonl` (gitignored). It records server start and stop, every Claude call (purpose, model, learner session ID, token usage, estimated cost from the `pricing` table) and a run summary with totals. Each `./start.sh` is one run; code reloads append to the same file.
+- **Deployment.** Fly.io: one Docker image on one always-on machine, deployed from GitHub Actions when a PR merges to `main`, then smoke tested. Details are in [deployment.md](deployment.md).
 - **Message size.** No fixed limit yet; the grid size caps already bound it indirectly. Typical message sizes will be observed in practice before a limit is set.
 
 ## 5. Configuration
@@ -139,7 +140,8 @@ The Claude models, behavior knobs, logging and pricing live in one YAML file, [`
 
 ```yaml
 public: false                  # true for a public deployment: hides debug features
-                               # (read by the frontend build; restart the dev server after a change)
+                               # (read by the frontend build; restart the dev server after a change;
+                               # SCHEMATICS_PUBLIC overrides it, and the Dockerfile sets true)
 
 logs:
   enabled: true                # usage and cost log per backend run
@@ -214,7 +216,7 @@ The values above are the defaults, as described in [contract.md](contract.md). T
 | Frontend | JavaScript + React, built with Vite | Decided |
 | Frontend ↔ backend transport | REST + WebSocket | Decided |
 | Workspace rendering | three.js | Decided |
-| Hosting | — | Open |
+| Hosting | Fly.io: one Docker image, one always-on machine ([deployment.md](deployment.md)) | Decided |
 
 **Why three.js:** every component and wire is its own scene node, so the learner can select, move and edit any of them individually.
 
@@ -227,15 +229,20 @@ schematics-ai-tutor/
 ├── README.md                  project overview and how to run
 ├── LICENSE
 ├── config.yaml                models, knobs, rate limits, logging, pricing (§5)
+├── Dockerfile                 production image: built frontend + backend (docs/deployment.md)
+├── fly.toml                   Fly.io app: region, one always-on machine, health check
+├── .dockerignore
 ├── start.sh                   start the backend and frontend in the background
 ├── stop.sh                    stop it
 ├── check.sh                   integrity checks: docs, config, layout, secrets, tests
 ├── test.sh                    backend tests: unit + api, or live (real Claude)
+├── smoke.sh                   smoke test of a deployed app (docs/deployment.md)
 ├── .env.example               optional local overrides (copy to .env)
 ├── .gitignore
 ├── .github/
 │   └── workflows/
-│       └── check.yml          runs ./check.sh on every PR and on main
+│       ├── check.yml          runs ./check.sh on every PR and on main
+│       └── deploy.yml         deploys to Fly.io after check passes on main, then ./smoke.sh
 ├── scripts/
 │   └── check_integrity.py     docs, config, layout and secrets checks used by check.sh
 ├── docs/
@@ -245,6 +252,7 @@ schematics-ai-tutor/
 │   ├── schematics.md          grid and graph formats, task flow, evaluator, levels
 │   ├── tutor.md               tutor behavior, hint ladder, guardrails
 │   ├── gui.md                 screens, layout, interaction, learner journey
+│   ├── deployment.md          hosting, secrets, continuous deployment, operations
 │   ├── plan.md                build plan with checklist
 │   └── images/
 │       └── gui-layout.png     GUI layout sketch
@@ -319,4 +327,4 @@ schematics-ai-tutor/
 
 ## Open decisions
 
-- Hosting and deployment
+None at the moment.

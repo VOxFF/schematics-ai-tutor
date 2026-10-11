@@ -1,0 +1,14 @@
+# Keep the build context small and free of secrets.
+.git
+.github
+.run
+.env
+logs
+docs
+backend/keys
+backend/.venv
+backend/tests
+frontend/node_modules
+frontend/dist
+**/__pycache__
+**/.pytest_cache
