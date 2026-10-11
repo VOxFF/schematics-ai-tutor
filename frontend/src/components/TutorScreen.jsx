@@ -3,6 +3,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import GridEditor from "../editor/GridEditor.jsx";
+import { PartIcon, WireIcon, partCaption, partName } from "../editor/InventoryIcons.jsx";
 import { WIRE_PALETTE, nextOrientation, place } from "../editor/placement.js";
 import { readableJson } from "../lib/jsonfmt.js";
 import { useTutorSession } from "../lib/tutorSession.js";
@@ -137,7 +138,7 @@ function Editor({ level, board, evaluation, loading, error, startError, onRetry,
   );
 }
 
-// Press on an item to drag it onto the grid (docs/gui.md §4).
+// Press on an item to drag it onto the grid (docs/gui.md §4). Items are drawn as their symbols.
 function Inventory({ board, onStartDrag }) {
   const parts = board?.inventory ?? [];
   const start = (item) => (event) => {
@@ -147,26 +148,29 @@ function Inventory({ board, onStartDrag }) {
   return (
     <aside className="inventory" aria-label="Inventory">
       <h3>Inventory</h3>
-      <ul className="palette">
+      <ul className="palette parts">
         {parts.length === 0 && <li className="muted">No parts</li>}
         {parts.map((p) => (
-          <li key={p.id} className="draggable" onPointerDown={start({ kind: "part", ...p })}>
-            {p.id} {p.type}
-            {p.value != null ? ` ${p.value}` : ""}
+          <li key={p.id} className="draggable tile" aria-label={partName(p)} title={partName(p)}
+              onPointerDown={start({ kind: "part", ...p })}>
+            <PartIcon item={p} />
+            <span className="caption">{partCaption(p)}</span>
           </li>
         ))}
       </ul>
       <h3>Wires</h3>
-      <ul className="palette">
+      <ul className="palette wires">
         {WIRE_PALETTE.map((w) => (
-          <li key={w.key} className="draggable" onPointerDown={start({ kind: "wire", shape: w.shape, rotation: w.rotation })}>
-            {w.label}
+          <li key={w.key} className="draggable tile" aria-label={w.label} title={w.label}
+              onPointerDown={start({ kind: "wire", shape: w.shape, rotation: w.rotation })}>
+            <WireIcon shape={w.shape} rotation={w.rotation} />
           </li>
         ))}
       </ul>
     </aside>
   );
 }
+
 function Chat({ chat, connected, thinking, onSend }) {
   const [draft, setDraft] = useState("");
   const end = useRef(null);

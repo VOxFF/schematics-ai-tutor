@@ -166,8 +166,8 @@ The frontend generates the hint text from the current UI state. Claude and the b
 
 | Section | Items | Behavior |
 |---|---|---|
-| Parts | The level's `inventory`: resistors, meters, sources | **Depleting.** A placed part leaves the inventory, and a removed part returns. |
-| Wire palette | Straight horizontal, straight vertical, corner, T, + | **Never depletes.** Corner, T and + rotate with **R**. |
+| Parts | The level's `inventory`: resistors, meters, sources, drawn as their **symbols** (same style and color code as the grid) with the nominal value underneath (`20 Ω`, `4.7 kΩ`, `9 V`) or, for meters, the ID | **Depleting.** A placed part leaves the inventory, and a removed part returns. |
+| Wire palette | Straight horizontal, straight vertical, corner, T, +, each drawn as its shape | **Never depletes.** Corner, T and + rotate with **R**. |
 
 ## 7. Chat
 

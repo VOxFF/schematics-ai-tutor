@@ -72,7 +72,7 @@ test("a new learner sees the start screen, then gets a task", async () => {
   fireEvent.click(screen.getByRole("button", { name: "JSON" })); // the grid needs WebGL; the JSON view doesn't
   expect(screen.getByLabelText("Editor").textContent).toContain('"id": "gen-1234"');
   expect(screen.getByLabelText("Skill level").textContent).toBe("Level 1");
-  expect(screen.getByLabelText("Inventory").textContent).toContain("R2 resistor 20");
+  expect(screen.getByLabelText("R2 resistor 20 Ω")).toBeDefined(); // drawn as a symbol, named for a11y
   expect(screen.getByRole("button", { name: "Next" }).disabled).toBe(false); // temporary: always enabled
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(JSON.parse(localStorage.getItem(SESSION_KEY)).level.id).toBe("gen-1234");
@@ -241,13 +241,13 @@ test("dragging from the inventory: hint bar guides, Esc cancels, and the board g
   const hintBar = () => document.querySelector(".hint-bar").textContent;
   expect(hintBar()).toMatch(/^Drag a part/);
 
-  fireEvent.pointerDown(screen.getByText("R2 resistor 20"));
+  fireEvent.pointerDown(screen.getByLabelText("R2 resistor 20 Ω"));
   expect(hintBar()).toMatch(/^Drop onto the highlighted points/);
   fireEvent.keyDown(window, { key: "Escape" });
   expect(hintBar()).toMatch(/^Drag a part/);
 
-  fireEvent.pointerDown(screen.getByText("Corner"));
+  fireEvent.pointerDown(screen.getByLabelText("Corner"));
   fireEvent.pointerUp(window); // released outside the grid: snaps back
   expect(hintBar()).toMatch(/^Drag a part/);
-  expect(screen.getByText("R2 resistor 20")).toBeDefined(); // still in the inventory
+  expect(screen.getByLabelText("R2 resistor 20 Ω")).toBeDefined(); // still in the inventory
 });

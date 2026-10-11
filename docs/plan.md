@@ -69,6 +69,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Drag from the inventory and the wire palette onto the grid: ghost preview, blue/red target points, R to rotate, Esc and release-outside snap back, live `board.update`
 - [ ] Selection on the grid: click-and-drag to move, R to rotate in place, Del to remove (parts back to the inventory)
 - [x] Wire palette: horizontal, vertical, corner, T, + (non-depleting, R to rotate)
+- [x] Inventory drawn as symbols: parts with color bands and nominal values, wire pieces as shapes
 - [x] Hint bar: idle, dragging and can't-place hints (selection hints come with selection)
 - [x] Reset board button (back to the task's starting board)
 - [ ] Solved feedback: big green checkmark overlay on the grid
