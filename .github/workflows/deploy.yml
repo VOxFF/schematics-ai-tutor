@@ -1,32 +1,30 @@
-# Continuous deployment to Fly.io (docs/deployment.md §3).
-# Runs after the check workflow passes on a push to main, or by hand from the Actions tab.
+# Deploy main by hand (Actions tab), or put main back live when a PR closes without merging:
+# ci.yml deployed that PR's code (docs/deployment.md §3).
 name: deploy
 
 on:
-  workflow_run:
-    workflows: [check]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
-
-# One deploy at a time; a second merge waits for the first to finish.
-concurrency:
-  group: deploy-production
-  cancel-in-progress: false
+  pull_request:
+    types: [closed]
 
 jobs:
   deploy:
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    if: github.event_name == 'workflow_dispatch' || !github.event.pull_request.merged
     runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    outputs:
+      commit: ${{ steps.main.outputs.commit }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}   # the commit that passed check
+          ref: main
+      - id: main
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Deploy
-        run: flyctl deploy --remote-only
+        run: flyctl deploy --remote-only --env SCHEMATICS_COMMIT=${{ steps.main.outputs.commit }}
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
@@ -36,6 +34,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: main
       - name: Smoke test
-        run: ./smoke.sh
+        run: ./smoke.sh https://schematics-ai-tutor.fly.dev ${{ needs.deploy.outputs.commit }}

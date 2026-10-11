@@ -11,7 +11,7 @@ How the prototype is hosted and how changes reach it. The security and rate-limi
 | URL | https://schematics-ai-tutor.fly.dev |
 | Region | `sjc` (San Jose) |
 | Machine | one, shared-cpu-1x, 512 MB, always on |
-| Config | [`fly.toml`](../fly.toml), [`Dockerfile`](../Dockerfile), [`.dockerignore`](../.dockerignore), [`deploy.yml`](../.github/workflows/deploy.yml) |
+| Config | [`fly.toml`](../fly.toml), [`Dockerfile`](../Dockerfile), [`.dockerignore`](../.dockerignore), [`ci.yml`](../.github/workflows/ci.yml), [`deploy.yml`](../.github/workflows/deploy.yml) |
 
 - **One image, one origin.** The Dockerfile builds the frontend with `SCHEMATICS_PUBLIC=true`, a public build regardless of `config.yaml`. It then runs one uvicorn worker that serves `/api`, `/ws` and the built frontend. The browser talks to one origin, as it does through the Vite proxy locally.
 - **Exactly one machine, always on.** The rate limits, the task cache, the first-task pool and the reference solutions are in memory ([design.md](design.md#3-system-architecture)).
@@ -32,31 +32,41 @@ How the prototype is hosted and how changes reach it. The security and rate-limi
 
 ## 3. Continuous deployment
 
-A merge to `main` deploys automatically, but only after the same checks that every PR runs pass on `main`. Checks, deploy and smoke test are separate workflows and jobs, so CI shows each one on its own.
+A pull request is deployed and verified **before** it's merged, so the PR itself shows whether the change works live. Merging then changes nothing in production: `main` becomes what's already running.
 
 ```mermaid
 flowchart LR
-    PR[Pull request] -->|"check.yml: ./check.sh"| M[Merge to main]
-    M --> C["check.yml on main"]
-    C -->|pass| D["deploy.yml: deploy job"]
-    C -->|fail| X[No deploy]
-    D --> S["deploy.yml: smoke job (./smoke.sh)"]
-    S -->|fail| F[Run fails, GitHub notifies]
+    P["Push to a PR<br/>(not a draft)"] --> M["GitHub's merge commit<br/>main + the PR"]
+    M --> C["ci / check<br/>./check.sh"]
+    C -->|pass| D["ci / deploy<br/>flyctl deploy"]
+    D --> S["ci / smoke<br/>./smoke.sh"]
+    S -->|pass| G["PR: ✅ check ✅ deploy ✅ smoke"]
+    G --> Merge["Merge<br/>main = what's live"]
+    C -->|fail| X["❌ on the PR, nothing deployed"]
+    S -->|fail| Y["❌ on the PR"]
 ```
 
-- **Two workflows.** [`check.yml`](../.github/workflows/check.yml) runs `./check.sh` on every PR and on `main`, and knows nothing about deployment. [`deploy.yml`](../.github/workflows/deploy.yml) starts when `check` completes on `main` (`workflow_run`) and goes on only if it passed on a push.
-- **Two jobs in `deploy.yml`:**
-  - `deploy`: checks out the commit that passed `check`, installs the CLI with `superfly/flyctl-actions/setup-flyctl`, and runs `flyctl deploy --remote-only`. The image builds on Fly's builders, so the runner needs no Docker.
-  - `smoke` (`needs: deploy`): runs [`./smoke.sh`](../smoke.sh) on the public URL.
-- **By hand:** `deploy.yml` also has `workflow_dispatch`, so a redeploy can be started from the Actions tab without a merge. It skips the `check` gate.
-- **One deploy at a time.** `concurrency: deploy-production` makes two quick merges deploy in order, not in parallel.
-- **No approval gate.** A merge is the approval; a GitHub environment with required reviewers would add a click per merge to a fast build.
-- **Smoke test.** `./smoke.sh [url]` checks a deployed app and exits non-zero on any failure. It defaults to the production URL and runs locally too. It doesn't call Claude, so it costs nothing.
-  - `GET /api/health` returns `{"status": "ok"}`, retried for up to ~60 s while a fresh machine starts
+- **One workflow on the PR,** [`ci.yml`](../.github/workflows/ci.yml), with three jobs that show on the PR one by one: `check`, then `deploy`, then `smoke`.
+  - `check` runs `./check.sh` on every PR push, and on pushes to `main`.
+  - `deploy` checks out GitHub's merge commit for the PR (`refs/pull/<n>/merge`, `main` plus the PR, the same code the merge will produce) and runs `flyctl deploy --remote-only`. The image builds on Fly's builders, so the runner needs no Docker. It passes the commit as `SCHEMATICS_COMMIT`, which `/api/health` reports.
+  - `smoke` runs [`./smoke.sh`](../smoke.sh) on the public URL with that commit, so it fails if the old release is still answering.
+- **Why the merge commit:** GitHub's merge queue does this natively (a temporary branch of `main` plus the PR, checked before merging), but it needs a repository owned by an organization. The merge commit gives the same "what `main` will be" without it.
+- **Drafts:** a draft PR runs `check` only. Marking it ready for review deploys it.
+- **Newer pushes win.** A newer push to the same PR cancels the older run, deploy included. `concurrency: deploy-production` keeps deploys from overlapping.
+- **After the merge,** `ci.yml` runs `check` on `main` and doesn't deploy: with one open PR at a time, `main` is exactly the merge commit already live.
+- **[`deploy.yml`](../.github/workflows/deploy.yml)** deploys `main` and smoke tests it in two cases:
+  - by hand, from the Actions tab (`workflow_dispatch`)
+  - when a PR closes **without** merging, to put `main` back live in place of the PR's code
+- **Trade-offs**, accepted for a one-developer prototype:
+  - While a PR is open, production runs its unmerged code.
+  - Every push to a ready PR is a deploy: open sessions drop, and the first-task pool refill costs about $0.30 in Claude calls (§4).
+  - GitHub Free can't make checks required on a private repo, so merging only on ✅ is a habit, not a rule.
+- **No approval gate.** Marking a PR ready is the approval for deploying it; the merge is the approval for keeping it.
+- **Smoke test.** `./smoke.sh [url] [commit]` checks a deployed app and exits non-zero on any failure. It defaults to the production URL and runs locally too. It doesn't call Claude, so it costs nothing.
+  - `GET /api/health` returns `"status": "ok"` and, with a commit given, that commit; retried for up to ~60 s while a fresh machine starts
   - `GET /` serves the app's page, and its JS asset is served
   - `http://` redirects to `https://`
   - `/ws/session` accepts a WebSocket upgrade (`101`)
-- **First run:** GitHub runs a `workflow_run` workflow from its copy on `main`, so `deploy.yml` first runs on the merge that adds it.
 - **Why GitHub Actions, not Fly's GitHub integration:** the workflows are in the repo and reviewed like code, and the deploy waits for `./check.sh`; Fly's dashboard integration does neither.
 
 ## 4. What a deploy resets
@@ -144,7 +154,7 @@ logs:
 
 ```sh
 fly deploy                         # deploy the working tree by hand (first deploy, hotfix)
-./smoke.sh                         # smoke test the production URL (or ./smoke.sh <url>)
+./smoke.sh                         # smoke test the production URL (or ./smoke.sh <url> [commit])
 fly status                         # machine state and the current release
 fly logs                           # live server output
 fly releases --image               # past releases and their images
@@ -162,8 +172,10 @@ fly ssh sftp get /data/logs/history/<file>   # copy an archived log (§5)
 - [x] First deploy, by hand (2026-10-11): health, page, assets, HTTPS redirect and WebSocket upgrade checked
 - [x] Playthrough in the browser on the public URL: a couple of tasks solved, task generation and the tutor working
 - [x] Deploy token in GitHub secrets (2026-10-11)
-- [x] `deploy.yml` workflow: `deploy` and `smoke` jobs after `check` passes on `main`; `./smoke.sh`
+- [x] `deploy.yml` workflow: `deploy` and `smoke` jobs after `check` passes on `main`; `./smoke.sh` (replaced by deploy before merge, below)
 - [x] First automatic deploy, on the merge that adds `deploy.yml` (2026-10-11, release v2): `deploy` and `smoke` passed
+- [x] Deploy before merge: `ci.yml` deploys and smoke tests each ready PR; `deploy.yml` restores `main` when a PR closes unmerged, or by hand; `/api/health` reports the commit
+- [ ] First deploy from a PR (this change's own PR)
 - [x] Log archive designed (§5)
 - [x] Fly volume `logs_data` created (2026-10-11); mounted at `/data`, with the log path override, in `fly.toml`
 - [x] Archive: startup, size and nightly triggers; history cap (`log_archive.py`)

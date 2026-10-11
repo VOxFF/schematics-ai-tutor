@@ -30,6 +30,7 @@ STALE_TERMS = [
     "HoleId",
     "slotAt",
     "MAX_CONDITION",
+    "check.yml",  # renamed ci.yml when deploys moved before the merge
 ]
 # Split so this file doesn't match its own secret scan.
 KEY_PATTERN = re.compile("sk-" + r"ant-[A-Za-z0-9_\-]{8,}")
