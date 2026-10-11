@@ -50,15 +50,15 @@ meter:
 
 labels:
   size: 12                     # font size (px) of part labels and readings
-  gap: 7.2                     # space between a part's edge and its labels
+  gap: 8.2                     # space between a part's edge and its labels
 
 selection:
   color: "#0969da"             # outline around the selected element
   width: 2.5                   # outline width beyond the element's shape
 
 highlight:                     # tutor highlights, by style (docs/gui.md §4)
-  attention: "#bf8700"         # amber: look here
+  attention: "#f59e0b"         # bright amber (yellow-orange): look here
   error: "#cf222e"             # red: a problem
-  success: "#1a7f37"           # green: done right
+  success: "#22c55e"           # bright green: done right
   width: 4                     # outline width; wider than the selection's, so both show
   ring_radius: 9               # ring around a highlighted grid point
