@@ -21,7 +21,6 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Evaluation result: status, readings of all placed meters, issues ([schematics.md](schematics.md#6-structural-checks-and-status))
 - [x] GUI layout and learner concept of operations ([gui.md](gui.md))
 - [x] Learning trajectory: curriculum levels 1–8 and tasks per level ([schematics.md](schematics.md#progression))
-- [ ] Level design: validate the curated levels by playtesting
 - [x] Workspace rendering decision: three.js
 
 ## 2. Backend
@@ -33,13 +32,12 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Circuit solver (voltages and currents)
 - [x] Structural checks and status precedence
 - [x] Meter readings: rounding to resolution, target tolerance check
-- [ ] Curated levels (tagged by skill level) and goal checking
 - [x] Task generation pipeline: Claude call with the `validate_grid` tool (format checks), structured `TaskSpec`, retry with errors, task-grid derivation, `POST /api/tasks/generate`
 - [x] Task generation: electrical validation (working circuit, reconstruction from the task board, not already solved) and computed target values
-- [ ] Curated fallback level when generation fails
+- [ ] Curated fallback levels (tagged by curriculum level) when generation fails, validated by playtesting
 - [ ] Server-side refusal fallbacks for Claude calls
 - [ ] Background pre-generation of the next task
-- [ ] Skill level and task history (`Progress`)
+- [x] Skill level and task history (`Progress`): kept in the browser, sent with every generation request
 - [x] Repeat check against recent tasks (circuit signature)
 - [x] Variety for identical contexts: random variation hints (layout, source voltage, resistor range)
 - [x] Curriculum levels 1–8 (`backend/data/curriculum.yaml`): skill → level and task, rules in the prompt, deterministic level-fit and centering checks
@@ -63,7 +61,7 @@ The major steps to build the product. A step is checked off when it is complete,
 
 - [x] Scaffold the React app (Vite, Vitest, dev proxy to the backend; started by `start.sh`)
 - [x] Start screen: what it is, how it works, learning path, Start Learning
-- [x] Learning screen layout: header, task/targets panel, editor (shows the task JSON for now), hint bar, inventory, chat placeholder
+- [x] Learning screen layout: header, task/targets panel, editor, hint bar, inventory, chat
 - [x] Grid rendering: schematic symbols, labels, resistor color bands, live readings (three.js, one scene node per element; JSON view behind a toggle)
 - [x] Schematic style config: `frontend/src/editor/schematic-style.yaml`
 - [x] Drag from the inventory and the wire palette onto the grid: ghost preview, blue/red target points, R to rotate, Esc and release-outside snap back, live `board.update`
@@ -73,19 +71,18 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Inventory drawn inside the editor scene: same scale as the board, two columns, fixed width, scale fixed per task, grid centered, lifted slot and floating ghost while dragging
 - [x] Hint bar: idle, dragging, can't-place and selection hints
 - [x] Reset board button (back to the task's starting board)
-- [ ] Solved feedback: big green checkmark overlay on the grid
 - [x] Skill level badge in the header; chat spans the full height
 - [x] Visual style: neutral chrome, one accent, meaning colors as CSS variables
 - [x] Header: tasks solved, Restart Learning (confirm, wipe, start screen)
 - [x] TEMPORARY: Next always enabled; counts the task as solved, records it in the history, raises the skill level, fetches the next task
-- [ ] Next enabled only when the status is `solved` (replaces the temporary behavior)
+- [ ] Completing a task: when the status becomes `solved`, a green checkmark overlay appears on the grid and Next is enabled; Next records the solved task and raises the skill level (replaces the temporary always-enabled Next)
 - [x] Session persistence in `localStorage`: progress and level; resume on reload
 - [x] Persist the chat
 - [x] Persist the edited grid
 - [x] Live meter readings on the grid and in the Targets column
 - [ ] Tutor highlights on the grid (components, wires, points)
 - [x] Tutor panel: chat bubbles, thinking indicator, errors; live readings in the Task panel
-- [ ] Backend integration
+- [x] Backend integration: task generation over REST, session, evaluation and tutor over the WebSocket
 
 ## 4. Integration and deployment
 
