@@ -17,7 +17,7 @@ How the prototype is hosted and how changes reach it. The security and rate-limi
 - **Exactly one machine, always on.** The rate limits, the task cache, the first-task pool and the reference solutions are in memory ([design.md](design.md#3-system-architecture)).
   - *Why:* a second machine would split that state, and a stopped machine would lose it and refill the first-task pool with new Claude calls on every cold start.
   - *Cost:* one small machine running around the clock. Scaling out would need a shared store such as Redis.
-- **Health check:** Fly checks `GET /api/health` every 30 s, and a machine that fails it is restarted.
+- **Health check:** Fly checks `GET /api/health` every 30 s. A deploy waits for it to pass, and Fly's proxy stops routing to a machine that fails it.
 
 ## 2. Secrets
 
@@ -32,7 +32,7 @@ How the prototype is hosted and how changes reach it. The security and rate-limi
 
 ## 3. Continuous deployment
 
-A pull request ships with the **`deploy` label**: the workflow checks it, deploys it, smoke tests it on the live URL, and merges it only when all of that passes. On any failure it rolls production back and leaves the PR open. So `main` and production stay in sync: the live app is always the latest `main`.
+A pull request ships with the **`deploy` label**: the workflow checks it, deploys it, smoke tests it on the live URL, and merges it only when all of that passes. On any failure it rolls production back and leaves the PR open. So `main` and production stay in sync, except in the cases the failure table marks ❌ and after a Merge or deploy by hand.
 
 ```mermaid
 flowchart LR
@@ -62,10 +62,10 @@ flowchart LR
 | `rollback` | Redeploys the recorded image with its commit and `main`'s `fly.toml`, then smoke tests it | Run fails; manual recovery (§6) |
 | `report` | Always: removes the label and comments on the PR with the outcome, a ✅/❌ row per job, and a link to the run | — |
 
-- **Rollback to the recorded image, not a rebuild.** A rebuild of `main` could differ from what ran (new base image, new package versions); the recorded image is byte-for-byte the release that was live before. `fly deploy --image <last good>` also skips the build, so production is back in about 30 s. That release is `main`, because only a passed ship changes production.
+- **Rollback to the recorded image, not a rebuild.** A rebuild of `main` could differ from what ran (new base image, new package versions); the recorded image is byte-for-byte the release that was live before. `fly deploy --image <last good>` also skips the build, so production is back in about 30 s. That release is `main`, because only a passed ship changes production, unless someone deployed by hand (§6).
 - **Retry:** fix the PR and add the label again. The label is always removed at the end, so adding it is always a fresh start.
 - **One ship at a time:** `concurrency: deploy-production`. A second label waits for the first run to finish. Other labels also start the workflow (GitHub has no filter by label name), but every job skips, in a concurrency group of their own.
-- **By hand:** `deploy.yml` keeps `workflow_dispatch`, which deploys `main` and smoke tests it, e.g. after a manual Merge.
+- **By hand:** `deploy.yml` keeps `workflow_dispatch`, which runs the same jobs for `main` without `merge` and `report`: check, record, deploy, smoke, and rollback on failure. Use it e.g. after a manual Merge.
 - **Permissions:** the workflow's `GITHUB_TOKEN` gets `contents: write` and `pull-requests: write` to merge, edit the label and comment. GitHub doesn't start workflows from events made with that token, so `ci.yml` doesn't run again on the merge; the merged code already passed `check` as the merge commit.
 
 ### Failure cases
@@ -73,7 +73,7 @@ flowchart LR
 | Case | Live during the run | After the run | `main` = live? |
 |---|---|---|---|
 | `check` fails | Untouched | Untouched; PR open, comment | ✅ |
-| Deploy fails before the machine is replaced (build, flyctl) | Old release | Rollback is a no-op redeploy of the same image; PR open | ✅ |
+| Deploy fails before the machine is replaced (build, flyctl) | Old release | Rollback redeploys the same image: a restart, with the resets of §4; PR open | ✅ |
 | New machine fails Fly's health check | **Down** | Rolled back; PR open | ✅ |
 | Deploy succeeds, smoke fails | **Broken** | Rolled back; PR open | ✅ |
 | Rollback fails | **Down or broken** | Run fails, GitHub emails you; manual recovery (§6) | ❌ until recovered |
@@ -110,9 +110,10 @@ Every deploy replaces the one machine. Learners keep their progress, because it'
 | Task cache and reference solutions | The next task is generated on request; the tutor has no `<reference>` for a resumed task |
 | First-task pool | Refilled at startup: 2 task generations |
 | Rate-limit counters | Start from zero |
-| Nothing in the logs | They're on the volume (§5); the next startup archives the previous run's last part |
 
-Frequent merges add a little Claude cost and interrupt anyone mid-task. That's acceptable for the prototype.
+Logs aren't lost: they're on the volume (§5), and the next startup archives the previous run's last part.
+
+Each ship is a deploy, and a failed one is two (the rollback), so frequent ships add a little Claude cost and interrupt anyone mid-task. That's acceptable for the prototype.
 
 ## 5. Logs
 
@@ -184,7 +185,7 @@ logs:
 ## 6. Manual operations
 
 ```sh
-fly deploy                         # deploy the working tree by hand (first deploy, hotfix)
+fly deploy                         # by hand: bypasses the deploy label, so main and live may differ; smoke test after
 ./smoke.sh                         # smoke test the production URL (or ./smoke.sh <url> [commit])
 fly status                         # machine state and the current release
 fly logs                           # live server output
@@ -212,7 +213,7 @@ fly ssh sftp get /data/logs/history/<file>   # copy an archived log (§5)
 - [x] Deploy token in GitHub secrets (2026-10-11)
 - [x] `deploy.yml` workflow: `deploy` and `smoke` jobs after `check` passes on `main`; `./smoke.sh` (replaced by deploy before merge, below)
 - [x] First automatic deploy, on the merge that adds `deploy.yml` (2026-10-11, release v2): `deploy` and `smoke` passed
-- [x] Deploy before merge: `ci.yml` deploys and smoke tests each ready PR; `deploy.yml` restores `main` when a PR closes unmerged, or by hand; `/api/health` reports the commit
+- [x] Deploy before merge: `ci.yml` deploys and smoke tests each ready PR; `deploy.yml` restores `main` when a PR closes unmerged, or by hand; `/api/health` reports the commit (replaced by the `deploy` label, below)
 - [x] First deploy from a PR: PR #28's own run (2026-10-11), smoke confirmed the merge commit live
 - [x] Log archive designed (§5)
 - [x] Fly volume `logs_data` created (2026-10-11); mounted at `/data`, with the log path override, in `fly.toml`
