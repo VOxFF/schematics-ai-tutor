@@ -221,6 +221,6 @@ fly ssh sftp get /data/logs/history/<file>   # copy an archived log (§5)
 - [x] First deploy with the volume (2026-10-11, release v3): the machine was recreated with `logs_data` attached
 - [x] Ship with the `deploy` label designed (§3): check, deploy, smoke, merge; rollback to the last good image on failure
 - [x] `ci.yml` back to `check` only; `deploy.yml` ships on the label and rolls back; the `deploy` label created
-- [ ] First ship with the label (this change's own PR)
+- [x] First ship with the label: PR #29 (2026-10-11): check, record, deploy, smoke, merge; merged by the workflow, `2dc3ae1` live
 - [ ] Rollback tested on a deliberately failing smoke test
 - [ ] Learner experience collection (to be designed)
