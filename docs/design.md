@@ -288,7 +288,7 @@ sequenceDiagram
         FE->>S: board.update / tutor.request
         S->>R: board() / chat(), activity()
     end
-    Note over S,R: learner pauses; Level ≥ 3, 10 active min
+    Note over S,R: learner pauses, Level ≥ 3, 10 active min since the last prompt
     S->>R: prompt_due()
     R-->>FE: 🔔 experience message (thread open)
     L->>FE: "The hints are too vague"

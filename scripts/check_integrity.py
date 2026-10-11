@@ -145,6 +145,15 @@ def check_stale_terms(md_files: list[str]) -> None:
                 errors.append(f"{name}: stale term '{term}'")
 
 
+def check_mermaid(md_files: list[str]) -> None:
+    """A ';' ends a statement in mermaid, so one inside a label or note breaks the diagram on GitHub."""
+    for name in md_files:
+        for block in re.findall(r"```mermaid\n(.*?)```", (ROOT / name).read_text(), re.S):
+            for line in block.splitlines():
+                if ";" in line:
+                    errors.append(f"{name}: ';' in a mermaid diagram breaks it: {line.strip()}")
+
+
 # Files written by tools in their own format (npm rewrites these on every install).
 TOOL_MANAGED_JSON = {"package.json", "package-lock.json"}
 
@@ -166,6 +175,7 @@ def main() -> int:
     check_layout(tracked)
     check_secrets(tracked)
     check_stale_terms(md_files)
+    check_mermaid(md_files)
     check_json_format(tracked)
     for e in errors:
         print(f"FAIL {e}")
