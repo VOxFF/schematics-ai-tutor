@@ -38,6 +38,7 @@ battery:
   positive_color: "#cf222e"    # the positive plate
   negative_color: "#1f2328"
   sign_size: 15                # font size (px) of the + and − marks
+  sign_offset: 10              # + and − sit this far from the pin, beside the lead
 
 meter:
   radius: 19

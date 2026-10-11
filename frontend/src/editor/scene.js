@@ -81,9 +81,11 @@ function symbol(component) {
     lead(-half, -CELL);
     g.add(rect(battery.long_plate_thickness, battery.long_plate, battery.positive_color, half, 0, 0.2));
     g.add(rect(battery.short_plate_thickness, battery.short_plate, battery.negative_color, -half, 0, 0.2));
-    const off = battery.long_plate / 2 + 4;
-    g.add(label("+", "editor-sign editor-plus", half + 6, off, battery.sign_size));
-    g.add(label("−", "editor-sign editor-minus", -half - 6, off, battery.sign_size));
+    // Signs sit beside the pins, at the ends of the symbol, so they never meet the labels
+    // (which stay level with the body).
+    const along = CELL - battery.sign_offset;
+    g.add(label("+", "editor-sign editor-plus", along, battery.sign_offset, battery.sign_size));
+    g.add(label("−", "editor-sign editor-minus", -along, battery.sign_offset, battery.sign_size));
   } else {
     lead(CELL, meter.radius);
     lead(-meter.radius, -CELL);
@@ -103,29 +105,37 @@ function componentNode(component, reading) {
   node.userData = { kind: "component", id: component.id, type: component.type };
   node.position.copy(toWorld(body)).setZ(2);
   const shape = symbol(component);
+  shape.name = "symbol";
   shape.rotation.z = Math.atan2(-dy, dx); // grid y points down, world y points up
   node.add(shape);
 
   const vertical = dx === 0;
   const valueText = component.value != null ? ` ${component.value} ${UNITS[component.type] ?? ""}` : "";
-  // The ID on one side, the value (or a meter's live reading) on the other: above / below a
-  // horizontal part, left / right of a vertical one. Labels of vertical parts are rotated 90°,
-  // except meter readings, which stay horizontal so the numbers are easy to read.
+  // Labels live in their own parent node: the ID on one side, the value (or a meter's live
+  // reading) on the other — above / below a horizontal part, left / right of a vertical one.
+  // Labels of vertical parts are rotated 90°, except meter readings, which stay horizontal.
+  const labels = new THREE.Group();
+  labels.name = "labels";
   const halfSize = {
     resistor: STYLE.resistor.height / 2,
-    voltage_source: STYLE.battery.long_plate / 2 + 8, // clear of the + and − marks
+    voltage_source: STYLE.battery.long_plate / 2,
   }[component.type] ?? STYLE.meter.radius;
   const clearance = halfSize + 12;
   const [idX, idY] = vertical ? [-clearance, 0] : [0, clearance];
   const [otherX, otherY] = vertical ? [clearance, 0] : [0, -clearance];
-  node.add(label(component.id, "editor-label", idX, idY, STYLE.labels.size, vertical));
+  const add = (name, object) => {
+    object.name = name;
+    labels.add(object);
+  };
+  add("id", label(component.id, "editor-label", idX, idY, STYLE.labels.size, vertical));
   if (READING_UNITS[component.type]) {
     const text = reading == null ? "--" : `${reading} ${READING_UNITS[component.type]}`;
     const offset = vertical ? 12 : 0; // horizontal text beside a vertical part needs a bit more room
-    node.add(label(text, "editor-reading", otherX + offset, otherY, STYLE.labels.size, false));
+    add("reading", label(text, "editor-reading", otherX + offset, otherY, STYLE.labels.size, false));
   } else if (valueText) {
-    node.add(label(valueText.trim(), "editor-label editor-value", otherX, otherY, STYLE.labels.size, vertical));
+    add("value", label(valueText.trim(), "editor-label editor-value", otherX, otherY, STYLE.labels.size, vertical));
   }
+  node.add(labels);
   return node;
 }
 

@@ -144,3 +144,27 @@ describe("labels", () => {
     expect(reading.x).toBeGreaterThan(0);
   });
 });
+
+describe("label nodes and battery signs", () => {
+  const v1 = () => buildBoard({ grid: { columns: 12, rows: 8 }, wires: [], components: [
+    { id: "V1", type: "voltage_source", value: 12, orientation: "N", pins: { positive: [3, 3], negative: [3, 5] } }] }).getObjectByName("V1");
+
+  test("each part has a symbol node and a labels node with named labels", () => {
+    const node = v1();
+    expect(node.children.map((c) => c.name)).toEqual(["symbol", "labels"]);
+    expect(node.getObjectByName("labels").children.map((c) => c.name)).toEqual(["id", "value"]);
+  });
+
+  test("battery signs sit by their pins, away from the labels", () => {
+    const node = v1();
+    node.updateMatrixWorld(true);
+    const world = (o) => o.getWorldPosition(new THREE.Vector3());
+    const signs = {};
+    node.getObjectByName("symbol").traverse((o) => o.isCSS2DObject && (signs[o.element.textContent] = world(o)));
+    const pin = (p) => new THREE.Vector3(p[0] * CELL, -p[1] * CELL, 0);
+    expect(signs["+"].distanceTo(pin([3, 3]))).toBeLessThan(CELL / 2);
+    expect(signs["−"].distanceTo(pin([3, 5]))).toBeLessThan(CELL / 2);
+    const labelY = world(node.getObjectByName("labels").getObjectByName("id")).y;
+    for (const sign of Object.values(signs)) expect(Math.abs(sign.y - labelY)).toBeGreaterThan(CELL / 2);
+  });
+});
