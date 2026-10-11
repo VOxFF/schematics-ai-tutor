@@ -334,6 +334,7 @@ The `research` block and `claude.experience` in `config.yaml` (§7): the folder,
 - **Where:** on Fly, the `/data` volume ([deployment.md](deployment.md#5-logs)); locally, `research/` in the repo root. Both are gitignored and outside the image, and no endpoint reads them.
 - **`research.sh pull`** downloads the volume's `research/` folder over `fly ssh` (a tar stream) into the local `research/` folder. It works only with the Fly credentials of the app's owner.
 - **`research.sh delete <learner_id>`** removes one learner's records on the server, for a learner who asks.
+- **`research.sh experience [--pull]`** turns the local records into `research/experience.md`: per learner, each 🔔 check-in with its time, level, every turn, handoffs, and how it ended. It reads only the local folder (`--pull` refreshes it first), and the report stays in the gitignored folder.
 - **Costs:** recording is free, and so is the 🔔 prompt: its text is fixed. Each learner answer in the conversation is one Claude call at low effort, at most `1 + max_followups` per prompt, and it counts against the per-session tutor rate limit and the daily budget like any tutor call.
 
 ### Status
@@ -533,7 +534,7 @@ schematics-ai-tutor/
 ├── check.sh                   integrity checks: docs, config, layout, secrets, tests
 ├── test.sh                    backend tests: unit + api, or live (real Claude)
 ├── smoke.sh                   smoke test of a deployed app (docs/deployment.md)
-├── research.sh                research records on Fly: list, pull into research/, delete one learner (§5)
+├── research.sh                research records on Fly: list, pull into research/, delete one learner, experience report (§5)
 ├── .env.example               optional local overrides (copy to .env)
 ├── .gitignore
 ├── .github/
@@ -541,7 +542,8 @@ schematics-ai-tutor/
 │       ├── ci.yml             ./check.sh on every PR push and on main
 │       └── deploy.yml         `deploy` label: check, deploy, smoke, merge; rollback on failure
 ├── scripts/
-│   └── check_integrity.py     docs, config, layout and secrets checks used by check.sh
+│   ├── check_integrity.py     docs, config, layout and secrets checks used by check.sh
+│   └── research_experience.py the 🔔 feedback conversations from research records, as a Markdown report
 ├── docs/
 │   ├── task.md                product, concept of operations, constraints
 │   ├── design.md              system design (this file)

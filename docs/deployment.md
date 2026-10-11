@@ -200,6 +200,7 @@ fly ssh sftp get /data/logs/history/<file>   # copy an archived log (§5)
 ./research.sh list                 # research records on the volume, per learner
 ./research.sh pull                 # download them into ./research (gitignored)
 ./research.sh delete <learner_id>  # remove one learner's records, e.g. on request
+./research.sh experience --pull    # pull, then the feedback conversations as research/experience.md
 ```
 
 **Manual recovery,** when the automatic rollback fails:
@@ -208,6 +209,38 @@ fly ssh sftp get /data/logs/history/<file>   # copy an archived log (§5)
 2. `fly deploy --image <that image> --env SCHEMATICS_COMMIT=<main's commit>`
 3. `./smoke.sh https://schematics-ai-tutor.fly.dev <main's commit>`
 4. If no image works, deploy `main` from source: `deploy.yml` by hand from the Actions tab, or `git checkout main && fly deploy`.
+
+### Collecting research data
+
+Learner experience records ([design.md](design.md#5-learner-experience-research)) are on the volume, and only the app owner's Fly login can read them. No HTTP endpoint serves them.
+
+**Once, on your machine:**
+
+```sh
+brew install flyctl                # or: curl -L https://fly.io/install.sh | sh
+fly auth login                     # the account that owns the app
+fly auth whoami                    # check
+python3 --version                  # the report needs Python 3, standard library only
+```
+
+**Before there's anything to collect:**
+
+1. The app must run a release with research: one shipped with the `deploy` label after the research PR, so it has `research.py` and `SCHEMATICS_RESEARCH_DIR=/data/research` from `fly.toml`. The volume is the one the logs use, so nothing else needs to be set up.
+2. Learners must opt in: only sessions started with "Share my learning experience with the authors" checked are recorded. A learner who started earlier sees the checkbox again after Restart Learning.
+
+**Collecting:**
+
+```sh
+./research.sh list                 # learners on the server and the size of their records
+./research.sh pull                 # download everything into ./research (gitignored)
+./research.sh experience           # the 🔔 feedback conversations from ./research as research/experience.md
+./research.sh experience --pull    # both: pull, then the report
+./research.sh delete <learner_id>  # remove one learner's records on the server, e.g. on request
+FLY_APP=<app> ./research.sh list   # another Fly app than schematics-ai-tutor
+```
+
+- `pull` replaces the local copies of the files it downloads and keeps any others, so a learner deleted on the server stays in `./research` until it's removed there too.
+- The raw records are JSON lines per learner and day, `research/<learner_id>/<date>.jsonl`, with the boards, graphs, evaluations and chat; their format is in [design.md](design.md#what-is-recorded).
 
 ## 7. Status
 

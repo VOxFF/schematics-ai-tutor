@@ -4,6 +4,7 @@
 #   ./research.sh list                 learners on the server, with record sizes
 #   ./research.sh pull                 download everything into ./research (gitignored)
 #   ./research.sh delete <learner_id>  remove one learner's records on the server
+#   ./research.sh experience [--pull]  the 🔔 feedback conversations as research/experience.md
 set -euo pipefail
 
 APP="${FLY_APP:-schematics-ai-tutor}"
@@ -38,8 +39,12 @@ case "${1:-}" in
     fi
     remote "rm -rf $REMOTE/$id && echo deleted $id"
     ;;
+  experience)
+    [ "${2:-}" = "--pull" ] && "$0" pull
+    python3 "$ROOT/scripts/research_experience.py" "$LOCAL"
+    ;;
   *)
-    sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'
     exit 1
     ;;
 esac
