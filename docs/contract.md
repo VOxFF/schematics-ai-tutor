@@ -267,6 +267,8 @@ interface TutorMessage {
     // Added by the reply composer, not by Claude:
     icon?: string;                 // the kind's icon, e.g. "📘"
     title?: string | null;         // a knowledge message's topic name
+    terms?: [number, number][];    // [start, end) of each profile topic's first mention, shown in bold;
+                                   // UTF-16 offsets, as JavaScript strings count
   };
 }
 

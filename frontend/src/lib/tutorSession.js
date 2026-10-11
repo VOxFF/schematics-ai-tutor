@@ -89,8 +89,8 @@ export function useTutorSession(level, chat, onChat, board, progress, { hintLeve
         else if (message.type === "tutor.message") {
           pending.current = null;
           setThinking(false);
-          const { kind, icon, title, text } = message.message.chat;
-          append({ role: "tutor", kind, icon, title, text });
+          const { kind, icon, title, text, terms } = message.message.chat;
+          append({ role: "tutor", kind, icon, title, text, terms });
           onReplyRef.current?.(message.message.meta ?? {}, Boolean(message.hint_offered));
           // The reply is about board `seq`. After a newer edit, the fast evaluation already shows
           // the current readings, and the highlights would point at a board that's gone.

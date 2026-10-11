@@ -2,9 +2,12 @@
 
 Claude judges the learner and reports score changes and new topics; the composer bounds them:
 changes of ±1 per reply, scores within 0-3, `explained` never down, at most one topic taught
-per reply, at most one new topic. It also adds the icon for the message's kind and, for a
-`knowledge` message, the taught topic's name as a title.
+per reply, at most one new topic. It also adds the icon for the message's kind, for a
+`knowledge` message the taught topic's name as a title, and the spans of the learner's topics
+in the text, which the chat shows in bold.
 """
+
+import re
 
 from .learner_profile import MAX_SCORE, add, find, load_catalog, topic_entry
 
@@ -17,6 +20,40 @@ ICONS = {
     "hint": "🔑",
 }
 MAX_UPDATES = 3  # topics whose scores change in one reply
+
+
+def _variants(topic: dict) -> set[str]:
+    """How a topic may appear in a text: its name without a unit in brackets or a leading "In"
+    ("Ohm (Ω)" → "Ohm", "In series" → "series"), and its id with spaces."""
+    name = re.sub(r"\s*\(.*?\)", "", topic["name"]).strip()
+    name = re.sub(r"^in\s+", "", name, flags=re.IGNORECASE)
+    return {v for v in (name, topic["id"].replace("_", " ")) if len(v) >= 3}
+
+
+def term_spans(text: str, profile: dict) -> list[list[int]]:
+    """[start, end] of the first mention of each profile topic in `text`, longest names first,
+    whole words only, plurals included. Offsets count UTF-16 code units, as JavaScript strings do."""
+    topics = profile["topics"]
+    if not topics:
+        return []
+    groups = []
+    for i, topic in enumerate(topics):
+        variants = sorted(_variants(topic), key=len, reverse=True)
+        alternatives = "|".join(re.escape(v).replace("'", "['’]") for v in variants)
+        groups.append(f"(?P<t{i}>(?:{alternatives})(?:e?s)?)")
+    # Longer names first, so "voltage source" wins over "voltage".
+    order = sorted(range(len(topics)), key=lambda i: -max(map(len, _variants(topics[i])), default=0))
+    pattern = re.compile(r"\b(?:" + "|".join(groups[i] for i in order) + r")\b", re.IGNORECASE)
+    spans, seen = [], set()
+    for match in pattern.finditer(text):
+        if match.lastgroup not in seen:
+            seen.add(match.lastgroup)
+            spans.append([_utf16(text, match.start()), _utf16(text, match.end())])
+    return spans
+
+
+def _utf16(text: str, index: int) -> int:
+    return len(text[:index].encode("utf-16-le")) // 2
 
 
 def _delta(value, low: int, high: int) -> int:
@@ -73,4 +110,5 @@ def compose(message: dict, profile: dict, skill_level: int) -> tuple[dict, list[
     chat = message["chat"]
     kind = chat["kind"]
     title = taught["name"] if kind == "knowledge" and taught else None
-    return {"kind": kind, "icon": ICONS.get(kind, "💬"), "title": title, "text": chat["text"]}, dropped
+    return {"kind": kind, "icon": ICONS.get(kind, "💬"), "title": title, "text": chat["text"],
+            "terms": term_spans(chat["text"], profile)}, dropped

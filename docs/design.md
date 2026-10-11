@@ -181,7 +181,7 @@ The tutor service validates Claude's reply and runs the backstop ([tutor.md](tut
 
 1. **Score changes:** each change must name a topic in the profile, or the topic Claude added. Changes are clamped to ±1 per reply and kept within 0–3, and `explained` never goes down. Anything else is dropped and logged.
 2. **New topic:** its ID must be new and its name and definition short. It joins the profile with `source: claude`.
-3. **Presentation:** it adds the icon for the message's kind and, for a `knowledge` message, the topic's name as a title.
+3. **Presentation:** it adds the icon for the message's kind and, for a `knowledge` message, the topic's name as a title. It also marks the first mention of each profile topic in the text ("voltage source" before "voltage", plurals included), and the chat shows those words in bold, so the learner sees the vocabulary they are building.
 4. **Message:** it sends the composed chat message and the updated profile in `tutor.message`.
 
 The composer is plain code, so it is unit tested like the evaluator. It is also the place for later changes to presentation and tone (e.g. not opening three replies in a row with a question), with no change to the prompt.

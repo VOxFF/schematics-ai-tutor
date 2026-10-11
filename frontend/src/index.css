@@ -515,6 +515,12 @@ button.danger {
   margin-bottom: 2px;
 }
 
+/* Learner's topics in the text: bold in the ink color, same size, so lines keep their spacing. */
+.chat .tutor-message .term {
+  color: var(--text);
+  font-weight: 600;
+}
+
 .chat .kind-praise { --tint: var(--praise-tint); --edge: var(--praise-edge); }
 .chat .kind-nudge { --tint: var(--nudge-tint); --edge: var(--nudge-edge); }
 .chat .kind-feedback { --tint: var(--feedback-tint); --edge: var(--feedback-edge); }

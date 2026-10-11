@@ -174,6 +174,20 @@ function InventoryList({ board, onStartDrag }) {
   );
 }
 
+// Message text with the learner's topics in bold: `terms` are [start, end] spans from the reply
+// composer, in order and not overlapping (docs/gui.md §7).
+function withTerms(text, terms) {
+  const parts = [];
+  let at = 0;
+  for (const [start, end] of terms ?? []) {
+    if (start < at || end > text.length) continue;
+    parts.push(text.slice(at, start), <strong key={start} className="term">{text.slice(start, end)}</strong>);
+    at = end;
+  }
+  parts.push(text.slice(at));
+  return parts;
+}
+
 // `hintLevel`: the hint level reached in this task; the Hint button asks for the next one (docs/gui.md §7).
 function Chat({ chat, connected, thinking, onSend, hintLevel, hintOffered, onHint }) {
   const [draft, setDraft] = useState("");
@@ -199,7 +213,7 @@ function Chat({ chat, connected, thinking, onSend, hintLevel, hintOffered, onHin
             {m.role === "tutor" && m.icon && <span className="icon" aria-hidden="true">{m.icon}</span>}
             <div className="body">
               {m.role === "tutor" && m.title && <strong className="title">{m.title}</strong>}
-              {m.text}
+              {m.role === "tutor" ? withTerms(m.text, m.terms) : m.text}
             </div>
           </div>
         ))}

@@ -197,10 +197,14 @@ test("tutor messages are tinted by kind, and the learner profile is saved and se
     type: "tutor.message", request_id: "react-1", seq: 0,
     evaluation: { status: "open_circuit", readings: {}, issues: [] },
     message: { meta: { principle: "meter_usage", highlights: [], hint_level: 0, misconception: null },
-               chat: { kind: "knowledge", icon: "📘", title: "Voltmeter", text: "A voltmeter goes across a part." } },
+               chat: { kind: "knowledge", icon: "📘", title: "Voltmeter", text: "A voltmeter goes across a part.",
+                       terms: [[2, 11]] } },
     profile: joined,
   });
-  const bubble = screen.getByText("A voltmeter goes across a part.").closest(".tutor-message");
+  const term = screen.getByText("voltmeter");
+  expect(term.tagName).toBe("STRONG");
+  const bubble = term.closest(".tutor-message");
+  expect(bubble.querySelector(".body").textContent).toBe("VoltmeterA voltmeter goes across a part.");
   expect(bubble.classList.contains("kind-knowledge")).toBe(true);
   expect(bubble.querySelector(".icon").textContent).toBe("📘");
   expect(bubble.querySelector(".title").textContent).toBe("Voltmeter");

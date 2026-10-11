@@ -196,7 +196,7 @@ The inventory is drawn **inside the editor's three.js scene**, in a column right
 
 ## 7. Chat
 
-- The chat shows tutor messages, styled by `chat.kind` ([tutor.md](tutor.md#message-kinds)): each kind has its own tint, a matching left edge and an icon before the text, so color never stands alone. A `knowledge` message also has its topic's name as a bold title. New messages slide in gently (not with reduced motion).
+- The chat shows tutor messages, styled by `chat.kind` ([tutor.md](tutor.md#message-kinds)): each kind has its own tint, a matching left edge and an icon before the text, so color never stands alone. A `knowledge` message also has its topic's name as a bold title. The first mention of each topic in the learner profile is bold in the ink color, at the same font size, so the line spacing doesn't change. New messages slide in gently (not with reduced motion).
 
   | Kind | Tint | Icon |
   |---|---|---|

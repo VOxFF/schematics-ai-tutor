@@ -69,7 +69,8 @@ def test_the_profile_joins_task_topics_and_learns_from_replies(config):
         ws.receive_json()
         reply = ws.receive_json()
         assert reply["message"]["chat"] == {"kind": "knowledge", "icon": "📘", "title": "Voltmeter",
-                                            "text": "A voltmeter has a huge resistance, so it goes across a part."}
+                                            "text": "A voltmeter has a huge resistance, so it goes across a part.",
+                                            "terms": [[2, 11]]}
         topics = {t["id"]: t for t in reply["profile"]["topics"]}
         assert topics["voltmeter"]["explained"] == 1 and topics["current"]["understanding"] == 2
     context = fake.requests[0]["messages"][0]["content"]

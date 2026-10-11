@@ -1,6 +1,6 @@
 """Reply composer: bounded profile changes, new topics, icon and title."""
 
-from app.reply_composer import ICONS, compose
+from app.reply_composer import ICONS, compose, term_spans
 from app.tutor import KINDS
 
 
@@ -29,7 +29,7 @@ def test_changes_are_clamped_and_explained_never_goes_down():
                                            {"topic": "voltage", "understanding": -9, "explained": 0}]), p, 2)
     assert scores(p, "current") == (2, 0) and scores(p, "voltage") == (0, 0) and dropped == []
     assert chat == {"kind": "question", "icon": ICONS["question"], "title": None,
-                    "text": "An ammeter has almost no resistance."}
+                    "text": "An ammeter has almost no resistance.", "terms": []}
 
 
 def test_scores_stay_within_zero_to_three():
@@ -74,3 +74,13 @@ def test_a_bad_new_topic_is_dropped():
     _, dropped = compose(reply(new_topic={"id": "Bad Id", "name": "x", "type": "term", "definition": "x"}), p, 3)
     assert len(p["topics"]) == 1 and dropped == [{"new_topic": {"id": "Bad Id", "name": "x", "type": "term",
                                                                 "definition": "x"}}]
+
+
+def test_topic_terms_are_marked_once_each_longest_first():
+    p = {"topics": [{"id": i, "name": n, "type": "term", "definition": "x", "introduced": 1, "understanding": 0,
+                     "explained": 0, "source": "catalog"}
+                    for i, n in [("voltage", "Voltage"), ("voltage_source", "Voltage source"), ("ohm", "Ohm (Ω)"),
+                                 ("series", "In series"), ("ohms_law", "Ohm's law"), ("current", "Current")]]}
+    text = "🔋 The voltage source pushes current; voltage splits in series. Ohm’s law uses ohms. Currents add."
+    marked = [text.encode("utf-16-le")[2 * a:2 * b].decode("utf-16-le") for a, b in term_spans(text, p)]
+    assert marked == ["voltage source", "current", "voltage", "series", "Ohm’s law", "ohms"]
