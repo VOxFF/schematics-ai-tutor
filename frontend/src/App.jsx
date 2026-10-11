@@ -33,9 +33,11 @@ export default function App() {
     };
     const timer = quietMs ? setTimeout(wait, quietMs) : wait();
     try {
-      const { level } = await generateTask(current.progress);
-      // A new task starts from its own board, with a fresh hint ladder (docs/tutor.md §3).
-      const next = { ...current, level, board: null, hint_level: 0, hint_offered: false, misconceptions: [] };
+      const { level, welcome } = await generateTask(current.progress, current.profile);
+      // A new task starts from its own board, with a fresh hint ladder (docs/tutor.md §3), and the
+      // tutor's welcome in the chat (docs/gui.md §7).
+      const chat = welcome ? [...(current.chat ?? []), { role: "tutor", ...welcome }] : current.chat;
+      const next = { ...current, level, chat, board: null, hint_level: 0, hint_offered: false, misconceptions: [] };
       saveSession(next);
       setSession(next);
     } catch (e) {
@@ -115,6 +117,14 @@ export default function App() {
     });
   }, []);
 
+  const setProfile = useCallback((profile) => {
+    setSession((current) => {
+      const next = { ...current, profile };
+      saveSession(next);
+      return next;
+    });
+  }, []);
+
   const setChat = useCallback((chat) => {
     setSession((current) => {
       const next = { ...current, chat };
@@ -132,6 +142,7 @@ export default function App() {
       onRestart={restart}
       onRetry={() => fetchTask(session)}
       onChat={setChat}
+      onProfile={setProfile}
       onNext={next}
       onBoard={setBoard}
       onTask={updateTask}

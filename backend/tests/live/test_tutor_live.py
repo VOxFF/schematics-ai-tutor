@@ -79,3 +79,25 @@ def test_tutor_gives_a_hint_at_each_level(config):
         assert message["meta"]["hint_level"] == hint_level and message["chat"]["kind"] == "hint"
         assert location_talk(message["chat"]["text"]) == []
     print(f"cost: ${usage_log.totals['cost_usd']:.4f}")
+
+
+def test_tutor_teaches_a_topic_it_has_not_explained(config):
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        pytest.skip("ANTHROPIC_API_KEY is not set (./test.sh live loads backend/keys/apikey.txt)")
+    from app.learner_profile import focus, join
+    from app.reply_composer import compose
+
+    usage_log = UsageLog.from_config(config, REPO_ROOT, "live-test")
+    level, spec = example_level()  # VM1 sits in the loop: a voltmeter the learner hasn't been taught
+    profile = {"topics": []}
+    join(profile, level, level["board"], 1)
+    message, _ = asyncio.run(answer(
+        anthropic.AsyncAnthropic(), config, usage_log, level=level, board=level["board"],
+        reference=spec["complete_board"], history=[], learner_text="What is this V thing?", session_id="live",
+        profile={"skill_level": 1, "focus": focus(profile, 1)},
+    ))
+    chat, dropped = compose(message, profile, 1)
+    print(json.dumps({"meta": message["meta"], "chat": chat, "dropped": dropped}, indent=2, ensure_ascii=False))
+    print(f"cost: ${usage_log.totals['cost_usd']:.4f}")
+    assert chat["kind"] == "knowledge" and chat["title"]
+    assert next(t for t in profile["topics"] if t["id"] == "voltmeter")["explained"] == 1

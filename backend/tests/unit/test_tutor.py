@@ -26,7 +26,7 @@ def test_context_has_every_section_and_no_raw_reference_grid():
     level, spec = example_level()
     request = {"action": "message", "learner_text": "Why 4 volts?"}
     context, evaluation = build_context(level, level["board"], spec["complete_board"], [], request, 6)
-    for tag in ("level", "reference", "summary", "snapshots", "history", "request"):
+    for tag in ("level", "reference", "summary", "snapshots", "profile", "history", "request"):
         assert f"<{tag}>" in context
     assert "status: meter_misuse" in context  # the task board alone: VM1 blocks the loop
     assert evaluation["status"] == "meter_misuse"

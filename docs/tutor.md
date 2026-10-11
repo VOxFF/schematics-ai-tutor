@@ -15,13 +15,40 @@ How Claude teaches: principles, reactions, the hint ladder, free chat, and the g
    - never name the exact part to place
    - never state a number the evaluator didn't report
 
+### Message kinds
+
+Each reply has a `chat.kind` that says what it does, and the chat shows each kind with its own tint and icon ([design.md](design.md#reply-composer)). The prompt tells Claude to pick the kind that fits the moment and to vary, so not every reply is a question.
+
+| Kind | What the message does |
+|---|---|
+| `praise` | Says what went right, naming the strategy |
+| `nudge` | Points gently at a misstep |
+| `feedback` | Says what the circuit does now, e.g. after an edit |
+| `question` | Asks the learner to reason about one thing |
+| `knowledge` | Teaches a principle or a term from the learner profile |
+| `hint` | A step of the hint ladder (§3); set by the backend |
+
+### Teaching from the learner profile
+
+With every call, Claude gets the learner's focus topics: the principles and terms they met most recently, then older ones they are weak on, each with an `understanding` and an `explained` score from 0 to 3 ([design.md](design.md#learner-profile)).
+
+| Topic state | Reply |
+|---|---|
+| `explained` 0, and the moment touches it | A `knowledge` message: two sentences on the idea, tied to the grid, optionally ending in a short question. "Ask, don't tell" gives way here: a beginner can't reason with an idea nobody has explained. |
+| `explained` ≥ 1, `understanding` ≤ 1 | No re-explaining: one question that tests the idea ("Do you need a larger or a smaller resistance?") |
+| `understanding` ≥ 2 | Short: confirm or praise the strategy |
+
+- **Scores move on evidence.** `understanding` +1 when the learner fixes a problem without a hint, answers a question correctly or explains the idea in their own words; −1 when a mistake or misconception shows a gap. `explained` +1 when the reply explains the topic. Claude reports them in `meta.topic_updates`; the reply composer clamps them.
+- **Safety first.** For `short_circuit` and `overcurrent` the reply is about safety; teaching waits.
+- **One topic per reply**, recent topics first. An idea no topic covers can be added as `meta.new_topic`, at most one per reply.
+
 ## 2. Reactions by status
 
 A reaction is Claude's response when the learner pauses editing ([contract.md](contract.md#1-frontend--backend)). Claude always responds, and the stance depends on the status:
 
 | Status | Stance | Highlight | Example |
 |---|---|---|---|
-| `short_circuit` | Urgent, about safety | `error` on the short path | "Careful: current can go from + straight to − with nothing in the way. What would that do to a real battery?" |
+| `short_circuit` | Urgent, about safety | `error` on every element of the shorted loop | "Careful: current can go from + straight to − with nothing in the way. What would that do to a real battery?" |
 | `no_source` | Point out what's missing | — | "Nothing can push current yet. What does every circuit need first?" |
 | `overcurrent` | About safety | `error` on the resistor | "R1 would get very hot here. What happens to current when resistance gets smaller?" |
 | `meter_misuse` | Address the misconception | `error` on the meter | "An ammeter acts like a plain wire. What happens to R1 if you connect a wire across it?" |
@@ -36,6 +63,7 @@ If the status hasn't changed since the last reaction, the reply is a single shor
 
 **Highlights on a problem.** Whenever the status shows a problem, the reply highlights it, so the words can stay on the physics:
 - **What's wrong, by ID:** a misplaced wire or part, the parts on a short path, the misused meter.
+- **A short circuit, whole:** every element of the shorted loop: the source and each wire piece and part (e.g. an ammeter) on the path from its + side back to its − side that passes no resistor, all with `error`. The evaluator's issue names only the source, so Claude traces the loop in the graph.
 - **Where a connection belongs:** for a missing or misplaced connection, the two grid points that should be connected, as two `point` highlights. A misplaced wire gets its ID plus the two points it should connect instead.
 - **Only wires that must change:** a wire is highlighted only when it sits where a part belongs, is misplaced, or causes the problem; working wires never are. A run of pieces looks like one wire, so every piece in it is highlighted, from one part pin or junction to the next.
 
@@ -117,7 +145,7 @@ When the learner places a meter from the inventory, the tutor asks "What do you 
 
 ## 8. System prompt draft
 
-The live prompt is `SYSTEM_PROMPT` in `backend/app/tutor.py`. It follows this draft and adds the reaction rules from §2, the hint offer and levels from §3, and the free-chat rules from §4.
+The live prompt is `SYSTEM_PROMPT` in `backend/app/tutor.py`. It follows this draft and adds the message kinds and the learner-profile rules from §1, the reaction rules from §2, the hint offer and levels from §3, and the free-chat rules from §4.
 
 ```text
 You are a patient electronics tutor for complete beginners. The learner builds

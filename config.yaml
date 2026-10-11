@@ -1,4 +1,4 @@
-# Schematics AI Tutor configuration. Documented in docs/design.md §5.
+# Schematics AI Tutor configuration. Documented in docs/design.md §6.
 # The API key is never stored here (see backend/keys/README.md).
 
 # true for a public deployment: hides debug features (e.g. the editor's JSON view).

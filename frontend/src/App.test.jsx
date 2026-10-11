@@ -61,7 +61,8 @@ afterEach(() => {
 });
 
 test("a new learner sees the start screen, then gets a task", async () => {
-  const fetch = mockFetch(ok({ level: LEVEL, difficulty: 3, rationale: "", attempts: 1 }));
+  const welcome = { kind: "knowledge", icon: "📘", title: null, text: "Welcome! Current needs a complete path.", terms: [[9, 16]] };
+  const fetch = mockFetch(ok({ level: LEVEL, welcome, difficulty: 3, rationale: "", attempts: 1 }));
   render(<App />);
   expect(screen.getByRole("button", { name: "Start Learning" })).toBeDefined();
 
@@ -75,7 +76,11 @@ test("a new learner sees the start screen, then gets a task", async () => {
   expect(screen.getByLabelText("R2 resistor 20 Ω")).toBeDefined(); // drawn as a symbol, named for a11y
   expect(screen.getByRole("button", { name: "Next" }).disabled).toBe(true); // until the task is solved
   expect(fetch).toHaveBeenCalledTimes(1);
+  expect(JSON.parse(fetch.mock.calls[0][1].body).profile).toEqual({ topics: [] });
   expect(JSON.parse(localStorage.getItem(SESSION_KEY)).level.id).toBe("gen-1234");
+  // The tutor's welcome is the first chat message, with its terms in bold.
+  expect(screen.getByText("Current").closest(".tutor-message").classList.contains("kind-knowledge")).toBe(true);
+  expect(JSON.parse(localStorage.getItem(SESSION_KEY)).chat).toEqual([{ role: "tutor", ...welcome }]);
 });
 
 test("/start shows the start screen and keeps the saved progress", async () => {
@@ -177,6 +182,38 @@ test("the learner chats with the tutor through the session socket", async () => 
   expect(screen.getByText("Does the current have a way back?")).toBeDefined();
   const saved = JSON.parse(localStorage.getItem(SESSION_KEY)).chat;
   expect(saved.map((m) => m.role)).toEqual(["learner", "tutor"]);
+});
+
+test("tutor messages are tinted by kind, and the learner profile is saved and sent back", async () => {
+  const profile = { topics: [{ id: "current", name: "Current", type: "term", definition: "Flow of charge.",
+                               introduced: 1, understanding: 1, explained: 1, source: "catalog" }] };
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [], profile }));
+  render(<App />);
+  await screen.findByPlaceholderText("Ask the tutor…");
+  const ws = FakeSocket.last;
+  expect(ws.sent[0]).toMatchObject({ type: "session.start", profile });
+
+  const joined = { topics: [...profile.topics, { ...profile.topics[0], id: "voltmeter", name: "Voltmeter", explained: 0 }] };
+  ws.serverSends({ type: "evaluation", seq: 0, evaluation: { status: "open_circuit", readings: {}, issues: [] }, profile: joined });
+  expect(JSON.parse(localStorage.getItem(SESSION_KEY)).profile).toEqual(joined);
+
+  ws.serverSends({ type: "tutor.started", request_id: "react-1", trigger: "reaction" });
+  ws.serverSends({
+    type: "tutor.message", request_id: "react-1", seq: 0,
+    evaluation: { status: "open_circuit", readings: {}, issues: [] },
+    message: { meta: { principle: "meter_usage", highlights: [], hint_level: 0, misconception: null },
+               chat: { kind: "knowledge", icon: "📘", title: "Voltmeter", text: "A voltmeter goes across a part.",
+                       terms: [[2, 11]] } },
+    profile: joined,
+  });
+  const term = screen.getByText("voltmeter");
+  expect(term.tagName).toBe("STRONG");
+  const bubble = term.closest(".tutor-message");
+  expect(bubble.querySelector(".body").textContent).toBe("VoltmeterA voltmeter goes across a part.");
+  expect(bubble.classList.contains("kind-knowledge")).toBe(true);
+  expect(bubble.querySelector(".icon").textContent).toBe("📘");
+  expect(bubble.querySelector(".title").textContent).toBe("Voltmeter");
+  expect(JSON.parse(localStorage.getItem(SESSION_KEY)).chat[0]).toMatchObject({ kind: "knowledge", icon: "📘", title: "Voltmeter" });
 });
 
 test("a tutor reaction arrives unprompted, and a failed one ends quietly", async () => {

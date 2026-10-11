@@ -60,6 +60,12 @@ Task rules
 - Write `intro` in plain language for a beginner, without numbers that depend
   on solving the circuit. Fill `rationale` with one sentence on why this task
   fits this learner now.
+- Write `welcome`: the tutor's chat message when the task appears, one or two
+  short sentences, warm and in the second person. Link it to what the learner did
+  in their recent tasks (if any) and name the new idea or part this task brings,
+  e.g. "You've closed loops before. This time a voltmeter joins in: let's see what
+  it measures." Don't repeat the intro, don't hint at the solution, and never
+  describe locations (no coordinates, pin names, rows, columns or points).
 
 Grid format
 - A point is [col, row], 1-based; row 1 is the top. Stay inside the grid size given.

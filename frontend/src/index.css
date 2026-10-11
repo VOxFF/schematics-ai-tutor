@@ -25,6 +25,20 @@
   --error: #cf222e;
   --error-tint: #ffebe9;
   --locked: #8c959f;
+
+  /* Tutor message kinds (docs/design.md §4): a tint and an edge color each, paired with an icon. */
+  --praise-tint: #eaf7ee;
+  --praise-edge: #4ac26b;
+  --nudge-tint: #fff1e5;
+  --nudge-edge: #fb8f44;
+  --feedback-tint: #eef4fc;
+  --feedback-edge: #54aeff;
+  --question-tint: #ffeff7;
+  --question-edge: #f778ba;
+  --knowledge-tint: #fff8e1;
+  --knowledge-edge: #d4a72c;
+  --hint-tint: #f5f0ff;
+  --hint-edge: #a475f9;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   color: var(--text);
   background: var(--bg);
@@ -476,11 +490,49 @@ button.danger {
   flex: 1;
 }
 
-/* Tutor messages on a light accent tint, learner messages neutral (when the chat exists). */
+/* Tutor messages: tinted by kind, with the kind's icon; learner messages neutral. */
 .chat .tutor-message {
+  --tint: var(--accent-tint);
+  --edge: var(--accent-tint);
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
   padding: 8px 10px;
   border-radius: 8px;
-  background: var(--accent-tint);
+  border-left: 3px solid var(--edge);
+  background: var(--tint);
+  animation: message-in 0.25s ease-out;
+}
+
+.chat .tutor-message .icon {
+  flex: none;
+  line-height: 1.35;
+}
+
+.chat .tutor-message .title {
+  display: block;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+/* Learner's topics in the text: bold in the ink color, same size, so lines keep their spacing. */
+.chat .tutor-message .term {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.chat .kind-praise { --tint: var(--praise-tint); --edge: var(--praise-edge); }
+.chat .kind-nudge { --tint: var(--nudge-tint); --edge: var(--nudge-edge); }
+.chat .kind-feedback { --tint: var(--feedback-tint); --edge: var(--feedback-edge); }
+.chat .kind-question { --tint: var(--question-tint); --edge: var(--question-edge); }
+.chat .kind-knowledge { --tint: var(--knowledge-tint); --edge: var(--knowledge-edge); }
+.chat .kind-hint { --tint: var(--hint-tint); --edge: var(--hint-edge); }
+
+@keyframes message-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
 }
 
 .chat .learner-message {
@@ -632,6 +684,10 @@ body.dragging-item * {
 @media (prefers-reduced-motion: reduce) {
   .spinner {
     animation-duration: 3s;
+  }
+
+  .chat .tutor-message {
+    animation: none;
   }
 }
 

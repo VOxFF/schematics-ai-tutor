@@ -72,3 +72,12 @@ def test_difficulty_range():
 def test_grid_limits():
     errors = check_format(load_example(), {"max_points": 10})
     assert any("larger than 10" in e for e in errors)
+
+
+def test_a_welcome_that_describes_locations_is_rejected():
+    from app.task_spec import check_format, normalize
+    spec = normalize(load_example())
+    assert not [e for e in check_format(spec) if e.startswith("welcome")]
+    spec["welcome"] = "Put a wire at [3, 4] and see what happens."
+    assert [e for e in check_format(spec) if e.startswith("welcome")] == [
+        "welcome: describes locations ([3, 4]); talk about the idea instead"]

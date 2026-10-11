@@ -15,8 +15,9 @@ function socketUrl() {
 // board: the learner's current board, sent on every change so the evaluation stays live;
 // progress: sent with session.start, so the server can pre-generate the task after this one;
 // hintLevel: the hint level reached in this task, sent with session.start so the ladder continues;
-// onReply(meta, hintOffered): each tutor reply's metadata, for the task's hint and misconception record.
-export function useTutorSession(level, chat, onChat, board, progress, { hintLevel = 0, onReply } = {}) {
+// onReply(meta, hintOffered): each tutor reply's metadata, for the task's hint and misconception record;
+// profile / onProfile: the learner profile, sent with session.start and saved from each server update.
+export function useTutorSession(level, chat, onChat, board, progress, { hintLevel = 0, onReply, profile, onProfile } = {}) {
   const [connected, setConnected] = useState(false);
   const [thinking, setThinking] = useState(false);
   const [evaluation, setEvaluation] = useState(null);
@@ -38,6 +39,10 @@ export function useTutorSession(level, chat, onChat, board, progress, { hintLeve
   hintRef.current = hintLevel;
   const onReplyRef = useRef(onReply);
   onReplyRef.current = onReply;
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
+  const onProfileRef = useRef(onProfile);
+  onProfileRef.current = onProfile;
   const seq = useRef(0);
 
   const append = useCallback((entry) => onChat([...chatRef.current, entry]), [onChat]);
@@ -50,7 +55,8 @@ export function useTutorSession(level, chat, onChat, board, progress, { hintLeve
       .map(({ role, text }) => ({ role, text }));
     seq.current = 0; // a new server session numbers boards from 0 (its session.start board)
     ws.send(JSON.stringify({ type: "session.start", level: levelRef.current, board: boardRef.current, history,
-                             progress: progressRef.current, hint_level: hintRef.current }));
+                             progress: progressRef.current, hint_level: hintRef.current,
+                             profile: profileRef.current }));
   }, []);
 
   // A message (`text`) or a hint request (`text` undefined).
@@ -77,12 +83,14 @@ export function useTutorSession(level, chat, onChat, board, progress, { hintLeve
       };
       ws.onmessage = (event) => {
         const message = JSON.parse(event.data);
+        if (message.profile) onProfileRef.current?.(message.profile);
         if (message.type === "evaluation") setEvaluation(message.evaluation);
         else if (message.type === "tutor.started") setThinking(true);
         else if (message.type === "tutor.message") {
           pending.current = null;
           setThinking(false);
-          append({ role: "tutor", kind: message.message.chat.kind, text: message.message.chat.text });
+          const { kind, icon, title, text, terms } = message.message.chat;
+          append({ role: "tutor", kind, icon, title, text, terms });
           onReplyRef.current?.(message.message.meta ?? {}, Boolean(message.hint_offered));
           // The reply is about board `seq`. After a newer edit, the fast evaluation already shows
           // the current readings, and the highlights would point at a board that's gone.

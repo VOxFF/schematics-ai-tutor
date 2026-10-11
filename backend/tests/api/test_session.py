@@ -50,6 +50,32 @@ def test_chat_round_trip(config):
     assert "<reference>" in context and "none" not in context.split("<reference>")[1][:10]
 
 
+def test_the_profile_joins_task_topics_and_learns_from_replies(config):
+    fake = FakeClaude([tutor_reply("A voltmeter has a huge resistance, so it goes across a part.", kind="knowledge",
+                                   topic_updates=[{"topic": "voltmeter", "understanding": 0, "explained": 1},
+                                                  {"topic": "current", "understanding": 1, "explained": 0}])])
+    client, level = connect(config, fake)
+    saved = {"topics": [{"id": "current", "name": "Current", "type": "term", "definition": "Flow of charge.",
+                         "introduced": 1, "understanding": 1, "explained": 2, "source": "catalog"}]}
+    with client.websocket_connect("/ws/session") as ws:
+        ws.send_json({"type": "session.start", "level": level, "profile": saved,
+                      "progress": {"skill_level": 2, "history": []}})
+        first = ws.receive_json()
+        topics = {t["id"]: t for t in first["profile"]["topics"]}
+        assert topics["current"]["explained"] == 2  # the saved scores are kept
+        assert {"closed_loop", "voltmeter"} <= set(topics)  # the task's level and its meter joined
+
+        ws.send_json({"type": "tutor.request", "request_id": "r1", "action": "message", "learner_text": "What's VM1?"})
+        ws.receive_json()
+        reply = ws.receive_json()
+        assert reply["message"]["chat"] == {"kind": "knowledge", "icon": "📘", "title": "Voltmeter",
+                                            "text": "A voltmeter has a huge resistance, so it goes across a part.",
+                                            "terms": [[2, 11]]}
+        topics = {t["id"]: t for t in reply["profile"]["topics"]}
+        assert topics["voltmeter"]["explained"] == 1 and topics["current"]["understanding"] == 2
+    context = fake.requests[0]["messages"][0]["content"]
+    assert '"voltmeter"' in context.split("<profile>")[1].split("</profile>")[0]
+
 def test_a_resumed_task_gets_its_next_task_pregenerated(config):
     class Cache:
         def __init__(self):

@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from .config import REPO_ROOT, config_path, load_config
 from .log_archive import LogArchive
 from .rate_limits import RateLimiter, client_ip
+from .reply_composer import welcome
 from .session import Session
 from .task_cache import TaskCache
 from .task_generation import generate_task
@@ -48,7 +49,7 @@ async def lifespan(app: FastAPI):
         archive.on_archived = lambda result: usage_log.event("logs_archived", **result)
         await asyncio.to_thread(archive.archive, "startup")
         nightly = asyncio.create_task(archive.nightly())
-    # Rate limits and the daily Claude budget (ratelimiting.yaml, docs/design.md §4).
+    # Rate limits and the daily Claude budget (ratelimiting.yaml, docs/design.md §5).
     limits = RateLimiter.from_settings(config.get("rate_limits", {}))
     usage_log.on_cost = limits.budget.spend
     app.state.limits = limits
@@ -139,6 +140,7 @@ def health() -> dict:
 class GenerateTaskRequest(BaseModel):
     skill_level: int = Field(1, ge=1)
     history: list[dict] = Field(default_factory=list, description="TaskSummary entries, oldest first")
+    profile: dict | None = Field(None, description="LearnerProfile, to compose the welcome message")
 
 
 @app.post("/api/tasks/generate")
@@ -156,7 +158,7 @@ async def generate(
     now. The task after it is then generated in the background (docs/design.md §3)."""
     if claude is None:
         raise HTTPException(503, "Claude is not configured: set ANTHROPIC_API_KEY or backend/keys/apikey.txt")
-    # Curated levels will be served here once they exist (docs/design.md §4); until then, a 429.
+    # Curated levels will be served here once they exist (docs/design.md §5); until then, a 429.
     if not limits.claude_allowed():
         usage_log.event("generation_refused", reason="claude_budget")
         raise HTTPException(429, "Task generation has reached today's limit; please try again tomorrow.")
@@ -177,6 +179,7 @@ async def generate(
     references[result.level["id"]] = result.spec["complete_board"]
     return {
         "level": result.level,
+        "welcome": welcome(result.level, body.profile, body.skill_level),
         "difficulty": result.spec["difficulty"],
         "rationale": result.spec["rationale"],
         "attempts": result.attempts,

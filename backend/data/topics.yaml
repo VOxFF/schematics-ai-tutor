@@ -1,0 +1,84 @@
+# Topic catalog: the principles and terms of the learning path (docs/design.md §4).
+#
+# A topic joins a learner's profile when they first meet it:
+#   level      the curriculum level that introduces it (curriculum.yaml)
+#   component  or a component type, the first time one is on the task's board
+# Principles use the tutor's `meta.principle` labels (docs/tutor.md §5).
+
+topics:
+  # Level 1: closed loop
+  - { id: closed_loop, name: Closed loop, type: principle, level: 1,
+      definition: Current flows only around a complete path from the source and back. }
+  - { id: circuit, name: Circuit, type: term, level: 1,
+      definition: A closed path that current can flow around. }
+  - { id: current, name: Current, type: term, level: 1,
+      definition: The flow of electric charge around a circuit. }
+  - { id: voltage_source, name: Voltage source, type: term, level: 1,
+      definition: A battery or supply that pushes current from its + side around to its − side. }
+  - { id: open_circuit, name: Open circuit, type: term, level: 1,
+      definition: A loop with a gap, so no current can flow anywhere in it. }
+  # A learner can short the source from the first task.
+  - { id: short_circuit, name: Short circuit, type: term, level: 1,
+      definition: A path with almost no resistance from + to −, so a dangerous current flows. }
+
+  # Level 2: Ohm's law
+  - { id: ohms_law, name: Ohm's law, type: principle, level: 2,
+      definition: "Current equals voltage divided by resistance: I = V / R." }
+  - { id: resistance, name: Resistance, type: term, level: 2,
+      definition: How strongly a part opposes current; more resistance means less current. }
+  - { id: voltage, name: Voltage, type: term, level: 2,
+      definition: The push that drives current, measured between two points. }
+  - { id: ohm, name: Ohm (Ω), type: term, level: 2,
+      definition: The unit of resistance. }
+  - { id: volt, name: Volt (V), type: term, level: 2,
+      definition: The unit of voltage. }
+  - { id: ampere, name: Ampere (A), type: term, level: 2,
+      definition: The unit of current. }
+
+  # Level 3: Ohm's law with more choices
+  - { id: color_code, name: Resistor color code, type: term, level: 3,
+      definition: Colored bands on a resistor that encode its value; the first two are digits, the third a multiplier. }
+
+  # Level 4: series resistors
+  - { id: series_voltage_division, name: Voltage division, type: principle, level: 4,
+      definition: Series resistors share the source voltage in proportion to their resistance. }
+  - { id: series, name: In series, type: term, level: 4,
+      definition: Parts one after another on a single path, so the same current flows through each. }
+  - { id: voltage_drop, name: Voltage drop, type: term, level: 4,
+      definition: The share of the voltage used up across one part. }
+
+  # Level 5: parallel resistors
+  - { id: parallel_branches, name: Parallel branches, type: principle, level: 5,
+      definition: Each parallel branch gets the full voltage, and the branch currents add up. }
+  - { id: parallel, name: In parallel, type: term, level: 5,
+      definition: Parts side by side between the same two points, each on its own branch. }
+  - { id: branch, name: Branch, type: term, level: 5,
+      definition: One of several paths current can take between two junctions. }
+  - { id: junction, name: Junction, type: term, level: 5,
+      definition: A point where three or more wires meet and current splits or joins. }
+
+  # Level 6: series–parallel combination
+  - { id: equivalent_resistance, name: Equivalent resistance, type: term, level: 6,
+      definition: The single resistance that would draw the same current as a group of resistors. }
+
+  # Level 7: measuring right
+  - { id: meter_usage, name: Using meters, type: principle, level: 7,
+      definition: A voltmeter goes across a part; an ammeter goes in the loop. }
+  - { id: measuring_across, name: Measuring across, type: term, level: 7,
+      definition: Connecting a meter to both ends of a part, beside it, without breaking the loop. }
+  - { id: measuring_in_loop, name: Measuring in the loop, type: term, level: 7,
+      definition: Breaking the loop and putting the meter in the gap, so all the current goes through it. }
+
+  # Level 8: power and safety
+  - { id: power_safety, name: Power and safety, type: principle, level: 8,
+      definition: Too little resistance lets too much current flow, and parts overheat. }
+  - { id: power, name: Power, type: term, level: 8,
+      definition: How fast a part turns electrical energy into heat; P = V × I. }
+  - { id: watt, name: Watt (W), type: term, level: 8,
+      definition: The unit of power. }
+
+  # Components, the first time one is on the board
+  - { id: ammeter, name: Ammeter, type: term, component: ammeter,
+      definition: A meter for current; it has almost no resistance and goes in the loop. }
+  - { id: voltmeter, name: Voltmeter, type: term, component: voltmeter,
+      definition: A meter for voltage; it has a huge resistance and goes across a part. }

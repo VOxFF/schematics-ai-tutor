@@ -174,6 +174,20 @@ function InventoryList({ board, onStartDrag }) {
   );
 }
 
+// Message text with the learner's topics in bold: `terms` are [start, end] spans from the reply
+// composer, in order and not overlapping (docs/gui.md §7).
+function withTerms(text, terms) {
+  const parts = [];
+  let at = 0;
+  for (const [start, end] of terms ?? []) {
+    if (start < at || end > text.length) continue;
+    parts.push(text.slice(at, start), <strong key={start} className="term">{text.slice(start, end)}</strong>);
+    at = end;
+  }
+  parts.push(text.slice(at));
+  return parts;
+}
+
 // `hintLevel`: the hint level reached in this task; the Hint button asks for the next one (docs/gui.md §7).
 function Chat({ chat, connected, thinking, onSend, hintLevel, hintOffered, onHint }) {
   const [draft, setDraft] = useState("");
@@ -194,8 +208,13 @@ function Chat({ chat, connected, thinking, onSend, hintLevel, hintOffered, onHin
       <div className="messages" role="log" aria-live="polite">
         {chat.length === 0 && <p className="muted">Ask the tutor anything about circuits or this task.</p>}
         {chat.map((m, i) => (
-          <div key={i} className={`${m.role}-message`}>
-            {m.text}
+          // Tutor messages are tinted by kind; the icon and title come from the reply composer.
+          <div key={i} className={`${m.role}-message${m.role === "tutor" && m.kind ? ` kind-${m.kind}` : ""}`}>
+            {m.role === "tutor" && m.icon && <span className="icon" aria-hidden="true">{m.icon}</span>}
+            <div className="body">
+              {m.role === "tutor" && m.title && <strong className="title">{m.title}</strong>}
+              {m.role === "tutor" ? withTerms(m.text, m.terms) : m.text}
+            </div>
           </div>
         ))}
         {thinking && <div className="muted thinking">Tutor is thinking…</div>}
@@ -232,7 +251,8 @@ function hint(drag, fits, selection, solved) {
   return "Drop onto the highlighted points to connect · R to rotate · Esc to cancel";
 }
 
-export default function TutorScreen({ session, loading, error, onRestart, onRetry, onChat, onNext, onBoard, onTask }) {
+export default function TutorScreen({ session, loading, error, onRestart, onRetry, onChat, onProfile, onNext, onBoard,
+                                      onTask }) {
   const { progress, level } = session;
   const chat = session.chat ?? [];
   const board = session.board ?? level?.board ?? null;
@@ -244,7 +264,8 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
     misconceptions: meta.misconception && !(current.misconceptions ?? []).includes(meta.misconception)
       ? [...(current.misconceptions ?? []), meta.misconception] : current.misconceptions ?? [],
   })), [onTask]);
-  const tutor = useTutorSession(level, chat, onChat, board, progress, { hintLevel, onReply });
+  const tutor = useTutorSession(level, chat, onChat, board, progress,
+                                { hintLevel, onReply, profile: session.profile, onProfile });
   const askHint = () => {
     if (tutor.askHint()) onTask?.(() => ({ hint_offered: false }));
   };

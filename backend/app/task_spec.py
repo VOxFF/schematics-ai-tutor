@@ -11,6 +11,7 @@ from .evaluate import RESOLUTION, evaluate
 from .curriculum import check_centered, check_level
 from .graph import assign_nets, to_graph
 from .grid import METER_TYPES, PIN_NAMES, validate_grid
+from .tutor import location_talk
 
 COMPONENT_TYPES = sorted(PIN_NAMES)
 ALL_PIN_NAMES = sorted({name for names in PIN_NAMES.values() for name in names})
@@ -40,6 +41,7 @@ TASK_SPEC_SCHEMA = _object({
     "concept": {"type": "string"},
     "title": {"type": "string"},
     "intro": {"type": "string"},
+    "welcome": {"type": "string"},  # the tutor's chat message when the task appears (docs/design.md §4)
     "complete_board": _object({
         "grid": _object({"columns": {"type": "integer"}, "rows": {"type": "integer"}}),
         "components": {"type": "array", "items": _COMPONENT},
@@ -110,6 +112,8 @@ def check_format(spec: dict, grid_limits: dict | None = None, removed_targets_al
     for field in ("concept", "title", "intro"):
         if not str(spec.get(field) or "").strip():
             errors.append(f"{field}: must not be empty")
+    if found := location_talk(str(spec.get("welcome") or "")):
+        errors.append(f"welcome: describes locations ({', '.join(found)}); talk about the idea instead")
 
     if not errors:
         # Target values are still null here, so the task grid is checked without them.
@@ -250,6 +254,7 @@ def build_level(spec: dict, skill_level: int, board: dict | None = None, curricu
         "title": spec["title"],
         "concept": spec["concept"],
         "intro": spec["intro"],
+        "welcome": str(spec.get("welcome") or "").strip(),
         "board": board or derive_task_board(spec),
         "difficulty": spec["difficulty"],
         # Stored in the learner's history (TaskSummary) for the next generation and the repeat check.
