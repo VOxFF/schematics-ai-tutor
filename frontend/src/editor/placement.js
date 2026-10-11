@@ -1,5 +1,6 @@
 // Placing parts and wire pieces on the grid (docs/gui.md §4). Pure functions: they compute
-// the points a placement would occupy, whether it fits, and the resulting board.
+// the points a placement would occupy, whether it fits, and the resulting board, and lift a
+// placed element off the board so it can be dragged elsewhere.
 
 export const PIN_NAMES = {
   voltage_source: ["positive", "negative"],
@@ -47,13 +48,49 @@ export function wireSegments(shape, rotation, anchor) {
   });
 }
 
+// Segments of a dragged wire item: a palette piece (`shape`) or a placed wire picked up from
+// the board (`segments` relative to its anchor), rotated `rotation` quarter turns.
+export function itemSegments(item, rotation, anchor) {
+  if (!item.segments) return wireSegments(item.shape, rotation, anchor);
+  const at = (p) => {
+    const [dx, dy] = rotate(p, rotation);
+    return [anchor[0] + dx, anchor[1] + dy];
+  };
+  return item.segments.map(([a, b]) => [at(a), at(b)]);
+}
+
+// Body point of a placed component.
+export function bodyOf(component) {
+  const [dx, dy] = DIRECTIONS[component.orientation];
+  const first = component.pins[PIN_NAMES[component.type][0]];
+  return [first[0] - dx, first[1] - dy];
+}
+
+// Pick up a placed element: the drag item, its starting rotation and anchor, and the board
+// without it. Null for fixed parts and for wires that came with the task (`startBoard`).
+export function lift(board, hit, startBoard) {
+  if (hit.kind === "component") {
+    const c = board.components.find((x) => x.id === hit.id);
+    if (!c || c.fixed) return null;
+    const item = { kind: "part", id: c.id, type: c.type };
+    if (c.value != null) item.value = c.value;
+    return { item, rotation: c.orientation, anchor: bodyOf(c),
+             base: { ...board, components: board.components.filter((x) => x !== c) } };
+  }
+  const w = board.wires.find((x) => x.id === hit.id);
+  if (!w || startBoard?.wires?.some((x) => x.id === w.id)) return null;
+  const anchor = w.segments[0][0];
+  const relative = (p) => [p[0] - anchor[0], p[1] - anchor[1]];
+  return { item: { kind: "wire", id: w.id, segments: w.segments.map(([a, b]) => [relative(a), relative(b)]) },
+           rotation: 0, anchor, base: { ...board, wires: board.wires.filter((x) => x !== w) } };
+}
+
 function occupancy(board) {
   const parts = new Map(); // point -> component id (pins and bodies)
   const bodies = new Set();
   for (const c of board.components) {
     const [first, second] = PIN_NAMES[c.type].map((n) => c.pins[n]);
-    const [dx, dy] = DIRECTIONS[c.orientation];
-    const body = [first[0] - dx, first[1] - dy];
+    const body = bodyOf(c);
     for (const p of [first, body, second]) parts.set(key(p), c.id);
     bodies.add(key(body));
   }
@@ -72,7 +109,7 @@ export function plan(board, item, point, rotation) {
     if (wirePoints.has(key(points[1]))) blocked.push(points[1]); // a wire can't pass under a body
     return { points, pins: [points[0], points[2]], valid: blocked.length === 0, blocked };
   }
-  const segments = wireSegments(item.shape, rotation, point);
+  const segments = itemSegments(item, rotation, point);
   const points = [...new Map(segments.flat().map((p) => [key(p), p])).values()];
   const blocked = points.filter((p) => !inside(board, p) || bodies.has(key(p)));
   return { points, pins: points, segments, valid: blocked.length === 0, blocked };
@@ -98,5 +135,6 @@ export function place(board, item, point, rotation) {
       inventory: board.inventory.filter((i) => i.id !== item.id),
     };
   }
-  return { ...board, wires: [...board.wires, { id: nextWireId(board), segments: p.segments }] };
+  // A wire moved on the board keeps its id; a new piece gets the next one.
+  return { ...board, wires: [...board.wires, { id: item.id ?? nextWireId(board), segments: p.segments }] };
 }

@@ -71,6 +71,28 @@ def test_voltmeter_in_place_of_a_resistor_is_meter_misuse():
     assert result["readings"]["VM1"] == 12.0
 
 
+def test_unconnected_parts_dont_make_a_short():
+    """Regression: parts connected to nothing used to fail the solve and read as short_circuit."""
+    g = grid()
+    g["components"] = [c for c in g["components"] if c["id"] != "R2"]  # VM1 in series, as above
+    g["components"].append({"id": "R9", "type": "resistor", "value": 300, "fixed": False,
+                            "orientation": "E", "pins": {"a": [12, 8], "b": [10, 8]}})
+    assert validate_grid(g) == []
+    result = evaluate(g)
+    assert result["status"] == "meter_misuse"
+    assert result["readings"]["VM1"] == 12.0
+    assert sorted(i["code"] for i in result["issues"]) == ["floating_part", "voltmeter_series"]
+
+
+def test_contradictory_sources_are_a_short():
+    from app.solver import solve
+    components = [{"id": "V1", "type": "voltage_source", "value": 9, "pins": ["positive", "negative"]},
+                  {"id": "V2", "type": "voltage_source", "value": 5, "pins": ["positive", "negative"]},
+                  {"id": "R1", "type": "resistor", "value": 100, "pins": ["a", "b"]}]
+    nets = {"V1.positive": 1, "V1.negative": 0, "V2.positive": 1, "V2.negative": 0, "R1.a": 1, "R1.b": 0}
+    assert solve(components, nets, 0) is None
+
+
 def test_floating_part():
     g = grid("parallel_paths")
     drop_wire(g, [[5, 5], [6, 5]])  # R2.a loses its only wire

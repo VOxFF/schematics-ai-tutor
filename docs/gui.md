@@ -70,7 +70,7 @@ The sketch shows placement only; its values are placeholders.
 
 ## 4. Grid
 
-Rendered with three.js in an orthographic, top-down view (`frontend/src/editor/`). Every component and wire piece is its own scene node, a `THREE.Group` named by its `id` with `userData.kind`, ready for raycast picking and highlights. Grid points are one instanced mesh. Labels and readings are HTML overlays (`CSS2DRenderer`), so text stays crisp at any zoom. A small **JSON** toggle in the corner shows the raw task for debugging.
+Rendered with three.js in an orthographic, top-down view (`frontend/src/editor/`). Every component and wire piece is its own scene node, a `THREE.Group` named by its `id` with `userData.kind`, ready for picking and highlights. Grid points are one instanced mesh. Labels and readings are HTML overlays (`CSS2DRenderer`), so text stays crisp at any zoom. A small **JSON** toggle in the corner shows the raw task for debugging.
 
 **Schematic style.** Sizes and colors of the drawing live in `frontend/src/editor/schematic-style.yaml`, in grid units where one grid step is 40:
 - wire thickness and color
@@ -147,8 +147,15 @@ A tutor highlight lasts until the next tutor message, or until the learner edits
 - **Sending edits.** Each finished edit (drop, rotate, delete) sends one `board.update`. Dragging stays local until the drop.
 - **Anchor points.** A part is dropped by its **body** point; its pins land on the neighboring points in the direction of its orientation (new parts start horizontal, `E`). A wire piece is dropped by its **anchor**: the left end of a straight piece, or the shared point of a corner, T or +.
 - **Reset board** (bottom-left corner of the editor field, next to the JSON toggle) puts the board back to the task's start; the learner's edited board is saved in the session until then.
-- **Picking up a part.** Pressing an inventory part lifts it at once: its slot goes empty and a translucent ghost follows the pointer everywhere, snapping to the grid (with target points) only over the grid. After the drop the inventory closes the gap; a cancel puts the part back.
-- **Build status.** Dragging from the inventory and the wire palette is implemented. Selecting, moving and deleting placed elements comes next.
+- **Picking (hit-testing) by shape.** An element is hit by its drawn shape (leads, body, plates, pin dots, wire segments), grown by 2 screen pixels, never by a bounding box: a press beside a symbol, even inside its inventory slot, hits nothing. Labels are not pickable. The topmost element wins, so a part beats the wire under it. Inventory items and board elements use the same test (`pickAt` in `scene.js`), and a grab cursor shows over anything that can be picked up.
+- **One drag for inventory and board.** Picking up an inventory item and picking up a placed element is the same interaction:
+  - **No jump.** The offset between the pointer and the element's anchor is fixed at the press. The ghost starts exactly where the element was and moves with the pointer; it snaps to the grid by its anchor, not by the pointer.
+  - **From the inventory:** the part's slot goes empty at once (wire pieces never deplete). After the drop the inventory closes the gap.
+  - **From the board:** the element lifts off the board while dragged. A drop moves it and keeps its `id`; releasing on the spot it came from is not an edit and sends nothing.
+  - **Movable:** non-`fixed` parts and wire pieces the learner placed. `fixed` parts and the task's own wires stay put.
+  - Over the grid the ghost snaps with blue/red target points; elsewhere it floats. Esc, an invalid spot, or a release off the grid puts the element back where it came from.
+  - The drag survives the pointer leaving the editor (pointer capture).
+- **Build status.** Shape picking and dragging from the inventory, the wire palette and the board are implemented. Selection, rotating in place and Del come next.
 
 ## 5. Hint bar
 
@@ -173,7 +180,7 @@ The inventory is drawn **inside the editor's three.js scene**, in a column right
 | Wire palette | Straight horizontal, straight vertical, corner, T, +, each drawn as its shape | **Never depletes.** Corner, T and + rotate with **R**. |
 
 **Layout rules**
-- **Two columns**, as bare symbols, not buttons; a light tint on hover and a grab cursor show they can be picked up.
+- **Two columns**, as bare symbols, not buttons; a grab cursor over the symbol itself (not its whole slot) shows it can be picked up.
 - **Fixed width:** two elements (pin dot to pin dot) plus a small gap between the columns and a margin each side.
 - **Fixed scale per task:** the scene's bounds (grid plus inventory) are computed **once from the task's starting board**, with the inventory column reserving the starting inventory's rows. Placing or removing parts never changes the scale; only a window resize refits the camera.
 - **Placement in the field:** the inventory column sits flush right; the grid is centered in the field left of it, and both columns share a vertical midline.

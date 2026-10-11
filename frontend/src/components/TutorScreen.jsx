@@ -204,7 +204,7 @@ function Chat({ chat, connected, thinking, onSend }) {
 
 // Hint bar text for the current interaction (docs/gui.md §5); generated here, not by the backend.
 function hint(drag, fits) {
-  if (!drag) return "Drag a part or a wire piece from the inventory onto the grid";
+  if (!drag) return "Drag a part or a wire piece from the inventory onto the grid, or move one you placed";
   if (fits === false) return "Can't place here: the spot is taken or off the grid";
   return "Drop onto the highlighted points to connect · R to rotate · Esc to cancel";
 }
@@ -214,7 +214,9 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
   const chat = session.chat ?? [];
   const board = session.board ?? level?.board ?? null;
   const tutor = useTutorSession(level, chat, onChat, board);
-  const [drag, setDrag] = useState(null); // { item, rotation }
+  // { item, rotation, base?, origin? }: `base` is the board without a placed element being moved,
+  // `origin` its anchor and rotation before the move.
+  const [drag, setDrag] = useState(null);
   const [fits, setFits] = useState(null);
   const [showJson, setShowJson] = useState(false);
 
@@ -240,7 +242,9 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
 
   const startDrag = (item) => setDrag({ item, rotation: item.kind === "part" ? "E" : item.rotation });
   const drop = (point) => {
-    const next = drag && board && place(board, drag.item, point, drag.rotation);
+    const origin = drag?.origin;
+    const unmoved = origin && point[0] === origin.anchor[0] && point[1] === origin.anchor[1] && drag.rotation === origin.rotation;
+    const next = drag && board && !unmoved && place(drag.base ?? board, drag.item, point, drag.rotation);
     setDrag(null);
     if (next) onBoard(next);
   };
@@ -258,9 +262,9 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
         <div className="editor-column">
           <Editor
             level={level}
-            board={board}
+            board={drag?.base ?? board}
             drag={drag}
-            onStartDrag={startDrag}
+            onStartDrag={setDrag}
             onDrop={drop}
             onPlan={setFits}
             showJson={showJson}
