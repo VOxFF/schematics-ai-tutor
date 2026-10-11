@@ -89,8 +89,8 @@ The major steps to build the product. A step is checked off when it is complete,
 
 - [ ] End-to-end playthrough of all levels
 - [x] `public` flag in `config.yaml`: a public build hides debug features (the editor's JSON view)
-- [ ] Hosting decision
-- [ ] Deploy backend and frontend
+- [x] Hosting decision: Fly.io ([design.md](design.md#4-security-and-operations))
+- [ ] Deploy backend and frontend: `Dockerfile` and `fly.toml`, one image serving both
 - [ ] Smoke test on the public URL
 
 ## 5. Learning depth

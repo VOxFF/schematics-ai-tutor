@@ -131,6 +131,7 @@ flowchart LR
 - **Implementation.** In-memory token buckets in the single backend process. Running several instances would need a shared store such as Redis; that is noted for scale, not built for the prototype.
 - **Configuration.** All limits are settings in `config.yaml` (§5).
 - **Usage and cost log.** When `logs.enabled` is on, the backend writes one JSON-lines file per run, `logs/run-<timestamp>.jsonl` (gitignored). It records server start and stop, every Claude call (purpose, model, learner session ID, token usage, estimated cost from the `pricing` table) and a run summary with totals. Each `./start.sh` is one run; code reloads append to the same file.
+- **Deployment.** Fly.io, app `schematics-ai-tutor` in `sjc` ([`fly.toml`](../fly.toml)). One Docker image ([`Dockerfile`](../Dockerfile)) builds the frontend with `SCHEMATICS_PUBLIC=true` (a public build regardless of `config.yaml`) and runs one uvicorn worker that serves `/api`, `/ws` and the built frontend from one origin. Exactly one machine, always on: the rate limits, task cache and first-task pool are in memory, so a second machine would split them and a stopped one would lose them. The API key is a Fly secret, `ANTHROPIC_API_KEY`. The usage log is written inside the machine and lost on redeploy; server output is in `fly logs`. Deploy with `fly deploy`.
 - **Message size.** No fixed limit yet; the grid size caps already bound it indirectly. Typical message sizes will be observed in practice before a limit is set.
 
 ## 5. Configuration
@@ -139,7 +140,8 @@ The Claude models, behavior knobs, logging and pricing live in one YAML file, [`
 
 ```yaml
 public: false                  # true for a public deployment: hides debug features
-                               # (read by the frontend build; restart the dev server after a change)
+                               # (read by the frontend build; restart the dev server after a change;
+                               # SCHEMATICS_PUBLIC overrides it, and the Dockerfile sets true)
 
 logs:
   enabled: true                # usage and cost log per backend run
@@ -214,7 +216,7 @@ The values above are the defaults, as described in [contract.md](contract.md). T
 | Frontend | JavaScript + React, built with Vite | Decided |
 | Frontend ↔ backend transport | REST + WebSocket | Decided |
 | Workspace rendering | three.js | Decided |
-| Hosting | — | Open |
+| Hosting | Fly.io: one Docker image, one always-on machine (§4) | Decided |
 
 **Why three.js:** every component and wire is its own scene node, so the learner can select, move and edit any of them individually.
 
@@ -227,6 +229,9 @@ schematics-ai-tutor/
 ├── README.md                  project overview and how to run
 ├── LICENSE
 ├── config.yaml                models, knobs, rate limits, logging, pricing (§5)
+├── Dockerfile                 production image: built frontend + backend (§4)
+├── fly.toml                   Fly.io app: region, one always-on machine, health check
+├── .dockerignore
 ├── start.sh                   start the backend and frontend in the background
 ├── stop.sh                    stop it
 ├── check.sh                   integrity checks: docs, config, layout, secrets, tests
@@ -319,4 +324,4 @@ schematics-ai-tutor/
 
 ## Open decisions
 
-- Hosting and deployment
+None at the moment.

@@ -19,6 +19,16 @@ A Claude-based tutor for learning electric circuits and schematics on an interac
 
 Open http://127.0.0.1:5173. Server output goes to `.run/backend.log` and `.run/frontend.log`. Usage and cost logs go to `logs/run-<timestamp>.jsonl` (toggle `logs.enabled` in [`config.yaml`](config.yaml)). Details are in [backend/README.md](backend/README.md).
 
+## Deploy
+
+Hosted on [Fly.io](https://fly.io) as one machine; details are in [docs/design.md](docs/design.md#4-security-and-operations).
+
+```sh
+fly secrets set ANTHROPIC_API_KEY=...   # once
+fly deploy                              # builds the Dockerfile remotely and rolls out
+fly logs
+```
+
 ## Tests
 
 ```sh

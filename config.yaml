@@ -3,6 +3,7 @@
 
 # true for a public deployment: hides debug features (e.g. the editor's JSON view).
 # Read by the frontend build (frontend/vite.config.js); restart the dev server after a change.
+# SCHEMATICS_PUBLIC=true|false overrides it; the Dockerfile sets true for the deployed build.
 public: false
 
 logs:

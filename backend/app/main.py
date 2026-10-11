@@ -9,6 +9,7 @@ from datetime import datetime
 import anthropic
 from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.requests import HTTPConnection
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .config import REPO_ROOT, config_path, load_config
@@ -166,3 +167,10 @@ async def session_socket(
             task.cancel()
         if session.tasks:
             await asyncio.gather(*session.tasks, return_exceptions=True)
+
+
+# The deployed image serves the built frontend from the same origin (Dockerfile). Locally the Vite
+# dev server serves it, and there is no build. Mounted last, so /api and /ws take precedence.
+FRONTEND_DIST = REPO_ROOT / "frontend" / "dist"
+if FRONTEND_DIST.is_dir():
+    app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")
