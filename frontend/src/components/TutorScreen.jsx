@@ -89,7 +89,7 @@ function TaskPanel({ level, evaluation }) {
   );
 }
 
-function Editor({ level, board, evaluation, loading, error, startError, onRetry, drag, onDrop, onPlan, onReset }) {
+function Editor({ level, board, evaluation, loading, error, startError, onRetry, drag, onDrop, onPlan, onReset, onScale }) {
   const [showJson, setShowJson] = useState(false);
   let body;
   if (loading)
@@ -121,7 +121,8 @@ function Editor({ level, board, evaluation, loading, error, startError, onRetry,
         {showJson ? (
           <pre className="json">{readableJson({ ...level, board })}</pre>
         ) : (
-          <GridEditor board={board} readings={evaluation?.readings} drag={drag} onDrop={onDrop} onPlan={onPlan} />
+          <GridEditor board={board} readings={evaluation?.readings} drag={drag} onDrop={onDrop} onPlan={onPlan}
+                      onScale={onScale} />
         )}
         <div className="editor-tools">
           <button onClick={onReset} title="Put the board back to the task's start">
@@ -139,7 +140,7 @@ function Editor({ level, board, evaluation, loading, error, startError, onRetry,
 }
 
 // Press on an item to drag it onto the grid (docs/gui.md §4). Items are drawn as their symbols.
-function Inventory({ board, onStartDrag }) {
+function Inventory({ board, onStartDrag, scale }) {
   const parts = board?.inventory ?? [];
   const start = (item) => (event) => {
     event.preventDefault(); // no text selection while dragging
@@ -153,7 +154,7 @@ function Inventory({ board, onStartDrag }) {
         {parts.map((p) => (
           <li key={p.id} className="draggable tile" aria-label={partName(p)} title={partName(p)}
               onPointerDown={start({ kind: "part", ...p })}>
-            <PartIcon item={p} />
+            <PartIcon item={p} scale={scale} />
             <span className="caption">{partCaption(p)}</span>
           </li>
         ))}
@@ -163,7 +164,7 @@ function Inventory({ board, onStartDrag }) {
         {WIRE_PALETTE.map((w) => (
           <li key={w.key} className="draggable tile" aria-label={w.label} title={w.label}
               onPointerDown={start({ kind: "wire", shape: w.shape, rotation: w.rotation })}>
-            <WireIcon shape={w.shape} rotation={w.rotation} />
+            <WireIcon shape={w.shape} rotation={w.rotation} scale={scale} />
           </li>
         ))}
       </ul>
@@ -224,6 +225,7 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
   const tutor = useTutorSession(level, chat, onChat, board);
   const [drag, setDrag] = useState(null); // { item, rotation }
   const [fits, setFits] = useState(null);
+  const [scale, setScale] = useState(null); // board pixels per world unit; the inventory matches it
 
   // While dragging: R rotates, Esc cancels, releasing anywhere but the grid snaps back.
   useEffect(() => {
@@ -270,6 +272,7 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
             onDrop={drop}
             onPlan={setFits}
             onReset={() => onBoard(null)}
+            onScale={setScale}
             evaluation={tutor.evaluation}
             loading={loading}
             error={error}
@@ -278,7 +281,7 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
           />
           <div className="hint-bar" aria-live="polite">{hint(drag, fits)}</div>
         </div>
-        <Inventory board={board} onStartDrag={startDrag} />
+        <Inventory board={board} onStartDrag={startDrag} scale={scale} />
       </div>
       <Chat chat={chat} connected={tutor.connected} thinking={tutor.thinking} onSend={tutor.send} />
     </div>

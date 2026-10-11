@@ -323,7 +323,7 @@ button.danger {
   grid-area: work;
   min-width: 0;
   display: grid;
-  grid-template-columns: 1fr 220px;
+  grid-template-columns: minmax(0, 1fr) auto; /* the inventory takes the width its symbols need */
   gap: 12px;
   min-height: 0;
 }
@@ -541,13 +541,11 @@ button:focus-visible {
   gap: 6px;
 }
 
-/* Parts: two tiles per row with the value underneath; wires: a row of small tiles. */
-.palette.parts {
-  grid-template-columns: repeat(2, 1fr);
-}
-
+/* Two columns; symbols are drawn at the board's scale, so tiles size to them. */
+.palette.parts,
 .palette.wires {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, max-content);
+  align-items: center;
 }
 
 .palette .tile {
@@ -557,14 +555,9 @@ button:focus-visible {
   gap: 2px;
 }
 
-.palette .part-icon {
-  width: 100%;
-  height: 44px;
-}
-
+.palette .part-icon,
 .palette .wire-icon {
-  width: 40px;
-  height: 40px;
+  display: block;
 }
 
 .palette .caption {
@@ -574,17 +567,16 @@ button:focus-visible {
 }
 
 .palette .draggable {
-  padding: 4px 6px;
-  border: 1px solid var(--border);
+  padding: 2px;
   border-radius: 6px;
-  background: var(--panel);
   cursor: grab;
   user-select: none;
   touch-action: none;
 }
 
+/* Not buttons: no outline; a light tint on hover shows it can be picked up. */
 .palette .draggable:hover {
-  border-color: var(--accent);
+  background: var(--accent-tint);
 }
 
 body.dragging-item,

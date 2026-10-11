@@ -10,11 +10,13 @@ import { CELL, STYLE } from "./style.js";
 
 const MARGIN = 1.04; // a little air around the grid
 
-export default function GridEditor({ board, readings, drag, onDrop, onPlan }) {
+export default function GridEditor({ board, readings, drag, onDrop, onPlan, onScale }) {
   const host = useRef(null);
   const view = useRef(null);
   const pointer = useRef(null); // last grid point under the pointer while dragging
   const [unsupported, setUnsupported] = useState(false);
+  const scaleCallback = useRef(onScale);
+  scaleCallback.current = onScale;
 
   // Renderer, camera and resize handling: created once.
   useEffect(() => {
@@ -54,6 +56,8 @@ export default function GridEditor({ board, readings, drag, onDrop, onPlan }) {
       camera.top = cy + (height * scale) / 2;
       camera.bottom = cy - (height * scale) / 2;
       camera.updateProjectionMatrix();
+      // Pixels per world unit, rounded so the inventory (drawn at this scale) doesn't jitter.
+      scaleCallback.current?.(Math.round((1 / scale) * 100) / 100);
       state.render();
     };
 

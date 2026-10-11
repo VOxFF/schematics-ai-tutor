@@ -169,6 +169,8 @@ The frontend generates the hint text from the current UI state. Claude and the b
 | Parts | The level's `inventory`: resistors, meters, sources, drawn as their **symbols** (same style and color code as the grid) with the nominal value underneath (`20 Ω`, `4.7 kΩ`, `9 V`) or, for meters, the ID | **Depleting.** A placed part leaves the inventory, and a removed part returns. |
 | Wire palette | Straight horizontal, straight vertical, corner, T, +, each drawn as its shape | **Never depletes.** Corner, T and + rotate with **R**. |
 
+Inventory symbols are drawn **at the board's scale** (the editor reports its pixels per grid unit), so a part looks exactly as large in the inventory as on the board. Parts and wire pieces sit in two columns, as bare symbols rather than buttons; a light tint on hover shows they can be picked up. The inventory takes the width its symbols need.
+
 ## 7. Chat
 
 - The chat shows tutor messages, styled by `chat.kind`: nudge, praise, feedback and so on.
