@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Smoke test of a deployed app: health, page, assets, HTTPS redirect, WebSocket upgrade. No Claude calls.
 # Usage: ./smoke.sh [url] [commit]   (url defaults to production; with a commit, /api/health must report it)
-# Run by .github/workflows/ci.yml and deploy.yml after every deploy (docs/deployment.md §3).
+# Run by .github/workflows/deploy.yml after every deploy and rollback (docs/deployment.md §3).
 set -euo pipefail
 
 URL="${1:-https://schematics-ai-tutor.fly.dev}"

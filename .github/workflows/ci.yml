@@ -1,15 +1,13 @@
-# Pull requests: check, then deploy GitHub's merge commit (main + the PR) and smoke test it,
-# so the PR shows whether it works live before it's merged (docs/deployment.md §3).
-# Pushes to main: check only; main is already what's live.
+# ./check.sh on every pull request push and on main. It never deploys: shipping is deploy.yml,
+# started by the `deploy` label (docs/deployment.md §3).
 name: ci
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
 
-# A newer push to the same PR cancels the older run, deploy included.
+# A newer push to the same PR cancels the older run.
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -34,27 +32,3 @@ jobs:
         working-directory: frontend
       - name: Integrity checks
         run: ./check.sh
-
-  deploy:
-    needs: check
-    # Draft PRs run check only; marking the PR ready for review deploys it.
-    if: github.event_name == 'pull_request' && !github.event.pull_request.draft
-    runs-on: ubuntu-latest
-    concurrency:
-      group: deploy-production
-      cancel-in-progress: false
-    steps:
-      - uses: actions/checkout@v4   # on a pull request: the merge commit, main + the PR
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-      - name: Deploy
-        run: flyctl deploy --remote-only --env SCHEMATICS_COMMIT=${{ github.sha }}
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-
-  smoke:
-    needs: deploy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Smoke test
-        run: ./smoke.sh https://schematics-ai-tutor.fly.dev ${{ github.sha }}
