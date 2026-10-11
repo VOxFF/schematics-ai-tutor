@@ -78,7 +78,7 @@ Rendered with three.js in an orthographic, top-down view (`frontend/src/editor/`
 - outline thickness
 - empty and connected pin-hole radius
 - resistor length, height, fill and band width
-- battery plate sizes and colors (the positive plate is red), and the size and pin offset of the + and − marks
+- battery plate sizes and colors (the positive plate is red), and the size and placement (distance from the pin and from the wire) of the + and − marks
 - meter radius, outline thickness, fills per type (voltmeter light blue, ammeter light amber) and letter size
 - label size
 
@@ -90,7 +90,7 @@ Editing the file and saving reloads the page in development.
 
 | Component | Symbol | Label |
 |---|---|---|
-| `voltage_source` | Battery symbol: a long red plate (positive) and a short dark plate (negative); **+** and **−** beside their pins, at the ends of the symbol | `V1` and `12 V` on opposite sides |
+| `voltage_source` | Battery symbol: a long red plate (positive) and a short dark plate (negative); **+** and **−** near their pins, on opposite sides of the lead | `V1` and `12 V` on opposite sides |
 | `resistor` | Rectangle with its 4 color bands | `R1` and `20 Ω` on opposite sides, always shown |
 | `ammeter` | Light amber circle with a large **A** | Live reading beside it, e.g. `0.200 A` |
 | `voltmeter` | Light blue circle with a large **V** | Live reading beside it, e.g. `4.00 V` |

@@ -81,11 +81,11 @@ function symbol(component) {
     lead(-half, -CELL);
     g.add(rect(battery.long_plate_thickness, battery.long_plate, battery.positive_color, half, 0, 0.2));
     g.add(rect(battery.short_plate_thickness, battery.short_plate, battery.negative_color, -half, 0, 0.2));
-    // Signs sit beside the pins, at the ends of the symbol, so they never meet the labels
+    // Signs sit near their pins, on opposite sides of the lead, so they never meet the labels
     // (which stay level with the body).
-    const along = CELL - battery.sign_offset;
-    g.add(label("+", "editor-sign editor-plus", along, battery.sign_offset, battery.sign_size));
-    g.add(label("−", "editor-sign editor-minus", -along, battery.sign_offset, battery.sign_size));
+    const along = CELL - battery.sign_pin_offset;
+    g.add(label("+", "editor-sign editor-plus", along, battery.sign_wire_offset, battery.sign_size));
+    g.add(label("−", "editor-sign editor-minus", -along, -battery.sign_wire_offset, battery.sign_size));
   } else {
     lead(CELL, meter.radius);
     lead(-meter.radius, -CELL);

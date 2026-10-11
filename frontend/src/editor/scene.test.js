@@ -166,5 +166,7 @@ describe("label nodes and battery signs", () => {
     expect(signs["−"].distanceTo(pin([3, 5]))).toBeLessThan(CELL / 2);
     const labelY = world(node.getObjectByName("labels").getObjectByName("id")).y;
     for (const sign of Object.values(signs)) expect(Math.abs(sign.y - labelY)).toBeGreaterThan(CELL / 2);
+    // Opposite sides of the vertical lead (x = 3 * CELL).
+    expect(Math.sign(signs["+"].x - 3 * CELL)).toBe(-Math.sign(signs["−"].x - 3 * CELL));
   });
 });
