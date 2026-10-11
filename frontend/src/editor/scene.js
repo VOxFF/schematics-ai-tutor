@@ -36,11 +36,17 @@ function ring(inner, outer, color, z = 0) {
   return mesh;
 }
 
-function label(text, className, x = 0, y = 0, size = STYLE.labels.size) {
+// HTML label at (x, y). CSS2DRenderer overwrites the outer element's transform to position it,
+// so rotation goes on an inner span; `vertical` turns the text 90° to read bottom to top.
+function label(text, className, x = 0, y = 0, size = STYLE.labels.size, vertical = false) {
   const element = document.createElement("div");
-  element.className = className;
-  element.textContent = text;
-  element.style.fontSize = `${size}px`;
+  const inner = document.createElement("span");
+  inner.className = className;
+  inner.textContent = text;
+  inner.style.fontSize = `${size}px`;
+  inner.style.display = "inline-block";
+  if (vertical) inner.style.transform = "rotate(-90deg)";
+  element.append(inner);
   const object = new CSS2DObject(element);
   object.position.set(x, y, 0);
   return object;
@@ -102,16 +108,23 @@ function componentNode(component, reading) {
 
   const vertical = dx === 0;
   const valueText = component.value != null ? ` ${component.value} ${UNITS[component.type] ?? ""}` : "";
-  // Labels sit beside the symbol: right of vertical parts, below horizontal ones; readings opposite.
+  // The ID on one side, the value (or a meter's live reading) on the other: above / below a
+  // horizontal part, left / right of a vertical one. Labels of vertical parts are rotated 90°,
+  // except meter readings, which stay horizontal so the numbers are easy to read.
   const halfSize = {
     resistor: STYLE.resistor.height / 2,
-    voltage_source: STYLE.battery.long_plate / 2,
+    voltage_source: STYLE.battery.long_plate / 2 + 8, // clear of the + and − marks
   }[component.type] ?? STYLE.meter.radius;
   const clearance = halfSize + 12;
-  node.add(label(`${component.id}${valueText}`.trim(), "editor-label", vertical ? clearance : 0, vertical ? 0 : -clearance));
+  const [idX, idY] = vertical ? [-clearance, 0] : [0, clearance];
+  const [otherX, otherY] = vertical ? [clearance, 0] : [0, -clearance];
+  node.add(label(component.id, "editor-label", idX, idY, STYLE.labels.size, vertical));
   if (READING_UNITS[component.type]) {
     const text = reading == null ? "--" : `${reading} ${READING_UNITS[component.type]}`;
-    node.add(label(text, "editor-reading", vertical ? -clearance - 6 : 0, vertical ? 0 : clearance));
+    const offset = vertical ? 12 : 0; // horizontal text beside a vertical part needs a bit more room
+    node.add(label(text, "editor-reading", otherX + offset, otherY, STYLE.labels.size, false));
+  } else if (valueText) {
+    node.add(label(valueText.trim(), "editor-label editor-value", otherX, otherY, STYLE.labels.size, vertical));
   }
   return node;
 }

@@ -84,12 +84,14 @@ Rendered with three.js in an orthographic, top-down view (`frontend/src/editor/`
 
 Editing the file and saving reloads the page in development.
 
-**Symbols.** Components are drawn as flat schematic symbols, each labeled with its `id` and value:
+**Symbols.** Components are drawn as flat schematic symbols, each labeled with its `id` and value.
+
+**Labels.** The ID goes on one side of a part and its value on the other: above and below a horizontal part, left and right of a vertical one. A meter shows its live reading where a value would go. Labels of vertical parts are rotated 90° to read bottom to top, **except** current and voltage readings, which stay horizontal so the numbers are easy to read.
 
 | Component | Symbol | Label |
 |---|---|---|
-| `voltage_source` | Battery symbol: a long red plate (positive) and a short dark plate (negative), marked + and − | `V1 12 V` |
-| `resistor` | Rectangle with its 4 color bands | `R1 20 Ω`, always shown |
+| `voltage_source` | Battery symbol: a long red plate (positive) and a short dark plate (negative), marked + and − | `V1` and `12 V` on opposite sides |
+| `resistor` | Rectangle with its 4 color bands | `R1` and `20 Ω` on opposite sides, always shown |
 | `ammeter` | Light amber circle with a large **A** | Live reading beside it, e.g. `0.200 A` |
 | `voltmeter` | Light blue circle with a large **V** | Live reading beside it, e.g. `4.00 V` |
 

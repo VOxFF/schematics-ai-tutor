@@ -47,7 +47,7 @@ describe("scene graph", () => {
     expect(texts).toContain("4 V");
     const r1Texts = [];
     r1.traverse((o) => o.isCSS2DObject && r1Texts.push(o.element.textContent));
-    expect(r1Texts).toContain("R1 40 Ω");
+    expect(r1Texts).toEqual(expect.arrayContaining(["R1", "40 Ω"]));
   });
 
   test("grid coordinates map to world space with row 1 at the top", () => {
@@ -105,5 +105,42 @@ describe("schematic style", () => {
     const signs = [];
     root.getObjectByName("V1").traverse((o) => o.isCSS2DObject && signs.push(o.element.textContent));
     expect(signs).toEqual(expect.arrayContaining(["+", "−"]));
+  });
+});
+
+describe("labels", () => {
+  const labels = (node) => {
+    const out = [];
+    node.traverse((o) => o.isCSS2DObject && o.element.firstChild?.classList?.contains("editor-label") || o.isCSS2DObject && o.element.firstChild?.classList?.contains("editor-reading")
+      ? out.push({ text: o.element.textContent, x: Math.round(o.position.x), y: Math.round(o.position.y),
+                   rotated: o.element.firstChild.style.transform.includes("rotate") })
+      : null);
+    return out;
+  };
+  const one = (component, readings = {}) =>
+    buildBoard({ grid: { columns: 12, rows: 8 }, wires: [], components: [component] }, readings).getObjectByName(component.id);
+
+  test("horizontal part: ID above, value below, not rotated", () => {
+    const [id, value] = labels(one({ id: "R1", type: "resistor", value: 40, orientation: "E", pins: { a: [7, 3], b: [5, 3] } }));
+    expect(id).toMatchObject({ text: "R1", x: 0, rotated: false });
+    expect(value).toMatchObject({ text: "40 Ω", x: 0, rotated: false });
+    expect(id.y).toBeGreaterThan(0);
+    expect(value.y).toBeLessThan(0);
+  });
+
+  test("vertical part: ID left, value right, both rotated", () => {
+    const [id, value] = labels(one({ id: "V1", type: "voltage_source", value: 12, orientation: "N", pins: { positive: [3, 3], negative: [3, 5] } }));
+    expect(id).toMatchObject({ text: "V1", y: 0, rotated: true });
+    expect(value).toMatchObject({ text: "12 V", y: 0, rotated: true });
+    expect(id.x).toBeLessThan(0);
+    expect(value.x).toBeGreaterThan(0);
+  });
+
+  test("vertical meter: the ID rotates, the reading stays horizontal", () => {
+    const [id, reading] = labels(one({ id: "AM1", type: "ammeter", orientation: "S", pins: { positive: [9, 5], negative: [9, 3] } }, { AM1: 0.2 }));
+    expect(id).toMatchObject({ text: "AM1", rotated: true });
+    expect(reading).toMatchObject({ text: "0.2 A", rotated: false });
+    expect(id.x).toBeLessThan(0);
+    expect(reading.x).toBeGreaterThan(0);
   });
 });
