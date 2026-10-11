@@ -131,7 +131,7 @@ flowchart LR
 - **Implementation.** In-memory token buckets in the single backend process. Running several instances would need a shared store such as Redis; that is noted for scale, not built for the prototype.
 - **Configuration.** All limits are settings in `config.yaml` (§5).
 - **Usage and cost log.** When `logs.enabled` is on, the backend writes one JSON-lines file per run, `logs/run-<timestamp>.jsonl` (gitignored). It records server start and stop, every Claude call (purpose, model, learner session ID, token usage, estimated cost from the `pricing` table) and a run summary with totals. Each `./start.sh` is one run; code reloads append to the same file.
-- **Deployment.** Fly.io: one Docker image on one always-on machine, deployed from GitHub Actions when a PR merges to `main` (planned; `fly deploy` by hand until then). Details are in [deployment.md](deployment.md).
+- **Deployment.** Fly.io: one Docker image on one always-on machine, deployed from GitHub Actions when a PR merges to `main`, then smoke tested. Details are in [deployment.md](deployment.md).
 - **Message size.** No fixed limit yet; the grid size caps already bound it indirectly. Typical message sizes will be observed in practice before a limit is set.
 
 ## 5. Configuration
@@ -236,11 +236,13 @@ schematics-ai-tutor/
 ├── stop.sh                    stop it
 ├── check.sh                   integrity checks: docs, config, layout, secrets, tests
 ├── test.sh                    backend tests: unit + api, or live (real Claude)
+├── smoke.sh                   smoke test of a deployed app (docs/deployment.md)
 ├── .env.example               optional local overrides (copy to .env)
 ├── .gitignore
 ├── .github/
 │   └── workflows/
-│       └── check.yml          runs ./check.sh on every PR and on main
+│       ├── check.yml          runs ./check.sh on every PR and on main
+│       └── deploy.yml         deploys to Fly.io after check passes on main, then ./smoke.sh
 ├── scripts/
 │   └── check_integrity.py     docs, config, layout and secrets checks used by check.sh
 ├── docs/

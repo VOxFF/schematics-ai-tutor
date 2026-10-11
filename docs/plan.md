@@ -91,7 +91,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] `public` flag in `config.yaml`: a public build hides debug features (the editor's JSON view)
 - [x] Hosting decision: Fly.io ([deployment.md](deployment.md))
 - [x] Deploy backend and frontend: `Dockerfile` and `fly.toml`, one image serving both, at https://schematics-ai-tutor.fly.dev
-- [ ] Continuous deployment: GitHub Actions deploys on merge to `main`, then a smoke test ([deployment.md](deployment.md#3-continuous-deployment))
+- [x] Continuous deployment: GitHub Actions deploys on merge to `main`, then a smoke test ([deployment.md](deployment.md#3-continuous-deployment))
 - [ ] Logs and learner experience collection from the deployed app
 - [x] Smoke test on the public URL
 

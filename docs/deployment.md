@@ -11,7 +11,7 @@ How the prototype is hosted and how changes reach it. The security and rate-limi
 | URL | https://schematics-ai-tutor.fly.dev |
 | Region | `sjc` (San Jose) |
 | Machine | one, shared-cpu-1x, 512 MB, always on |
-| Config | [`fly.toml`](../fly.toml), [`Dockerfile`](../Dockerfile), [`.dockerignore`](../.dockerignore) |
+| Config | [`fly.toml`](../fly.toml), [`Dockerfile`](../Dockerfile), [`.dockerignore`](../.dockerignore), [`deploy.yml`](../.github/workflows/deploy.yml) |
 
 - **One image, one origin.** The Dockerfile builds the frontend with `SCHEMATICS_PUBLIC=true`, a public build regardless of `config.yaml`. It then runs one uvicorn worker that serves `/api`, `/ws` and the built frontend. The browser talks to one origin, as it does through the Vite proxy locally.
 - **Exactly one machine, always on.** The rate limits, the task cache, the first-task pool and the reference solutions are in memory ([design.md](design.md#3-system-architecture)).
@@ -32,27 +32,32 @@ How the prototype is hosted and how changes reach it. The security and rate-limi
 
 ## 3. Continuous deployment
 
-A merge to `main` deploys automatically, but only after the same checks that every PR runs pass on `main`.
+A merge to `main` deploys automatically, but only after the same checks that every PR runs pass on `main`. Checks, deploy and smoke test are separate workflows and jobs, so CI shows each one on its own.
 
 ```mermaid
 flowchart LR
-    PR[Pull request] -->|"check (./check.sh)"| M[Merge to main]
-    M --> C["check on main"]
-    C -->|pass| D["deploy: flyctl deploy --remote-only"]
+    PR[Pull request] -->|"check.yml: ./check.sh"| M[Merge to main]
+    M --> C["check.yml on main"]
+    C -->|pass| D["deploy.yml: deploy job"]
     C -->|fail| X[No deploy]
-    D --> S["smoke test on the public URL"]
+    D --> S["deploy.yml: smoke job (./smoke.sh)"]
     S -->|fail| F[Run fails, GitHub notifies]
 ```
 
-- **One workflow.** The `deploy` job lives in `.github/workflows/check.yml`, next to `check`. It sets `needs: check` and runs only for `push` events on `main`, so pull requests run the checks alone.
-- **Remote build.** `superfly/flyctl-actions/setup-flyctl` installs the CLI, and `flyctl deploy --remote-only` builds the image on Fly's builders, so the runner needs no Docker.
+- **Two workflows.** [`check.yml`](../.github/workflows/check.yml) runs `./check.sh` on every PR and on `main`, and knows nothing about deployment. [`deploy.yml`](../.github/workflows/deploy.yml) starts when `check` completes on `main` (`workflow_run`) and goes on only if it passed on a push.
+- **Two jobs in `deploy.yml`:**
+  - `deploy`: checks out the commit that passed `check`, installs the CLI with `superfly/flyctl-actions/setup-flyctl`, and runs `flyctl deploy --remote-only`. The image builds on Fly's builders, so the runner needs no Docker.
+  - `smoke` (`needs: deploy`): runs [`./smoke.sh`](../smoke.sh) on the public URL.
+- **By hand:** `deploy.yml` also has `workflow_dispatch`, so a redeploy can be started from the Actions tab without a merge. It skips the `check` gate.
 - **One deploy at a time.** `concurrency: deploy-production` makes two quick merges deploy in order, not in parallel.
 - **No approval gate.** A merge is the approval; a GitHub environment with required reviewers would add a click per merge to a fast build.
-- **Smoke test.** After the rollout, the job checks the public URL and fails the run when the app isn't serving:
-  - `GET /api/health` returns `{"status": "ok"}`
-  - `GET /` returns the app's HTML page
-  - It doesn't call Claude, so it costs nothing.
-- **Why GitHub Actions, not Fly's GitHub integration:** the workflow is in the repo and reviewed like code, and it waits for `./check.sh`; Fly's dashboard integration does neither.
+- **Smoke test.** `./smoke.sh [url]` checks a deployed app and exits non-zero on any failure. It defaults to the production URL and runs locally too. It doesn't call Claude, so it costs nothing.
+  - `GET /api/health` returns `{"status": "ok"}`, retried for up to ~60 s while a fresh machine starts
+  - `GET /` serves the app's page, and its JS asset is served
+  - `http://` redirects to `https://`
+  - `/ws/session` accepts a WebSocket upgrade (`101`)
+- **First run:** GitHub runs a `workflow_run` workflow from its copy on `main`, so `deploy.yml` first runs on the merge that adds it.
+- **Why GitHub Actions, not Fly's GitHub integration:** the workflows are in the repo and reviewed like code, and the deploy waits for `./check.sh`; Fly's dashboard integration does neither.
 
 ## 4. What a deploy resets
 
@@ -72,6 +77,7 @@ Frequent merges add a little Claude cost and interrupt anyone mid-task. That's a
 
 ```sh
 fly deploy                         # deploy the working tree by hand (first deploy, hotfix)
+./smoke.sh                         # smoke test the production URL (or ./smoke.sh <url>)
 fly status                         # machine state and the current release
 fly logs                           # live server output
 fly releases --image               # past releases and their images
@@ -88,5 +94,6 @@ fly secrets list                   # names only, never values
 - [x] First deploy, by hand (2026-10-11): health, page, assets, HTTPS redirect and WebSocket upgrade checked
 - [x] Playthrough in the browser on the public URL: a couple of tasks solved, task generation and the tutor working
 - [x] Deploy token in GitHub secrets (2026-10-11)
-- [ ] `deploy` job with the smoke test in `.github/workflows/check.yml`
+- [x] `deploy.yml` workflow: `deploy` and `smoke` jobs after `check` passes on `main`; `./smoke.sh`
+- [ ] First automatic deploy, on the merge that adds `deploy.yml`
 - [ ] Logs and learner experience collection (to be designed)

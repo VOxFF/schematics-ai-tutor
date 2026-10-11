@@ -21,12 +21,13 @@ Open http://127.0.0.1:5173. Server output goes to `.run/backend.log` and `.run/f
 
 ## Deploy
 
-Hosted on [Fly.io](https://fly.io) at https://schematics-ai-tutor.fly.dev. A merge to `main` will deploy automatically once checks pass (planned); details are in [docs/deployment.md](docs/deployment.md).
+Hosted on [Fly.io](https://fly.io) at https://schematics-ai-tutor.fly.dev. A merge to `main` deploys automatically once checks pass, then `./smoke.sh` checks the live app; details are in [docs/deployment.md](docs/deployment.md).
 
 ```sh
 fly secrets set ANTHROPIC_API_KEY=...   # once
 fly deploy                              # builds the Dockerfile remotely and rolls out
 fly logs
+./smoke.sh                              # smoke test the live app
 ```
 
 ## Tests

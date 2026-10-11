@@ -1,0 +1,41 @@
+# Continuous deployment to Fly.io (docs/deployment.md §3).
+# Runs after the check workflow passes on a push to main, or by hand from the Actions tab.
+name: deploy
+
+on:
+  workflow_run:
+    workflows: [check]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time; a second merge waits for the first to finish.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}   # the commit that passed check
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  smoke:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - name: Smoke test
+        run: ./smoke.sh
