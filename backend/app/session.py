@@ -2,38 +2,42 @@
 
 Every board.update records a snapshot; when editing pauses for `tutor.idle_threshold_ms`, the
 tutor reacts to the snapshots since its last call. A learner message or hint request cancels a
-pending reaction. The session runs the task's hint ladder (docs/tutor.md §3).
+pending reaction. The session runs the task's hint ladder (docs/tutor.md §3). Its tutor calls,
+board updates and board size are rate limited (rate_limits.py, docs/design.md §4).
 """
 
 import asyncio
 import time
 import uuid
-from collections import deque
 
 import anthropic
 
 from .evaluate import STATUS_RANK, evaluate
 from .graph import to_graph
 from .grid import validate_grid
+from .rate_limits import RateLimiter
 from .task_cache import solved
 from .tutor import answer
 
 
 class Session:
-    def __init__(self, send, *, config: dict, claude, usage_log, references: dict, task_cache=None):
+    def __init__(self, send, *, config: dict, claude, usage_log, references: dict, task_cache=None,
+                 limits: RateLimiter | None = None):
         self.send = send  # async callable taking a message dict
         self.config = config
         self.claude = claude
         self.usage_log = usage_log
         self.references = references
         self.task_cache = task_cache  # pre-generation (docs/design.md §3), or None
+        self.limits = limits or RateLimiter(config.get("rate_limits", {}))
         self.id = uuid.uuid4().hex[:12]
         self.level: dict | None = None
         self.board: dict | None = None
         self.seq = 0  # seq of the board in `self.board` (0: the board from session.start)
         self.history: list[dict] = []
         self.busy = False
-        self.calls: deque[float] = deque()
+        self.deferred_update: dict | None = None  # the latest board.update over the rate limit
+        self.deferred: asyncio.Task | None = None  # applies it once the limit allows
         self.tasks: set[asyncio.Task] = set()
         self.snapshots: list[dict] = []  # boards since the tutor's last call, oldest first
         self.started_at = time.monotonic()
@@ -61,6 +65,7 @@ class Session:
 
     async def _set_board(self, board, code: str = "bad_message") -> bool:
         errors = validate_grid(board, allow_null_targets=True) if isinstance(board, dict) else ["board must be an object"]
+        errors = errors or self.limits.grid_errors(board)
         if errors:
             await self.error(code, "; ".join(errors[:5]))
             return False
@@ -96,6 +101,24 @@ class Session:
         if self.level is None:
             await self.error("no_session", "send session.start first")
             return
+        if not self.limits.board_updates.allow(self.id):
+            # Over the limit: keep only the latest board, and evaluate it as soon as the limit allows.
+            self.deferred_update = message
+            if self.deferred is None:
+                self.deferred = self._start_task(self._apply_deferred())
+            return
+        self.deferred_update = None  # this board is newer than any deferred one
+        await self._apply_update(message)
+
+    async def _apply_deferred(self) -> None:
+        while self.deferred_update is not None:
+            await asyncio.sleep(max(self.limits.board_updates.retry_after(self.id), 0.01))
+            if self.deferred_update is not None and self.limits.board_updates.allow(self.id):
+                message, self.deferred_update = self.deferred_update, None
+                await self._apply_update(message)
+        self.deferred = None
+
+    async def _apply_update(self, message: dict) -> None:
         if await self._set_board(message.get("board")):
             self.seq = message.get("seq", 0)
             evaluation = self._evaluate()
@@ -131,11 +154,13 @@ class Session:
         self.idle = None
         if self.busy:
             return  # a call is running; the next pause reacts to these snapshots too
-        if self._over_rate_limit():
+        if not self.limits.claude_allowed():
+            self.usage_log.event("reaction_skipped", session_id=self.id, reason="claude_budget")
+            return
+        if not self.limits.tutor.allow(self.id):
             self.usage_log.event("reaction_skipped", session_id=self.id, reason="rate_limited")
             return
         self.busy = True
-        self.calls.append(time.monotonic())
         request_id = f"react-{uuid.uuid4().hex[:8]}"
         await self.send({"type": "tutor.started", "request_id": request_id, "trigger": "reaction"})
         await self._answer(request_id, None, offer_hint=self._offer_hint())
@@ -156,13 +181,6 @@ class Session:
             return True
         return False
 
-    def _over_rate_limit(self) -> bool:
-        limit = self.config.get("rate_limits", {}).get("tutor_calls_per_session_per_min", 6)
-        now = time.monotonic()
-        while self.calls and now - self.calls[0] > 60:
-            self.calls.popleft()
-        return len(self.calls) >= limit
-
     async def request(self, message: dict) -> None:
         request_id = message.get("request_id") or uuid.uuid4().hex[:8]
         text = str(message.get("learner_text") or "").strip()
@@ -175,12 +193,14 @@ class Session:
                              request_id)
         elif self.claude is None:
             await self.error("tutor_unavailable", "The tutor is not configured.", request_id)
-        elif self.busy or self._over_rate_limit():
+        elif not self.limits.claude_allowed():
+            await self.error("tutor_unavailable", "The tutor has reached today's limit; please try again tomorrow.",
+                             request_id)
+        elif self.busy or not self.limits.tutor.allow(self.id):
             await self.error("rate_limited", "The tutor needs a moment; try again shortly.", request_id)
         else:
             self._cancel_idle_timer()  # the learner's message takes priority over a pending reaction
             self.busy = True
-            self.calls.append(time.monotonic())
             await self.send({"type": "tutor.started", "request_id": request_id, "trigger": "request"})
             # The server decides a hint's level: one above the highest given, at most 3.
             hint = min(self.hint_level + 1, 3) if action == "hint" else 0

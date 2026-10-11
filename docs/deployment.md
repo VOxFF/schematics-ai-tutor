@@ -14,9 +14,10 @@ How the prototype is hosted and how changes reach it. The security and rate-limi
 | Config | [`fly.toml`](../fly.toml), [`Dockerfile`](../Dockerfile), [`.dockerignore`](../.dockerignore), [`ci.yml`](../.github/workflows/ci.yml), [`deploy.yml`](../.github/workflows/deploy.yml) |
 
 - **One image, one origin.** The Dockerfile builds the frontend with `SCHEMATICS_PUBLIC=true`, a public build regardless of `config.yaml`. It then runs one uvicorn worker that serves `/api`, `/ws` and the built frontend. The browser talks to one origin, as it does through the Vite proxy locally.
-- **Exactly one machine, always on.** The rate limits, the task cache, the first-task pool and the reference solutions are in memory ([design.md](design.md#3-system-architecture)).
+- **Exactly one machine, always on.** The rate limits (except the day's Claude spend, kept on the volume), the task cache, the first-task pool and the reference solutions are in memory ([design.md](design.md#3-system-architecture)).
   - *Why:* a second machine would split that state, and a stopped machine would lose it and refill the first-task pool with new Claude calls on every cold start.
   - *Cost:* one small machine running around the clock. Scaling out would need a shared store such as Redis.
+- **Rate limits:** [design.md](design.md#rate-limits), set in `ratelimiting.yaml`, which the image includes. Per-IP limits use the `Fly-Client-IP` header that Fly's proxy sets.
 - **Health check:** Fly checks `GET /api/health` every 30 s. A deploy waits for it to pass, and Fly's proxy stops routing to a machine that fails it.
 
 ## 2. Secrets
@@ -132,8 +133,9 @@ A deploy replaces the machine's filesystem, so the logs live on a **Fly volume**
 |---|---|
 | `/data/logs/` | The current part of each log: `<log>-<run id>.<part>.jsonl`, e.g. `run-20261011-172121.003.jsonl` |
 | `/data/logs/history/` | Archived parts of all logs, gzipped: `<log>-<run id>.<part>.jsonl.gz` |
+| `/data/state/` | Not a log: the day's Claude spend, `claude-budget.json`, so a deploy doesn't reset the budget ([design.md](design.md#rate-limits)) |
 
-- `SCHEMATICS_LOGS_DIR=/data/logs` (`[env]` in `fly.toml`) overrides `logs.dir` in `config.yaml`. Locally the same code uses the repo's `logs/` folder.
+- `SCHEMATICS_LOGS_DIR=/data/logs` (`[env]` in `fly.toml`) overrides `logs.dir` in `config.yaml`, and `SCHEMATICS_STATE_DIR=/data/state` overrides `claude_budget.state_dir` in `ratelimiting.yaml`. Locally the same code uses the repo's `logs/` and `state/` folders.
 - A 1 GB volume is plenty: the history is capped well below it (`history_max_mb`), and it costs about $0.15 a month.
 - File names sort in time order: the run id is the start time, and the part number grows within a run.
 

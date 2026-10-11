@@ -5,7 +5,8 @@ import pytest
 pytestmark = pytest.mark.usefixtures("any_level")
 
 from app.task_generation import GenerationResult
-from app.main import References, app, get_claude, get_config, get_references, get_task_cache, get_usage_log
+from app.main import References, app, get_claude, get_config, get_limits, get_references, get_task_cache, get_usage_log
+from app.rate_limits import RateLimiter
 from app.usage_log import UsageLog
 from tests.conftest import FakeClaude, as_claude_output, load_example, text_response
 
@@ -13,13 +14,14 @@ from tests.conftest import FakeClaude, as_claude_output, load_example, text_resp
 REFERENCES = References()
 
 
-def client_with(claude, config, cache=None):
+def client_with(claude, config, cache=None, limits=None):
     app.dependency_overrides = {
         get_claude: lambda: claude,
         get_config: lambda: config,
         get_usage_log: lambda: UsageLog(None),
         get_references: lambda: REFERENCES,
         get_task_cache: lambda: cache,  # None: generate on request; the cache has its own tests
+        get_limits: lambda: limits or RateLimiter(config["rate_limits"]),
     }
     return TestClient(app)
 
@@ -71,3 +73,34 @@ def test_generate_failure_is_502_with_errors(config):
 
 def teardown_function():
     app.dependency_overrides = {}
+
+
+def test_generate_is_limited_per_ip(config):
+    limits = RateLimiter({**config["rate_limits"], "task_generation": {"per_ip_per_hour": 1}})
+    fake = FakeClaude([text_response(as_claude_output(load_example()))])
+    client = client_with(fake, config, limits=limits)
+    assert client.post("/api/tasks/generate", json={"skill_level": 3}).status_code == 200
+    refused = client.post("/api/tasks/generate", json={"skill_level": 3})
+    assert refused.status_code == 429
+    assert "try again in 60 min" in refused.json()["detail"]
+    assert refused.headers["retry-after"] == "3600"
+
+
+def test_generate_stops_at_the_claude_budget(config):
+    limits = RateLimiter(config["rate_limits"])
+    limits.budget.spend(limits.budget.usd_per_day)
+    fake = FakeClaude([])
+    response = client_with(fake, config, limits=limits).post("/api/tasks/generate", json={"skill_level": 3})
+    assert response.status_code == 429 and "today's limit" in response.json()["detail"]
+    assert fake.requests == []
+
+
+def test_rest_requests_are_limited_per_ip_but_not_health(config):
+    app.state.limits = RateLimiter({**config["rate_limits"], "rest": {"requests_per_ip_per_min": 1}})
+    try:
+        client = client_with(None, config)
+        assert client.post("/api/tasks/generate", json={"skill_level": 1}).status_code == 503  # no Claude
+        assert client.post("/api/tasks/generate", json={"skill_level": 1}).status_code == 429
+        assert client.get("/api/health").status_code == 200
+    finally:
+        del app.state.limits

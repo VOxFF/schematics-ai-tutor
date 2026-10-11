@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const RECONNECT_MS = 2000;
+const REFUSED_RECONNECT_MS = 30000; // the server refused the session (1008: too many from this network)
 
 function socketUrl() {
   const scheme = window.location.protocol === "https:" ? "wss" : "ws";
@@ -91,10 +92,10 @@ export function useTutorSession(level, chat, onChat, board, progress, { hintLeve
           }
         } else if (message.type === "error") handleError(ws, message);
       };
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         setConnected(false);
         setThinking(false);
-        if (!closed) retry = setTimeout(open, RECONNECT_MS);
+        if (!closed) retry = setTimeout(open, event?.code === 1008 ? REFUSED_RECONNECT_MS : RECONNECT_MS);
       };
     };
 

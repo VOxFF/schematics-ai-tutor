@@ -1,6 +1,6 @@
 """Repository integrity checks, run by ./check.sh locally and in CI.
 
-Checks: markdown links and anchors, config.yaml vs. the documented defaults,
+Checks: markdown links and anchors, config.yaml and ratelimiting.yaml vs. the documented defaults,
 the layout snapshot in docs/design.md, secrets, stale design terms, and the
 readable JSON format of tracked .json files.
 """
@@ -31,6 +31,9 @@ STALE_TERMS = [
     "slotAt",
     "MAX_CONDITION",
     "check.yml",  # renamed ci.yml when deploys moved before the merge
+    "claude_calls_per_day",  # the budget is in dollars: claude_budget.usd_per_day
+    "tutor_calls_per_session_per_min",  # ratelimiting.yaml: tutor.calls_per_session_per_min
+    "grid_max_points",  # ratelimiting.yaml: grid.max_points
 ]
 # Split so this file doesn't match its own secret scan.
 KEY_PATTERN = re.compile("sk-" + r"ant-[A-Za-z0-9_\-]{8,}")
@@ -84,6 +87,16 @@ def check_config() -> None:
     for section in actual:
         if section not in documented:
             errors.append(f"config.yaml: section '{section}' is not documented in docs/design.md §5")
+
+
+def check_rate_limits() -> None:
+    """ratelimiting.yaml must match the block in docs/design.md §4 exactly."""
+    match = re.search(r"### Rate limits.*?```yaml\n(.*?)```", DESIGN.read_text(), re.S)
+    if not match:
+        errors.append("docs/design.md: no ratelimiting.yaml block in §4")
+        return
+    if yaml.safe_load(match.group(1)) != yaml.safe_load((ROOT / "ratelimiting.yaml").read_text()):
+        errors.append("ratelimiting.yaml differs from docs/design.md §4")
 
 
 def check_layout(tracked: list[str]) -> None:
@@ -149,6 +162,7 @@ def main() -> int:
     md_files = [t for t in tracked if t.endswith(".md")]
     check_links(md_files)
     check_config()
+    check_rate_limits()
     check_layout(tracked)
     check_secrets(tracked)
     check_stale_terms(md_files)

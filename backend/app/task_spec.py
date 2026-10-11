@@ -77,12 +77,12 @@ def check_format(spec: dict, grid_limits: dict | None = None, removed_targets_al
 
     limits = grid_limits or {}
     size = board.get("grid") or {}
-    max_side = limits.get("grid_max_points")
+    max_side = limits.get("max_points")
     if max_side and (size.get("columns", 0) > max_side or size.get("rows", 0) > max_side):
         errors.append(f"complete_board: grid larger than {max_side} x {max_side}")
-    if limits.get("grid_max_components") and len(board.get("components", [])) > limits["grid_max_components"]:
+    if limits.get("max_components") and len(board.get("components", [])) > limits["max_components"]:
         errors.append("complete_board: too many components")
-    if limits.get("grid_max_wires") and len(board.get("wires", [])) > limits["grid_max_wires"]:
+    if limits.get("max_wires") and len(board.get("wires", [])) > limits["max_wires"]:
         errors.append("complete_board: too many wire pieces")
 
     components = {c.get("id"): c for c in board.get("components", [])}

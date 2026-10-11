@@ -5,13 +5,14 @@ import time
 
 from fastapi.testclient import TestClient
 
-from app.main import References, app, get_claude, get_config, get_references, get_task_cache, get_usage_log
+from app.main import References, app, get_claude, get_config, get_limits, get_references, get_task_cache, get_usage_log
+from app.rate_limits import RateLimiter
 from app.task_cache import progress_key, solved
 from app.usage_log import UsageLog
 from tests.conftest import FakeClaude, example_level, tutor_reply
 
 
-def connect(config, claude, cache=None):
+def connect(config, claude, cache=None, limits=None):
     level, spec = example_level()
     references = References()
     references[level["id"]] = spec["complete_board"]
@@ -21,6 +22,7 @@ def connect(config, claude, cache=None):
         get_usage_log: lambda: UsageLog(None),
         get_references: lambda: references,
         get_task_cache: lambda: cache,
+        get_limits: lambda: limits or RateLimiter(config["rate_limits"]),
     }
     return TestClient(app), level
 
@@ -143,10 +145,9 @@ def test_learner_message_cancels_the_pending_reaction(config):
 
 
 def test_reaction_is_skipped_over_the_rate_limit(config):
-    limited = fast_reactions(config)
-    limited["rate_limits"] = {**config["rate_limits"], "tutor_calls_per_session_per_min": 0}
+    limits = RateLimiter({**config["rate_limits"], "tutor": {"calls_per_session_per_min": 0}})
     fake = FakeClaude([])
-    client, level = connect(limited, fake)
+    client, level = connect(fast_reactions(config), fake, limits=limits)
     with client.websocket_connect("/ws/session") as ws:
         ws.send_json({"type": "session.start", "level": level})
         ws.receive_json()
@@ -203,3 +204,56 @@ def test_reactions_without_progress_offer_a_hint(config):
             offered.append(ws.receive_json()["hint_offered"])
     assert offered == [False, False, True]  # the first sets the best status; then two without progress
     assert '"offer_hint": true' in fake.requests[2]["messages"][0]["content"]
+
+
+def test_over_the_claude_budget_the_tutor_rests_but_evaluation_works(config):
+    limits = RateLimiter(config["rate_limits"])
+    limits.budget.spend(limits.budget.usd_per_day)
+    fake = FakeClaude([])
+    client, level = connect(fast_reactions(config), fake, limits=limits)
+    with client.websocket_connect("/ws/session") as ws:
+        ws.send_json({"type": "session.start", "level": level})
+        assert ws.receive_json()["type"] == "evaluation"
+        ws.send_json({"type": "tutor.request", "request_id": "r1", "action": "hint"})
+        error = ws.receive_json()
+        assert error["code"] == "tutor_unavailable" and error["request_id"] == "r1"
+        ws.send_json({"type": "board.update", "seq": 1, "board": level["board"]})
+        assert ws.receive_json()["type"] == "evaluation"
+        time.sleep(0.2)  # past the idle threshold: the reaction is skipped
+    assert fake.requests == []
+
+
+def test_oversized_learner_board_is_rejected(config):
+    client, level = connect(config, FakeClaude([]))
+    big = {**level["board"], "grid": {"columns": 31, "rows": 8}}
+    with client.websocket_connect("/ws/session") as ws:
+        ws.send_json({"type": "session.start", "level": level})
+        ws.receive_json()
+        ws.send_json({"type": "board.update", "seq": 1, "board": big})
+        error = ws.receive_json()
+    assert error["code"] == "bad_message" and "30 x 30" in error["message"]
+
+
+def test_board_updates_over_the_limit_are_coalesced_to_the_latest(config):
+    limits = RateLimiter({**config["rate_limits"], "board_updates": {"per_session_per_sec": 1}})
+    client, level = connect(config, None, limits=limits)
+    with client.websocket_connect("/ws/session") as ws:
+        ws.send_json({"type": "session.start", "level": level})
+        ws.receive_json()
+        for seq in (1, 2, 3):
+            ws.send_json({"type": "board.update", "seq": seq, "board": level["board"]})
+        seqs = [ws.receive_json()["seq"], ws.receive_json()["seq"]]
+    assert seqs == [1, 3]  # 2 was over the limit and replaced by 3, evaluated a second later
+
+
+def test_sessions_per_ip_are_limited(config):
+    limits = RateLimiter({**config["rate_limits"], "sessions": {"per_ip_per_hour": 30, "open_per_ip": 1}})
+    client, level = connect(config, None, limits=limits)
+    with client.websocket_connect("/ws/session") as first:
+        with client.websocket_connect("/ws/session") as second:
+            assert second.receive_json()["code"] == "rate_limited"
+        first.send_json({"type": "session.start", "level": level})
+        assert first.receive_json()["type"] == "evaluation"
+    with client.websocket_connect("/ws/session") as third:  # the first one closed
+        third.send_json({"type": "session.start", "level": level})
+        assert third.receive_json()["type"] == "evaluation"

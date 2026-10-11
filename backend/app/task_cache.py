@@ -41,8 +41,10 @@ class TaskCache:
     """
 
     def __init__(self, produce: Callable[[dict], Awaitable], *, first_task_pool: int = 2,
-                 max_entries: int = 50, ttl_s: float = 3600, usage_log=None, clock=time.monotonic):
+                 max_entries: int = 50, ttl_s: float = 3600, usage_log=None, clock=time.monotonic,
+                 allow_background: Callable[[], bool] = lambda: True):
         self.produce = produce
+        self.allow_background = allow_background  # False stops pre-generation, e.g. near the Claude budget
         self.first_task_pool = first_task_pool
         self.max_entries = max_entries
         self.ttl_s = ttl_s
@@ -81,6 +83,9 @@ class TaskCache:
     def pregenerate(self, progress: dict, count: int = 1) -> None:
         """Start background generations until `count` are cached or running for this progress."""
         queue = self.entries.setdefault(progress_key(progress), [])
+        if len(queue) < count and not self.allow_background():
+            self._event("task_pregeneration_skipped", skill_level=progress["skill_level"], reason="claude_budget")
+            return
         while len(queue) < count:
             queue.append((self.clock(), self._start(progress)))
             self._event("task_pregeneration_started", skill_level=progress["skill_level"])

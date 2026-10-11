@@ -62,7 +62,7 @@ Curated levels are the very first task and the fallback when generation fails. M
 
 > **Build status.** Implemented: `GET /api/health` and `POST /api/tasks/generate`, which the client calls for every task, the first one included. The endpoint serves pre-generated tasks from a cache keyed by progress, with a pool of first tasks, and then generates the next task in the background ([design.md](design.md#3-system-architecture)); this replaces the planned WebSocket `task.next` / `task.ready` delivery for now. Curated levels and `/api/levels` are not built yet, so a generation failure reaches the learner as an error with a retry button.
 
-Errors: `404` for an unknown level, `429` when the rate limit is exceeded.
+Errors: `404` for an unknown level; `429` with a `detail` message when a limit is exceeded: generations per IP (with `Retry-After`), the daily Claude budget, or REST requests per IP ([design.md](design.md#rate-limits)).
 
 ### WebSocket session
 
@@ -99,7 +99,7 @@ Every message is a JSON object with a `type` field.
 | `evaluation` | `seq`, `evaluation: Evaluation` | The client ignores any `seq` older than the last one it applied |
 | `tutor.started` | `request_id`, `trigger` (`"reaction"` or `"request"`) | The UI shows "tutor is thinking". Reactions get a server-generated `request_id`. |
 | `tutor.message` | `request_id`, `seq`, `evaluation`, `message: TutorMessage`, `hint_offered` | The complete reply, sent only after the backend has validated it. `hint_offered` is true when the reply offers a hint, so the UI highlights the Hint button. `seq` is the board the reply is about (0: the `session.start` board); when the learner has edited since, the client shows the text but drops the highlights and the evaluation, which are out of date. |
-| `error` | `code`, `message`, `request_id?` | Codes: `bad_message`, `unknown_level`, `rate_limited`, `tutor_unavailable`, `no_session` (a request arrived before `session.start`, e.g. after a server restart: the client re-sends `session.start` and repeats the request), `session_rejected` (the saved level or board can't be resumed: the client offers a new task). Limits are in [design.md](design.md#4-security-and-operations). Generation failures never surface: they fall back to a curated level. |
+| `error` | `code`, `message`, `request_id?` | Codes: `bad_message`, `unknown_level`, `rate_limited`, `tutor_unavailable`, `no_session` (a request arrived before `session.start`, e.g. after a server restart: the client re-sends `session.start` and repeats the request), `session_rejected` (the saved level or board can't be resumed: the client offers a new task). `tutor_unavailable` also answers a request over the daily Claude budget. A connection over the per-IP session limit gets `rate_limited` and is closed with code `1008`; the client then waits 30 s before reconnecting. Limits are in [design.md](design.md#rate-limits). Generation failures never surface: they fall back to a curated level. |
 
 **Rules**
 
@@ -114,7 +114,8 @@ Every message is a JSON object with a `type` field.
 - A second `tutor.request` while one is in flight gets `error: rate_limited`.
 - The `evaluation` in `tutor.message` always comes from a fresh server-side evaluator run, never from the client.
 - If Claude fails, the learner still has the latest `evaluation`, and the server sends `error: tutor_unavailable`: with the `request_id` for a request, without one for a reaction, so the client only stops "thinking" and shows no error.
-- A reaction over the rate limit is skipped silently.
+- A reaction over the rate limit or the daily Claude budget is skipped silently.
+- `board.update`s faster than the limit (20 per second) are coalesced: the latest one is evaluated as soon as the limit allows, and the ones in between get no `evaluation`.
 
 ### Data model
 

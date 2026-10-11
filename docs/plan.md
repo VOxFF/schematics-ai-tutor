@@ -55,7 +55,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Configuration loader for the root `config.yaml`
 - [x] Usage and cost log per backend run (`logs/`, on/off in `config.yaml`)
 - [x] Integrity checks: `./check.sh` locally and in GitHub Actions on every PR
-- [ ] Rate limiting (per session, per IP, global Claude budget) and API key handling
+- [x] Rate limiting (per session, per IP, daily Claude budget in dollars) in `rate_limits.py` with `ratelimiting.yaml`; API key handling ([design.md](design.md#rate-limits))
 - [x] Test suite tiers: `unit`, `api` (fake Claude), `live` (real Claude, opt-in); `./test.sh`
 - [x] Tests for the evaluator
 

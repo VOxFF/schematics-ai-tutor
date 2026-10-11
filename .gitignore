@@ -259,3 +259,6 @@ backend/keys/*
 
 # Backend usage and cost logs (one file per run)
 /logs/
+
+# Backend state kept across restarts, e.g. the day's Claude spend (ratelimiting.yaml)
+/state/

@@ -1,4 +1,4 @@
-"""FastAPI entry point. REST lives under /api; the WebSocket session will be /ws/session."""
+"""FastAPI entry point. REST lives under /api, the learning session is the WebSocket /ws/session."""
 
 import asyncio
 import os
@@ -7,13 +7,15 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 
 import anthropic
-from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.requests import HTTPConnection
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .config import REPO_ROOT, config_path, load_config
 from .log_archive import LogArchive
+from .rate_limits import RateLimiter, client_ip
 from .session import Session
 from .task_cache import TaskCache
 from .task_generation import generate_task
@@ -46,12 +48,16 @@ async def lifespan(app: FastAPI):
         archive.on_archived = lambda result: usage_log.event("logs_archived", **result)
         await asyncio.to_thread(archive.archive, "startup")
         nightly = asyncio.create_task(archive.nightly())
+    # Rate limits and the daily Claude budget (ratelimiting.yaml, docs/design.md §4).
+    limits = RateLimiter.from_settings(config.get("rate_limits", {}))
+    usage_log.on_cost = limits.budget.spend
+    app.state.limits = limits
     app.state.config = config
     app.state.usage_log = usage_log
     app.state.references = References()
     # The SDK reads ANTHROPIC_API_KEY from the environment; without it, Claude features are off.
     app.state.claude = anthropic.AsyncAnthropic() if os.environ.get("ANTHROPIC_API_KEY") else None
-    app.state.task_cache = task_cache(app.state.claude, config, usage_log)
+    app.state.task_cache = task_cache(app.state.claude, config, usage_log, limits)
     usage_log.event("server_started", run_id=run_id, pid=os.getpid(), config=str(config_path()),
                     claude=app.state.claude is not None, pregeneration=app.state.task_cache is not None)
     if app.state.task_cache:
@@ -65,7 +71,7 @@ async def lifespan(app: FastAPI):
     usage_log.event("server_stopped", pid=os.getpid())
 
 
-def task_cache(claude, config: dict, usage_log: UsageLog) -> TaskCache | None:
+def task_cache(claude, config: dict, usage_log: UsageLog, limits: RateLimiter) -> TaskCache | None:
     """Pre-generation (docs/design.md §3), or None without Claude or when it's turned off."""
     settings = config.get("pregeneration", {})
     if claude is None or not settings.get("enabled", True):
@@ -77,7 +83,7 @@ def task_cache(claude, config: dict, usage_log: UsageLog) -> TaskCache | None:
 
     return TaskCache(produce, first_task_pool=settings.get("first_task_pool", 2),
                      max_entries=settings.get("max_entries", 50), ttl_s=settings.get("ttl_s", 3600),
-                     usage_log=usage_log)
+                     usage_log=usage_log, allow_background=lambda: limits.claude_allowed(background=True))
 
 
 app = FastAPI(title="Schematics AI Tutor", lifespan=lifespan)
@@ -104,6 +110,26 @@ def get_task_cache(conn: HTTPConnection) -> TaskCache | None:
     return getattr(conn.app.state, "task_cache", None)  # absent when the app runs without its lifespan
 
 
+def get_limits(conn: HTTPConnection) -> RateLimiter:
+    # Without the lifespan (tests), fresh limits from ratelimiting.yaml, without the budget's state file.
+    limits = getattr(conn.app.state, "limits", None)
+    return limits if limits is not None else RateLimiter(load_config().get("rate_limits", {}))
+
+
+@app.middleware("http")
+async def rest_rate_limit(request: Request, call_next):
+    """REST requests per IP; the health check is exempt (Fly polls it, and ./smoke.sh)."""
+    path = request.url.path
+    limits = getattr(request.app.state, "limits", None)  # set by the lifespan
+    if limits is not None and path.startswith("/api/") and path != "/api/health":
+        ip = client_ip(request)
+        if not limits.rest.allow(ip):
+            retry = int(limits.rest.retry_after(ip)) + 1
+            return JSONResponse({"detail": "Too many requests; try again shortly."}, status_code=429,
+                                headers={"Retry-After": str(retry)})
+    return await call_next(request)
+
+
 @app.get("/api/health")
 def health() -> dict:
     # The deployed commit, set by the deploy workflows; lets ./smoke.sh confirm the new release is live.
@@ -118,16 +144,28 @@ class GenerateTaskRequest(BaseModel):
 @app.post("/api/tasks/generate")
 async def generate(
     body: GenerateTaskRequest,
+    request: Request,
     config: dict = Depends(get_config),
     usage_log: UsageLog = Depends(get_usage_log),
     claude=Depends(get_claude),
     references: dict = Depends(get_references),
     cache: TaskCache | None = Depends(get_task_cache),
+    limits: RateLimiter = Depends(get_limits),
 ) -> dict:
     """The task for this progress as a Level: pre-generated when the cache has one, else generated
     now. The task after it is then generated in the background (docs/design.md §3)."""
     if claude is None:
         raise HTTPException(503, "Claude is not configured: set ANTHROPIC_API_KEY or backend/keys/apikey.txt")
+    # Curated levels will be served here once they exist (docs/design.md §4); until then, a 429.
+    if not limits.claude_allowed():
+        usage_log.event("generation_refused", reason="claude_budget")
+        raise HTTPException(429, "Task generation has reached today's limit; please try again tomorrow.")
+    ip = client_ip(request)
+    if not limits.generations.allow(ip):
+        minutes = int(limits.generations.retry_after(ip) // 60) + 1
+        usage_log.event("generation_refused", reason="rate_limited")
+        raise HTTPException(429, f"Task generation is paused; please try again in {minutes} min.",
+                            headers={"Retry-After": str(minutes * 60)})
     progress = {"skill_level": body.skill_level, "history": body.history}
     if cache is not None:
         result = await cache.get(progress)
@@ -153,8 +191,17 @@ async def session_socket(
     claude=Depends(get_claude),
     references: dict = Depends(get_references),
     cache: TaskCache | None = Depends(get_task_cache),
+    limits: RateLimiter = Depends(get_limits),
 ) -> None:
     await websocket.accept()
+    ip = client_ip(websocket)
+    if not limits.session_opened(ip):
+        # Policy violation (1008): the client waits longer before reconnecting (tutorSession.js).
+        usage_log.event("session_refused", reason="rate_limited")
+        await websocket.send_json({"type": "error", "code": "rate_limited", "request_id": None,
+                                   "message": "Too many sessions from your network; reconnecting shortly."})
+        await websocket.close(code=1008)
+        return
 
     async def send(message: dict) -> None:
         try:
@@ -163,7 +210,7 @@ async def session_socket(
             pass  # the learner left; nothing to deliver to
 
     session = Session(send, config=config, claude=claude, usage_log=usage_log, references=references,
-                      task_cache=cache)
+                      task_cache=cache, limits=limits)
     try:
         while True:
             message = await websocket.receive_json()
@@ -174,6 +221,7 @@ async def session_socket(
     except WebSocketDisconnect:
         pass
     finally:
+        limits.session_closed(ip)
         for task in session.tasks:
             task.cancel()
         if session.tasks:

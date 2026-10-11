@@ -70,5 +70,5 @@ def test_difficulty_range():
 
 
 def test_grid_limits():
-    errors = check_format(load_example(), {"grid_max_points": 10})
+    errors = check_format(load_example(), {"max_points": 10})
     assert any("larger than 10" in e for e in errors)

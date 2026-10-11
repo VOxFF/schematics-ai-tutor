@@ -60,18 +60,6 @@ pregeneration:                 # tasks generated ahead of time and cached (docs/
   max_entries: 50              # cached or running generations, oldest dropped first
   ttl_s: 3600                  # a cached task older than this is dropped
 
-rate_limits:
-  tutor_calls_per_session_per_min: 6
-  task_generations_per_session_per_hour: 10
-  board_updates_per_session_per_sec: 20
-  grid_max_points: 30            # per side
-  grid_max_components: 40
-  grid_max_wires: 300
-  sessions_per_ip_per_hour: 10
-  open_sessions_per_ip: 3
-  rest_requests_per_ip_per_min: 60
-  claude_calls_per_day: 5000
-
 evaluator:
   near_target_ratio: 0.10      # "near_target" when within 10% of every target
   resistor_max_power_w: 5      # above this, a resistor is "overcurrent"
