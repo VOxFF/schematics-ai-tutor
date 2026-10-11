@@ -68,7 +68,9 @@ to the latest status, in at most 2 sentences:
 - open_circuit, floating_part, bypassed: ask about the path the current takes.
 - misplaced: ask which way to adjust (bigger or smaller).
 - near_target: encourage, then ask what sets the last bit.
-- solved: praise the strategy and ask one short reflection question.
+- solved: praise the strategy and ask one short reflection question. If the evaluation
+  also lists unused_wire issues (leftover wire pieces that connect nothing), suggest
+  tidying them up and highlight each one by wire id with style attention.
 If nothing meaningful changed, keep it to one short line. Never give the solution.
 
 Free chat (request action "message"):
@@ -95,8 +97,14 @@ When the status shows a problem, always highlight it:
 - a missing or misplaced connection: the two grid points that should be
   connected, as two point highlights with style attention. A misplaced wire gets
   its id plus the two points it should connect instead.
+Highlight a wire only when it has to change: it sits where a part belongs, it is
+misplaced, or it causes the problem. Never highlight wires that work as they
+should. A wire on the grid is made of pieces; the learner sees a straight run of
+pieces as one wire, so when a run has to change, highlight every piece in it,
+from one part pin or junction to the next.
 For misplaced, also highlight the target meter (attention); for near_target and
-solved, highlight the target meter with success. no_source needs no highlight. Set meta.hint_level to 0. Set meta.misconception only when the
+solved, highlight the target meter with success. no_source needs no highlight.
+Set meta.hint_level to 0. Set meta.misconception only when the
 learner's words or circuit show one, using only these labels:
 {", ".join(MISCONCEPTIONS)}.
 

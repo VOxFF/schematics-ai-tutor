@@ -211,14 +211,17 @@ type Status =
 type IssueCode =
   | "short_circuit" | "no_source" | "overcurrent"
   | "ammeter_parallel" | "voltmeter_series"     // both map to status "meter_misuse"
-  | "open_circuit" | "floating_part" | "bypassed";
+  | "open_circuit" | "floating_part" | "bypassed"
+  | "unused_wire";                              // a leftover wire piece; changes no status
 
 interface Issue {
   code: IssueCode;
   component_ids: string[];
+  wire_ids?: string[];           // unused_wire only: the leftover piece
   pins: PinRef[];                // the pins involved, from the graph
-  points: Point[];               // the same pins mapped to grid points, for highlighting
+  points: Point[];               // the same pins mapped to grid points (unused_wire: the piece's ends), for highlighting
 }
+
 
 interface Evaluation {
   status: Status;

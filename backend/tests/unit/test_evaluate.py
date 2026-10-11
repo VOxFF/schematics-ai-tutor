@@ -84,6 +84,21 @@ def test_unconnected_parts_dont_make_a_short():
     assert sorted(i["code"] for i in result["issues"]) == ["floating_part", "voltmeter_series"]
 
 
+def test_unused_wires_are_reported_without_changing_the_status():
+    g = grid()
+    g["wires"] += [
+        {"id": "W21", "segments": [[[12, 8], [12, 7]]]},  # stray: touches nothing
+        {"id": "W22", "segments": [[[8, 3], [8, 2]]]},    # dead-end stub off a working wire
+        {"id": "W23", "segments": [[[7, 3], [8, 3]]]},    # duplicates W5
+    ]
+    assert validate_grid(g) == []
+    result = evaluate(g)
+    assert result["status"] == "solved"
+    unused = [i for i in result["issues"] if i["code"] == "unused_wire"]
+    assert [i["wire_ids"] for i in unused] == [["W21"], ["W22"], ["W23"]]
+    assert unused[0]["points"] == [[12, 7], [12, 8]]
+
+
 def test_contradictory_sources_are_a_short():
     from app.solver import solve
     components = [{"id": "V1", "type": "voltage_source", "value": 9, "pins": ["positive", "negative"]},

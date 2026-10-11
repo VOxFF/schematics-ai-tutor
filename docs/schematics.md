@@ -122,6 +122,7 @@ The backend rejects a document that breaks any of these rules, before any electr
 - Every wire segment joins orthogonal neighbors, and every wire piece has one of the four shapes.
 - No two components share a point: neither pins nor bodies may overlap. Components connect only through wires.
 - Resistor values have at most two significant digits (e.g. 20, 60, 120, 4700), so they can be drawn as a 4-band color code (two digits and a multiplier, from ×0.01 to ×1M). This keeps generated values realistic.
+- Generation prefers values a beginner can work out in their head: currents and voltage shares come out as simple numbers (12 V across 60 Ω gives 0.2 A), not 2.25 V. This is a preference in the generation prompt, not a check: a calculator is allowed, and an awkward value is fine when the task needs it.
 
 ### Notes
 
@@ -212,6 +213,7 @@ flowchart TD
 - **Generation follows the level.** The backend picks the grid size within the level's range and sends Claude the level's rules: concept, goal, circuit, what to remove, decoys, targets, and the task's variant. Claude chooses the circuit within those rules; a random variation hint (layout, source voltage, resistor range) keeps tasks different even for identical learners.
 - **The backend checks the fit** (validation stage 1): grid size, number of removed wires, parts and meters, decoys and targets. A task that doesn't fit its level is regenerated like any other failure.
 - **Centered, balanced layout.** The circuit must be centered on the grid: free columns left and right differ by at most one, and so do free rows above and below. The backend checks this. Claude is also asked to prefer symmetric arrangements and to center parts on their wire runs where it can.
+- **Room for labels.** Two parts side by side and parallel (e.g. a voltmeter across a resistor) are at least 2 grid steps apart, so their labels don't overlap. This is a prompt rule only; the backend doesn't check it.
 - **Curated levels.** These hand-made levels are the very first task and the fallback when generation fails. Each is tagged with the skill level it suits.
 
 ### Generation: Claude proposes, the backend decides
@@ -239,7 +241,7 @@ Every generated task passes the same validator that checks learner boards. All o
 | Stage | Checks |
 |---|---|
 | 1. Format and level | The §1 format rules hold for the complete board; `removed_ids`, `decoys` and `target_meter_ids` refer to valid, unique IDs; the task fits its curriculum level; the circuit is centered |
-| 2. Solvable | Evaluated without targets, the complete board's graph has a source, no short circuit, a successful solve and **no issues at all** (no open loop, floating, bypassed or overloaded part, no meter misuse). Every target meter sits in the working circuit and reads a non-zero value. |
+| 2. Solvable | Evaluated without targets, the complete board's graph has a source, no short circuit, a successful solve and **no issues at all** (no open loop, floating, bypassed or overloaded part, no meter misuse, no leftover wire). Every target meter sits in the working circuit and reads a non-zero value. |
 | 3. Not already solved | The task grid does **not** meet the targets. Removed parts are not `fixed`, and target meters are not removed. |
 | 4. Not a repeat | The complete board's **signature** differs from those of the learner's recent tasks. The signature lists, for each net, the parts touching it (type and value), plus the target meter types. Same parts wired differently (series vs. parallel) count as different; moving parts around the grid does not. |
 
@@ -277,7 +279,8 @@ flowchart LR
 3. **Build nets.** A union-find over the pins in `edges` gives the nets. Each net is one electrical node, and every component sits between the nets of its two pins. A pin that appears in no edge gets its own single-pin net.
 4. **Choose ground.** The net of the `negative` pin of the first `voltage_source`, by `id`, is the reference at 0 V.
 5. **Check structure** (§6), then **solve** (§5), unless a blocking issue makes the circuit unsolvable.
-6. **Report** one `status`, the readings of every placed meter (rounded to resolution) and all issues (§6).
+6. **Find leftover wires** on the grid itself: `unused_wire` issues (§6), which don't affect the status.
+7. **Report** one `status`, the readings of every placed meter (rounded to resolution) and all issues (§6).
 
 ## 5. Solver
 
@@ -300,7 +303,7 @@ The evaluator returns one **status**, the **readings** of all placed meters, and
 
 ### Issues
 
-Each check reads the graph and its nets. Each issue lists the pins involved, which the backend maps to grid points for highlighting (§2).
+Each check reads the graph and its nets, except `unused_wire`, which reads the grid. Each issue lists the pins involved, which the backend maps to grid points for highlighting (§2).
 
 | Issue | Detection | Status |
 |---|---|---|
@@ -312,6 +315,7 @@ Each check reads the graph and its nets. Each issue lists the pins involved, whi
 | `open_circuit` | A source exists, but its current is below the ammeter resolution (0.1 mA), and no `voltmeter_series` explains it | `open_circuit` |
 | `floating_part` | A component has a pin that is connected to no other pin | `floating_part` |
 | `bypassed` | A component's two pins are in the same net, so it reads 0 V and carries 0 A | `bypassed` |
+| `unused_wire` | A wire piece whose removal leaves every pin connection unchanged: a stray piece, a dead-end stub, or a duplicate. Pieces are checked newest first against the ones still kept, so of two duplicates only the later one counts. Found on the grid, not the graph. | none: the status stays as it is |
 
 ### Status precedence
 

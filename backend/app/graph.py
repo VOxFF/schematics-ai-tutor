@@ -1,4 +1,4 @@
-"""Grid → graph conversion (docs/schematics.md §2)."""
+"""Grid → graph conversion (docs/schematics.md §2), nets, and leftover wire pieces (§6)."""
 
 from .grid import PIN_NAMES
 
@@ -56,6 +56,36 @@ def to_graph(grid: dict) -> tuple[dict, dict[str, tuple]]:
         "targets": dict(grid.get("targets", {})),
     }
     return graph, pin_points
+
+
+def _pin_groups(components: list[dict], wires: list[dict]) -> set[frozenset]:
+    """Which pins the wires join: one set of pin references per group of two or more."""
+    points = UnionFind()
+    for wire in wires:
+        for a, b in wire["segments"]:
+            points.union(tuple(a), tuple(b))
+    groups: dict = {}
+    for c in components:
+        for name in PIN_NAMES[c["type"]]:
+            groups.setdefault(points.find(tuple(c["pins"][name])), set()).add(f"{c['id']}.{name}")
+    return {frozenset(g) for g in groups.values() if len(g) > 1}
+
+
+def unused_wires(grid: dict) -> list[dict]:
+    """Wire pieces that connect nothing: removing them leaves every pin connection unchanged
+    (a stray piece, a dead-end stub, or one of two pieces that duplicate a connection).
+    Checked one piece at a time against the pieces still kept, newest first, so of two
+    duplicates only the later one (the learner's, not the task's) counts."""
+    components = grid.get("components", [])
+    kept = list(grid.get("wires", []))
+    groups = _pin_groups(components, kept)
+    unused = []
+    for wire in reversed(kept):
+        rest = [w for w in kept if w is not wire]
+        if _pin_groups(components, rest) == groups:
+            kept = rest
+            unused.append(wire)
+    return unused[::-1]
 
 
 def assign_nets(graph: dict) -> dict[str, int]:

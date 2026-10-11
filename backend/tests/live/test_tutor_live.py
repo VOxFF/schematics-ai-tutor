@@ -45,3 +45,20 @@ def test_tutor_reacts_to_an_edit(config):
     print(f"cost: ${usage_log.totals['cost_usd']:.4f}")
     assert message["chat"]["text"]
     assert location_talk(message["chat"]["text"]) == []
+
+
+def test_tutor_suggests_tidying_up_leftovers_when_solved(config):
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        pytest.skip("ANTHROPIC_API_KEY is not set (./test.sh live loads backend/keys/apikey.txt)")
+    usage_log = UsageLog.from_config(config, REPO_ROOT, "live-test")
+    level, spec = example_level()
+    board = {**spec["complete_board"], "inventory": [], "targets": level["board"]["targets"],
+             "wires": spec["complete_board"]["wires"] + [{"id": "W90", "segments": [[[12, 8], [12, 7]]]}]}
+    message, evaluation = asyncio.run(answer(
+        anthropic.AsyncAnthropic(), config, usage_log, level=level, board=board,
+        reference=spec["complete_board"], history=[], learner_text=None, session_id="live",
+    ))
+    print(json.dumps({"status": evaluation["status"], "message": message}, indent=2))
+    print(f"cost: ${usage_log.totals['cost_usd']:.4f}")
+    assert evaluation["status"] == "solved"
+    assert {"target": {"wire": "W90"}, "style": "attention"} in message["meta"]["highlights"]

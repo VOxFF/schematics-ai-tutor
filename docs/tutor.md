@@ -30,13 +30,14 @@ A reaction is Claude's response when the learner pauses editing ([contract.md](c
 | `bypassed` | "Around or through?" | `attention` on the part | "Does current have to go *through* R2, or can it go around it?" |
 | `misplaced` | Which way to adjust | `attention` on the target meter | "VM1 shows 6 V; you need 4 V. Should R2 be bigger or smaller?" |
 | `near_target` | Encourage, then fine-tune | `success` on the meter | "Very close! Which part sets that last bit?" |
-| `solved` | Praise the strategy, then a reflection question | `success` | "Nice! Why did a smaller R2 lower its voltage?" Answering is optional and doesn't block moving on. |
+| `solved` | Praise the strategy, then a reflection question. If `unused_wire` issues remain, suggest tidying them up | `success`; `attention` on each leftover wire | "Nice! Why did a smaller R2 lower its voltage?" Answering is optional and doesn't block moving on. |
 
 If the status hasn't changed since the last reaction, the reply is a single short line.
 
 **Highlights on a problem.** Whenever the status shows a problem, the reply highlights it, so the words can stay on the physics:
 - **What's wrong, by ID:** a misplaced wire or part, the parts on a short path, the misused meter.
 - **Where a connection belongs:** for a missing or misplaced connection, the two grid points that should be connected, as two `point` highlights. A misplaced wire gets its ID plus the two points it should connect instead.
+- **Only wires that must change:** a wire is highlighted only when it sits where a part belongs, is misplaced, or causes the problem; working wires never are. A run of pieces looks like one wire, so every piece in it is highlighted, from one part pin or junction to the next.
 
 `tutor_highlights` in the run log records what Claude returned and what survived the board check.
 

@@ -13,7 +13,10 @@ import { useTutorSession } from "../lib/tutorSession.js";
 const shownWhen = (visible) => (visible ? {} : { style: { visibility: "hidden" }, "aria-hidden": true, inert: true });
 
 // Restart Learning asks for confirmation in place of the buttons (no browser popup).
-function Header({ progress, curriculum, canNext, onNext, onRestart }) {
+// `curriculum` is the task's ({ level, task, tasks }); while the next task loads it is null and
+// `lastLevel` (the previous task's curriculum level) keeps the label steady: skill_level counts
+// solved tasks, not curriculum levels, so showing it in between would make the label jump.
+function Header({ progress, curriculum, lastLevel, canNext, onNext, onRestart }) {
   const [confirming, setConfirming] = useState(false);
   const confirmButton = useRef(null);
 
@@ -31,7 +34,7 @@ function Header({ progress, curriculum, canNext, onNext, onRestart }) {
         <div className="title">Schematics AI Tutor</div>
         <div className="header-meta">
           <span className="skill" aria-label="Skill level">
-            Level {curriculum?.level ?? progress.skill_level}
+            Level {curriculum?.level ?? lastLevel ?? progress.skill_level}
           </span>
           {curriculum && (
             <span className="muted">
@@ -294,6 +297,7 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
       <Header
         progress={progress}
         curriculum={level?.curriculum}
+        lastLevel={session.lastLevel}
         canNext={Boolean(level) && !loading}
         onNext={onNext}
         onRestart={onRestart}

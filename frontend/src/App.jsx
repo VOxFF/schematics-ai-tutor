@@ -64,6 +64,7 @@ export default function App() {
       ...session,
       progress: { skill_level: progress.skill_level + 1, history: [...progress.history, summary] },
       level: null, // the resume effect fetches the next task
+      lastLevel: level.curriculum?.level, // the header shows it until the next task arrives
       board: null,
       chat: [...(session.chat ?? []), { role: "notice", text: `Next task (after “${level.title}”)` }],
     };

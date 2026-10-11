@@ -50,11 +50,26 @@ def test_target_reading_zero_is_rejected():
     assert any("VM2 reads 0.0" in e for e in result["errors"])
 
 
-def test_removing_something_irrelevant_is_already_solved():
+def test_a_stub_wire_that_doesnt_matter_is_rejected():
     def remove_dead_end(spec):  # the closed loop with a stub wire that doesn't matter
         spec["complete_board"]["wires"].append({"id": "W90", "segments": [[[11, 2], [12, 2]]]})
         spec["removed_ids"] = ["W90"]
     result = changed("closed_loop", remove_dead_end)
+    assert any("unused_wire (W90)" in e for e in result["errors"])  # the complete board has a leftover
+
+
+def test_removing_something_irrelevant_is_already_solved():
+    def remove_extra_meter(spec):  # a second voltmeter across R1 that no target depends on
+        spec["complete_board"]["components"].append({
+            "id": "VM2", "type": "voltmeter", "fixed": False, "orientation": "W",
+            "pins": {"positive": [6, 5], "negative": [8, 5]},
+        })
+        spec["complete_board"]["wires"] += [
+            {"id": "W90", "segments": [[[6, 3], [6, 4]]]}, {"id": "W91", "segments": [[[6, 4], [6, 5]]]},
+            {"id": "W92", "segments": [[[8, 3], [8, 4]]]}, {"id": "W93", "segments": [[[8, 4], [8, 5]]]},
+        ]
+        spec["removed_ids"] = ["VM2"]
+    result = changed("closed_loop", remove_extra_meter)
     assert any("already solved" in e for e in result["errors"])
 
 

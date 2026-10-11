@@ -148,7 +148,7 @@ def check_solved_board(spec: dict, settings: dict | None = None) -> tuple[list[s
     result = evaluate(complete_grid(spec), settings)
     errors = []
     if result["issues"]:
-        problems = ", ".join(f"{i['code']} ({', '.join(i['component_ids']) or 'circuit'})" for i in result["issues"])
+        problems = ", ".join(f"{i['code']} ({', '.join(i['component_ids'] or i.get('wire_ids', [])) or 'circuit'})" for i in result["issues"])
         errors.append(f"complete board is not a working circuit: {problems}")
     types = {c["id"]: c["type"] for c in spec["complete_board"]["components"]}
     targets = {}
