@@ -1,39 +1,147 @@
-# Deploy main by hand (Actions tab), or put main back live when a PR closes without merging:
-# ci.yml deployed that PR's code (docs/deployment.md §3).
+# Ship a pull request with the `deploy` label: check the merge commit (main + the PR), deploy it,
+# smoke test the live app, then merge. On a failed deploy or smoke test, roll back to the image
+# that was live before. By hand (Actions tab): the same for main, without the merge.
+# docs/deployment.md §3.
 name: deploy
 
 on:
-  workflow_dispatch:
   pull_request:
-    types: [closed]
+    types: [labeled]
+  workflow_dispatch:
+
+permissions:
+  contents: write        # merge the PR
+  pull-requests: write   # remove the label, comment
+
+# One ship at a time. Other labels get a group of their own, so they never displace a waiting ship.
+concurrency:
+  group: ${{ (github.event_name == 'workflow_dispatch' || github.event.label.name == 'deploy') && 'deploy-production' || format('label-{0}', github.run_id) }}
+  cancel-in-progress: false
+
+env:
+  APP: schematics-ai-tutor
+  APP_URL: https://schematics-ai-tutor.fly.dev
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+  GH_TOKEN: ${{ github.token }}
+  PR: ${{ github.event.pull_request.number }}
 
 jobs:
-  deploy:
-    if: github.event_name == 'workflow_dispatch' || !github.event.pull_request.merged
+  check:
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'deploy'
     runs-on: ubuntu-latest
-    concurrency:
-      group: deploy-production
-      cancel-in-progress: false
+    steps:
+      - name: Not a draft
+        if: github.event.pull_request.draft
+        run: |
+          echo "::error::Draft PRs can't ship: mark the PR ready for review, then add the label again."
+          exit 1
+      - uses: actions/checkout@v4   # a PR: its merge commit, main + the PR; by hand: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install backend
+        run: python -m pip install -e "backend[dev]"
+      - name: Install frontend
+        run: npm ci
+        working-directory: frontend
+      - name: Integrity checks
+        run: ./check.sh
+
+  record:
+    needs: check
+    runs-on: ubuntu-latest
     outputs:
-      commit: ${{ steps.main.outputs.commit }}
+      image: ${{ steps.live.outputs.image }}
+      commit: ${{ steps.live.outputs.commit }}
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Record the live release (the rollback target)
+        id: live
+        run: |
+          image="$(flyctl machine list -a "$APP" --json | jq -r '.[0].config.image')"
+          commit="$(curl -sf "$APP_URL/api/health" | jq -r '.commit // empty' || true)"
+          [ -n "$image" ] && [ "$image" != null ] || { echo "::error::no live image found"; exit 1; }
+          echo "live image: $image, commit: ${commit:-unknown}"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: record
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: main
-      - id: main
-        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Deploy
-        run: flyctl deploy --remote-only --env SCHEMATICS_COMMIT=${{ steps.main.outputs.commit }}
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy --remote-only --env SCHEMATICS_COMMIT=${{ github.sha }}
 
   smoke:
     needs: deploy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: main
       - name: Smoke test
-        run: ./smoke.sh https://schematics-ai-tutor.fly.dev ${{ needs.deploy.outputs.commit }}
+        run: ./smoke.sh "$APP_URL" ${{ github.sha }}
+
+  merge:
+    needs: smoke
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge the PR, only if its head is the one tested
+        run: gh pr merge "$PR" -R "$GITHUB_REPOSITORY" --merge --match-head-commit ${{ github.event.pull_request.head.sha }}
+
+  rollback:
+    needs: [record, deploy, smoke]
+    if: always() && needs.record.result == 'success' && (needs.deploy.result == 'failure' || needs.smoke.result == 'failure')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main   # main's fly.toml: the configuration the recorded release ran with
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Redeploy the recorded image
+        run: flyctl deploy --image "${{ needs.record.outputs.image }}" --env SCHEMATICS_COMMIT=${{ needs.record.outputs.commit }}
+      - name: Smoke test the rollback
+        run: ./smoke.sh "$APP_URL" ${{ needs.record.outputs.commit }}
+
+  report:
+    needs: [check, record, deploy, smoke, merge, rollback]
+    if: always() && github.event_name == 'pull_request' && github.event.label.name == 'deploy'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove the label and comment with the result
+        env:
+          CHECK: ${{ needs.check.result }}
+          RECORD: ${{ needs.record.result }}
+          DEPLOY: ${{ needs.deploy.result }}
+          SMOKE: ${{ needs.smoke.result }}
+          MERGE: ${{ needs.merge.result }}
+          ROLLBACK: ${{ needs.rollback.result }}
+          IMAGE: ${{ needs.record.outputs.image }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh pr edit "$PR" -R "$GITHUB_REPOSITORY" --remove-label deploy || true
+          icon() { case "$1" in success) echo "✅";; failure) echo "❌";; cancelled) echo "⛔";; *) echo "➖";; esac; }
+          if [ "$MERGE" = success ]; then
+            outcome="🚀 Shipped: deployed, smoke tested and merged. Production runs \`${GITHUB_SHA:0:7}\`."
+          elif [ "$ROLLBACK" = success ]; then
+            outcome="↩️ Not merged: production was rolled back to the previous release (\`$IMAGE\`). Fix the PR and add the \`deploy\` label again."
+          elif [ "$ROLLBACK" = failure ]; then
+            outcome="🚨 Not merged, and the rollback failed: production may be down. Follow the manual recovery in docs/deployment.md §6 (last good image: \`$IMAGE\`)."
+          elif [ "$SMOKE" = success ]; then
+            outcome="⚠️ Deployed and smoke tested, but the merge failed: production runs this PR, ahead of main. Resolve the conflict or push the fix, then add the \`deploy\` label again."
+          else
+            outcome="Not merged: nothing was deployed, production is unchanged. Fix the PR and add the \`deploy\` label again."
+          fi
+          gh pr comment "$PR" -R "$GITHUB_REPOSITORY" --body "$outcome
+
+          | check | record | deploy | smoke | merge | rollback |
+          |---|---|---|---|---|---|
+          | $(icon "$CHECK") | $(icon "$RECORD") | $(icon "$DEPLOY") | $(icon "$SMOKE") | $(icon "$MERGE") | $(icon "$ROLLBACK") |
+
+          [Run log]($RUN)"

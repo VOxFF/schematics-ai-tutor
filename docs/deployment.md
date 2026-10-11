@@ -34,8 +34,6 @@ How the prototype is hosted and how changes reach it. The security and rate-limi
 
 A pull request ships with the **`deploy` label**: the workflow checks it, deploys it, smoke tests it on the live URL, and merges it only when all of that passes. On any failure it rolls production back and leaves the PR open. So `main` and production stay in sync: the live app is always the latest `main`.
 
-*Planned.* Today, until this is built, [`ci.yml`](../.github/workflows/ci.yml) deploys and smoke tests every push to a ready PR, and [`deploy.yml`](../.github/workflows/deploy.yml) redeploys `main` when a PR closes unmerged.
-
 ```mermaid
 flowchart LR
     L["Add label 'deploy'"] --> C["check<br/>(merge commit)"]
@@ -56,16 +54,17 @@ flowchart LR
 
 | Job | Does | On failure |
 |---|---|---|
-| `check` | `./check.sh` on GitHub's merge commit for the PR (`refs/pull/<n>/merge`: `main` plus the PR, the code the merge will produce) | Stop; nothing deployed |
-| `deploy` | Records the live image (the last good release), then `flyctl deploy --remote-only` of the merge commit with `SCHEMATICS_COMMIT` set | `rollback` |
+| `check` | `./check.sh` on GitHub's merge commit for the PR (`refs/pull/<n>/merge`: `main` plus the PR, the code the merge will produce). A draft PR fails here | Stop; nothing deployed |
+| `record` | Records the live release, the rollback target: the machine's image and the commit `/api/health` reports | Stop; nothing deployed |
+| `deploy` | `flyctl deploy --remote-only` of the merge commit with `SCHEMATICS_COMMIT` set | `rollback` |
 | `smoke` | `./smoke.sh <url> <commit>`: the new commit must be the one answering (below) | `rollback` |
 | `merge` | Merges the PR with `gh pr merge --match-head-commit <tested head>`, so a push made during the run is never merged untested | Production already runs the PR; see the failure table |
-| `rollback` | Redeploys the recorded image with `main`'s commit, then smoke tests it | Run fails; manual recovery (§6) |
-| `report` | Always: removes the label and comments on the PR with the result and the failed step | — |
+| `rollback` | Redeploys the recorded image with its commit and `main`'s `fly.toml`, then smoke tests it | Run fails; manual recovery (§6) |
+| `report` | Always: removes the label and comments on the PR with the outcome, a ✅/❌ row per job, and a link to the run | — |
 
 - **Rollback to the recorded image, not a rebuild.** A rebuild of `main` could differ from what ran (new base image, new package versions); the recorded image is byte-for-byte the release that was live before. `fly deploy --image <last good>` also skips the build, so production is back in about 30 s. That release is `main`, because only a passed ship changes production.
 - **Retry:** fix the PR and add the label again. The label is always removed at the end, so adding it is always a fresh start.
-- **One ship at a time:** `concurrency: deploy-production`. A second label waits for the first run to finish.
+- **One ship at a time:** `concurrency: deploy-production`. A second label waits for the first run to finish. Other labels also start the workflow (GitHub has no filter by label name), but every job skips, in a concurrency group of their own.
 - **By hand:** `deploy.yml` keeps `workflow_dispatch`, which deploys `main` and smoke tests it, e.g. after a manual Merge.
 - **Permissions:** the workflow's `GITHUB_TOKEN` gets `contents: write` and `pull-requests: write` to merge, edit the label and comment. GitHub doesn't start workflows from events made with that token, so `ci.yml` doesn't run again on the merge; the merged code already passed `check` as the merge commit.
 
@@ -220,5 +219,7 @@ fly ssh sftp get /data/logs/history/<file>   # copy an archived log (§5)
 - [x] Archive: startup, size and nightly triggers; history cap (`log_archive.py`)
 - [x] First deploy with the volume (2026-10-11, release v3): the machine was recreated with `logs_data` attached
 - [x] Ship with the `deploy` label designed (§3): check, deploy, smoke, merge; rollback to the last good image on failure
-- [ ] `ci.yml` back to `check` only; `deploy.yml` ships on the label and rolls back; manual recovery tested
+- [x] `ci.yml` back to `check` only; `deploy.yml` ships on the label and rolls back; the `deploy` label created
+- [ ] First ship with the label (this change's own PR)
+- [ ] Rollback tested on a deliberately failing smoke test
 - [ ] Learner experience collection (to be designed)
