@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { componentPoints, itemSegments, lift, nextOrientation, place, plan, wireSegments } from "./placement.js";
+import { componentPoints, itemSegments, lift, nextOrientation, place, plan, removeSelected, rotateSelected, wireSegments } from "./placement.js";
 
 const board = () => ({
   grid: { columns: 8, rows: 6 },
@@ -87,5 +87,36 @@ describe("moving placed elements", () => {
     expect(itemSegments(lifted.item, 0, [2, 4])).toEqual([[[2, 4], [2, 5]], [[2, 4], [1, 4]]]);
     const moved = place(lifted.base, lifted.item, [2, 4], 0);
     expect(moved.wires.map((w) => w.id)).toEqual(["W3", "W4"]);
+  });
+});
+
+describe("editing the selection", () => {
+  const placed = () => place(place(board(), R2, [5, 5], "E"), { kind: "wire", shape: "corner" }, [6, 1], 1);
+
+  test("R turns a part a quarter clockwise around its body", () => {
+    const next = rotateSelected(placed(), { kind: "component", id: "R2" }, board());
+    expect(next.components.find((c) => c.id === "R2")).toMatchObject({ orientation: "S", pins: { a: [5, 6], b: [5, 4] } });
+  });
+
+  test("R turns a wire piece around its anchor, keeping its id", () => {
+    const corner = place(board(), { kind: "wire", shape: "corner" }, [6, 3], 1); // arms down and left
+    const next = rotateSelected(corner, { kind: "wire", id: "W4" }, board());
+    expect(next.wires.find((w) => w.id === "W4").segments).toEqual([[[6, 3], [5, 3]], [[6, 3], [6, 2]]]);
+    expect(rotateSelected(placed(), { kind: "wire", id: "W4" }, board())).toBeNull(); // an arm would leave the grid
+  });
+
+  test("R does nothing when the turned element wouldn't fit, or the element isn't editable", () => {
+    const edge = place(board(), R2, [7, 6], "E"); // turning to S would put a pin below the last row
+    expect(rotateSelected(edge, { kind: "component", id: "R2" }, board())).toBeNull();
+    expect(rotateSelected(board(), { kind: "component", id: "R1" }, board())).toBeNull(); // fixed
+  });
+
+  test("Del sends a part back to the inventory and deletes a wire piece", () => {
+    const part = removeSelected(placed(), { kind: "component", id: "R2" }, board());
+    expect(part.components.map((c) => c.id)).toEqual(["R1"]);
+    expect(part.inventory).toEqual([{ id: "R2", type: "resistor", value: 20 }]);
+    const wire = removeSelected(placed(), { kind: "wire", id: "W4" }, board());
+    expect(wire.wires.map((w) => w.id)).toEqual(["W3"]);
+    expect(removeSelected(board(), { kind: "wire", id: "W3" }, board())).toBeNull(); // the task's own wire
   });
 });

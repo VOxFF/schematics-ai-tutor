@@ -1,6 +1,6 @@
 // Placing parts and wire pieces on the grid (docs/gui.md §4). Pure functions: they compute
-// the points a placement would occupy, whether it fits, and the resulting board, and lift a
-// placed element off the board so it can be dragged elsewhere.
+// the points a placement would occupy, whether it fits, and the resulting board; lift a placed
+// element off the board so it can be dragged elsewhere; and rotate or remove a selected one.
 
 export const PIN_NAMES = {
   voltage_source: ["positive", "negative"],
@@ -137,4 +137,24 @@ export function place(board, item, point, rotation) {
   }
   // A wire moved on the board keeps its id; a new piece gets the next one.
   return { ...board, wires: [...board.wires, { id: item.id ?? nextWireId(board), segments: p.segments }] };
+}
+
+// The selected element `selection` ({ kind: "component" | "wire", id }) turned a quarter
+// clockwise in place (a part around its body, a wire piece around its anchor). Null when
+// it isn't editable or the turned element doesn't fit.
+export function rotateSelected(board, selection, startBoard) {
+  const lifted = lift(board, selection, startBoard);
+  if (!lifted) return null;
+  const rotation = lifted.item.kind === "part" ? nextOrientation(lifted.rotation) : 1;
+  return place(lifted.base, lifted.item, lifted.anchor, rotation);
+}
+
+// The board without the selected element: a part goes back to the inventory, a wire piece
+// is deleted. Null when it isn't editable.
+export function removeSelected(board, selection, startBoard) {
+  const lifted = lift(board, selection, startBoard);
+  if (!lifted) return null;
+  if (lifted.item.kind === "wire") return lifted.base;
+  const { kind: _kind, ...part } = lifted.item;
+  return { ...lifted.base, inventory: [...lifted.base.inventory, part] };
 }

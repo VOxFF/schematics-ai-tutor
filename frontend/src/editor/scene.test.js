@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { resistorBands } from "./colorCode.js";
-import { boardBounds, buildBoard, floatingNode, inventoryNode, layoutInventory, pickAt, sceneBounds, slotAnchor, toWorld } from "./scene.js";
+import { boardBounds, buildBoard, floatingNode, inventoryNode, layoutInventory, outline, pickAt, sceneBounds, slotAnchor, toWorld } from "./scene.js";
 import { CELL, STYLE } from "./style.js";
 
 describe("resistor color bands", () => {
@@ -66,6 +66,33 @@ describe("scene graph", () => {
     expect(pickAt([root], mid.x, mid.y)).toMatchObject({ kind: "wire", id: board.wires[0].id });
     const off = Math.abs(a.x - b.x) > 0 ? [0, 6] : [6, 0]; // beside the wire, across its direction
     expect(pickAt([root], mid.x + off[0], mid.y + off[1])).toBeNull();
+  });
+});
+
+describe("selection outline", () => {
+  const board = { grid: { columns: 8, rows: 6 }, inventory: [], targets: {}, wires: [],
+                  components: [{ id: "R1", type: "resistor", value: 20, fixed: false, orientation: "E", pins: { a: [4, 3], b: [2, 3] } }] };
+
+  test("an outline copies every shape, grown and behind it, in the selection color", () => {
+    const root = buildBoard(board);
+    const node = root.getObjectByName("R1");
+    const shapes = [];
+    node.traverse((o) => o.isMesh && shapes.push(o));
+    outline(node);
+    const copies = [];
+    node.traverse((o) => o.isMesh && o.userData.outline && copies.push(o));
+    expect(copies).toHaveLength(shapes.length);
+    expect(copies.every((c) => c.position.z < 0)).toBe(true);
+    expect(copies[0].material.color.getHexString()).toBe(STYLE.selection.color.slice(1));
+    const body = copies.find((c) => c.geometry.parameters.width === STYLE.resistor.length + 2 * STYLE.selection.width);
+    expect(body).toBeDefined();
+  });
+
+  test("the outline doesn't grow the element's hit area", () => {
+    const root = buildBoard(board);
+    outline(root.getObjectByName("R1"));
+    const body = toWorld([3, 3]);
+    expect(pickAt([root], body.x, body.y + STYLE.resistor.height / 2 + 1)).toBeNull();
   });
 });
 

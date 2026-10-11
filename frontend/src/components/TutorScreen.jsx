@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import GridEditor from "../editor/GridEditor.jsx";
 import { partName } from "../editor/naming.js";
-import { WIRE_PALETTE, nextOrientation, place } from "../editor/placement.js";
+import { WIRE_PALETTE, lift, nextOrientation, place, removeSelected, rotateSelected } from "../editor/placement.js";
 import { readableJson } from "../lib/jsonfmt.js";
 import { useTutorSession } from "../lib/tutorSession.js";
 
@@ -89,7 +89,7 @@ function TaskPanel({ level, evaluation }) {
   );
 }
 
-function Editor({ level, board, evaluation, loading, error, startError, onRetry, drag, onStartDrag, onDrop, onPlan, showJson, onToggleJson, onReset }) {
+function Editor({ level, board, evaluation, loading, error, startError, onRetry, drag, onStartDrag, onDrop, onPlan, selected, onSelect, showJson, onToggleJson, onReset }) {
   let body;
   if (loading)
     body = (
@@ -122,7 +122,7 @@ function Editor({ level, board, evaluation, loading, error, startError, onRetry,
         ) : (
           <GridEditor board={board} startBoard={level.board}
                       readings={evaluation?.readings} drag={drag} onStartDrag={onStartDrag}
-                      onDrop={onDrop} onPlan={onPlan} />
+                      onDrop={onDrop} onPlan={onPlan} selected={selected} onSelect={onSelect} />
         )}
         {/* Bottom-left corner of the editor field: free space beside the centered grid. */}
         <div className="editor-tools">
@@ -203,7 +203,13 @@ function Chat({ chat, connected, thinking, onSend }) {
 }
 
 // Hint bar text for the current interaction (docs/gui.md §5); generated here, not by the backend.
-function hint(drag, fits) {
+// `selection` is { id, editable, blocked } for the selected element, or null.
+function hint(drag, fits, selection) {
+  if (!drag && selection) {
+    if (!selection.editable) return `${selection.id} is part of the task: it can't be moved, rotated or removed · Esc to deselect`;
+    if (selection.blocked) return `Can't rotate ${selection.id} here: the turned part would overlap or leave the grid`;
+    return `${selection.id} selected · drag to move · R to rotate · Del to remove · Esc to deselect`;
+  }
   if (!drag) return "Drag a part or a wire piece from the inventory onto the grid, or move one you placed";
   if (fits === false) return "Can't place here: the spot is taken or off the grid";
   return "Drop onto the highlighted points to connect · R to rotate · Esc to cancel";
@@ -219,6 +225,40 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
   const [drag, setDrag] = useState(null);
   const [fits, setFits] = useState(null);
   const [showJson, setShowJson] = useState(false);
+  const [selected, setSelected] = useState(null); // { kind: "component" | "wire", id } on the board
+  const [blocked, setBlocked] = useState(false); // the last R on the selection didn't fit
+  const startBoard = level?.board;
+  // The selection only counts while its element is on the board (e.g. not after Reset board).
+  const selection = selected && board &&
+    (selected.kind === "component" ? board.components : board.wires).some((x) => x.id === selected.id)
+    ? selected : null;
+  const editable = Boolean(selection && lift(board, selection, startBoard));
+  const select = (next) => {
+    setSelected(next);
+    setBlocked(false);
+  };
+
+  useEffect(() => select(null), [level?.id]);
+
+  // With a selection (and no drag): R rotates it in place, Del / Backspace removes it, Esc deselects.
+  useEffect(() => {
+    if (!selection || drag) return undefined;
+    const key = (e) => {
+      if (["INPUT", "TEXTAREA"].includes(e.target?.tagName)) return; // typing in the chat
+      if (e.key === "Escape") select(null);
+      else if ((e.key === "r" || e.key === "R") && editable) {
+        const next = rotateSelected(board, selection, startBoard);
+        setBlocked(!next);
+        if (next) onBoard(next);
+      } else if ((e.key === "Delete" || e.key === "Backspace") && editable) {
+        e.preventDefault();
+        select(null);
+        onBoard(removeSelected(board, selection, startBoard));
+      }
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  });
 
   // While dragging: R rotates, Esc cancels, releasing anywhere but the grid snaps back.
   useEffect(() => {
@@ -267,6 +307,8 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
             onStartDrag={setDrag}
             onDrop={drop}
             onPlan={setFits}
+            selected={selection}
+            onSelect={select}
             showJson={showJson}
             onToggleJson={() => setShowJson((v) => !v)}
             onReset={() => onBoard(null)}
@@ -276,7 +318,7 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
             startError={tutor.startError}
             onRetry={onRetry}
           />
-          <div className="hint-bar" aria-live="polite">{hint(drag, fits)}</div>
+          <div className="hint-bar" aria-live="polite">{hint(drag, fits, selection && { id: selection.id, editable, blocked })}</div>
         </div>
         <InventoryList board={board} onStartDrag={startDrag} />
       </div>

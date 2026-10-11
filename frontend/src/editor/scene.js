@@ -305,11 +305,35 @@ export function pickAt(roots, x, y, tolerance = 0) {
     collect(root);
     for (const element of elements.reverse()) { // later nodes are drawn on top
       let hit = false;
-      element.traverse((o) => { if (!hit && o.isMesh && onMesh(o, world, tolerance)) hit = true; });
+      element.traverse((o) => {
+        if (!hit && o.isMesh && !o.userData.outline && onMesh(o, world, tolerance)) hit = true;
+      });
       if (hit) return element.userData;
     }
   }
   return null;
+}
+
+// Outline the element `node` (a highlight, docs/gui.md §4): each of its shapes is copied,
+// grown by `width` and drawn just behind it in `color`, so only a silhouette line shows.
+export function outline(node, color = STYLE.selection.color, width = STYLE.selection.width) {
+  const meshes = [];
+  node.traverse((o) => o.isMesh && !o.userData.outline && meshes.push(o));
+  for (const mesh of meshes) {
+    const g = mesh.geometry.parameters;
+    const geometry = {
+      PlaneGeometry: () => new THREE.PlaneGeometry(g.width + 2 * width, g.height + 2 * width),
+      CircleGeometry: () => new THREE.CircleGeometry(g.radius + width, 32),
+      RingGeometry: () => new THREE.CircleGeometry(g.outerRadius + width, 48),
+    }[mesh.geometry.type]?.();
+    if (!geometry) continue;
+    const copy = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color }));
+    copy.userData.outline = true;
+    copy.position.set(mesh.position.x, mesh.position.y, -0.05); // behind the element's own shapes
+    copy.rotation.copy(mesh.rotation);
+    mesh.parent.add(copy);
+  }
+  return node;
 }
 
 // Where a slot draws its item's anchor (a part's body, a wire piece's [0, 0]), in the
