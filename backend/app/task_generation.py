@@ -176,7 +176,7 @@ async def generate_task(
 ) -> GenerationResult:
     settings = config["claude"]["task_generation"]
     generation = config.get("task_generation", {})
-    limits = config.get("rate_limits", {})
+    limits = config.get("rate_limits", {}).get("grid", {})  # ratelimiting.yaml
     evaluator = config.get("evaluator", {})
     recent = [t["signature"] for t in history[-generation.get("recent_tasks", 10):] if t.get("signature")]
     # Curriculum: the level and task for this skill level, and a grid size within its range.

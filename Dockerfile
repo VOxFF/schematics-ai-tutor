@@ -17,7 +17,7 @@ COPY backend/pyproject.toml backend/
 COPY backend/app backend/app
 COPY backend/data backend/data
 RUN pip install -e backend
-COPY config.yaml ./
+COPY config.yaml ratelimiting.yaml ./
 COPY --from=frontend /app/frontend/dist frontend/dist
 WORKDIR /app/backend
 EXPOSE 8080

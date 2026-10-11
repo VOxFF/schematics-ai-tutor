@@ -4,6 +4,7 @@
 .run
 .env
 logs
+state
 docs
 backend/keys
 backend/.venv

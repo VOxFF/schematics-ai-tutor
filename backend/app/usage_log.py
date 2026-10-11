@@ -32,6 +32,7 @@ class UsageLog:
     def __init__(self, file: LogFile | None, pricing: dict | None = None):
         self.file = file
         self.pricing = pricing or {}
+        self.on_cost = None  # called with each call's estimated cost, e.g. the daily Claude budget
         self._lock = threading.Lock()
         self.totals = {"claude_calls": 0, **{f: 0 for f in USAGE_FIELDS}, "cost_usd": 0.0}
 
@@ -40,7 +41,7 @@ class UsageLog:
         """The run's log, archived by `archive`; without one (e.g. live tests), a plain log in logs.dir."""
         logs = config.get("logs") or {}
         if not logs.get("enabled"):
-            return cls(None)
+            return cls(None, config.get("pricing"))  # still prices calls, for the budget
         if archive is None:
             directory = root / logs.get("dir", "logs")
             directory.mkdir(parents=True, exist_ok=True)
@@ -78,6 +79,8 @@ class UsageLog:
             for f in USAGE_FIELDS:
                 self.totals[f] += usage[f]
             self.totals["cost_usd"] += cost or 0.0
+        if self.on_cost:
+            self.on_cost(cost)
         self.event(
             "claude_call",
             purpose=purpose,

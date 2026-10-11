@@ -1,4 +1,4 @@
-"""Loads the root config.yaml (docs/design.md §5)."""
+"""Loads the root config.yaml (docs/design.md §5) and ratelimiting.yaml (§4)."""
 
 import os
 from pathlib import Path
@@ -12,6 +12,14 @@ def config_path() -> Path:
     return Path(os.environ.get("SCHEMATICS_CONFIG", REPO_ROOT / "config.yaml"))
 
 
+def rate_limits_path() -> Path:
+    return Path(os.environ.get("SCHEMATICS_RATELIMITS", REPO_ROOT / "ratelimiting.yaml"))
+
+
 def load_config(path: Path | None = None) -> dict:
+    """config.yaml, with ratelimiting.yaml under `rate_limits`."""
     with open(path or config_path()) as f:
-        return yaml.safe_load(f) or {}
+        config = yaml.safe_load(f) or {}
+    with open(rate_limits_path()) as f:
+        config["rate_limits"] = yaml.safe_load(f) or {}
+    return config

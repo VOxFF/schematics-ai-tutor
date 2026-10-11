@@ -25,7 +25,7 @@ Hosted on [Fly.io](https://fly.io) at https://schematics-ai-tutor.fly.dev. A PR 
 
 ```sh
 fly secrets set ANTHROPIC_API_KEY=...   # once
-fly deploy                              # builds the Dockerfile remotely and rolls out
+fly deploy                              # by hand only (hotfix); normally ship with the label
 fly logs
 ./smoke.sh                              # smoke test the live app
 ```

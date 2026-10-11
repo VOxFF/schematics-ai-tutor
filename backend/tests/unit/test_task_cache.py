@@ -104,3 +104,20 @@ def test_expired_and_excess_entries_are_dropped():
         assert list(cache.entries) == [progress_key({"skill_level": 9, "history": []})]  # the rest expired
         cache.close()
     run(scenario())
+
+
+def test_pregeneration_stops_when_background_work_isnt_allowed():
+    async def scenario():
+        produce = Generator()
+        allowed = [False]
+        cache = TaskCache(produce, first_task_pool=2, allow_background=lambda: allowed[0])
+        cache.fill_first_task_pool()
+        result = await cache.get(FIRST_PROGRESS)  # a waiting learner is still served
+        await asyncio.sleep(0)
+        assert result.level is not None and produce.calls == [FIRST_PROGRESS]  # no pool, no next task
+        allowed[0] = True
+        cache.fill_first_task_pool()
+        await asyncio.sleep(0)
+        assert produce.calls == [FIRST_PROGRESS] * 3
+        cache.close()
+    run(scenario())

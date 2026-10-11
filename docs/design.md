@@ -56,7 +56,7 @@ flowchart LR
   - *Cache by progress:* the cache key is the learner's progress (skill level and task history). A request for a progress gets the cached task at once; if that task is still being generated, it waits for the same generation instead of starting another; otherwise it generates one now. A task is removed from the cache when it's served, so the same progress later (e.g. after Restart Learning) gets a fresh task.
   - *Next task in the background:* after serving a task, the backend generates the next one, for the progress as if the served task is solved. By the time the learner presses Next it's usually ready. A resumed task (e.g. after a server restart, which empties the cache) does the same when its session starts, from the progress the browser sends with `session.start`.
   - *First-task pool:* for the start screen, the server keeps a small pool of ready first tasks, filled at startup and topped up as they are served, so even a first visit doesn't wait.
-  - *Bounds:* the cache has a size cap and an expiry, and pre-generation will count against the global Claude budget once that limit exists (§4).
+  - *Bounds:* the cache has a size cap and an expiry, and pre-generation counts against the daily Claude budget: it stops at 80% of it, leaving the rest for learners who are waiting (§4).
   - *Accepted loss:* the next task is generated before the current one is finished, so it doesn't know that task's hints or misconceptions. A wait at Next costs more.
   - *Why the backend, not the browser:* the browser stays a plain client (it calls the generate endpoint as before), the cache survives reloads because the same progress gets the same entry, and every decision to spend a Claude call is made on the server, next to the rate limits and the budget. The cost is in-memory server state, lost on restart and not shared between instances, which is acceptable for one prototype server.
 
@@ -115,28 +115,86 @@ flowchart LR
 ## 4. Security and operations
 
 - The Claude API key exists only on the backend, loaded from the environment or the gitignored `backend/keys/apikey.txt`.
-- The deployed prototype is public and uses our API key, so the backend enforces the rate limits below. They protect the cost of Claude calls and the server. **Evaluation never depends on Claude**, so when a Claude limit is hit, the grid, the readings and the status keep working. Only the tutor goes quiet, or generation falls back to curated levels.
+- The deployed prototype is public and uses our API key, so the backend enforces the rate limits below. They protect the cost of Claude calls and the server. **Evaluation never depends on Claude**, so when a Claude limit is hit, the grid, the readings and the status keep working. Only the tutor goes quiet, or generation pauses.
+
+### Rate limits
+
+One module, [`rate_limits.py`](../backend/app/rate_limits.py), with its own configuration file, [`ratelimiting.yaml`](../ratelimiting.yaml) in the repo root. The backend reads it at startup, together with `config.yaml`.
 
 | Scope | Limit (default) | When exceeded |
 |---|---|---|
-| Tutor calls per session | 6 per minute (reactions and messages together) | Reactions are skipped silently. A learner message gets `error: rate_limited`, shown as "The tutor needs a moment; try again shortly". |
-| Task generations per session | 1 in flight, 10 per hour | The curated level for the skill level is served |
-| Board updates per session | 20 per second | Extra updates are dropped; only the latest board is evaluated |
-| Grid size | at most 30 × 30 points, 40 components, 300 wire pieces | `error: bad_message`. This also bounds solver and validation time. |
-| New sessions per IP | 10 per hour, 3 open at once | The connection is refused |
-| REST requests per IP | 60 per minute | `429` |
-| Global Claude budget | 5,000 calls per day | Tutor calls return `error: tutor_unavailable`; generation serves curated levels. Evaluation is unaffected. |
+| Daily Claude budget | $20 of estimated spend per day, all calls; the day resets at 00:00 UTC | Pre-generation stops at 80% (`background_share`), keeping the rest for learners who are waiting. At 100%: tutor requests get `error: tutor_unavailable` ("the tutor has reached today's limit"), reactions are skipped, and generation gets `429`. Evaluation is unaffected. |
+| Tutor calls per session | 6 per minute (reactions and messages together), one in flight | Reactions are skipped silently. A learner message gets `error: rate_limited`, shown as "The tutor needs a moment; try again shortly". |
+| Task generations per IP | 10 per hour | `429` with "Task generation is paused; please try again in N min" and `Retry-After`. Curated levels will be served here once they exist. |
+| WebSocket sessions per IP | 30 per hour (reconnects included), 3 open at once | The server sends `error: rate_limited` and closes with code `1008`; the client waits 30 s before reconnecting instead of 2 s |
+| REST requests per IP | 60 per minute, except `/api/health` | `429` with `Retry-After` |
+| Board updates per session | 20 per second | Coalesced: the latest board waits until the limit allows, then it's evaluated; older ones in between are dropped |
+| Grid size | 30 × 30 points, 40 components, 300 wire pieces; learner boards and generated tasks | `error: bad_message` for a learner board; a generated task fails validation. This also bounds solver and validation time. |
 
-- **Build status.** Implemented: tutor calls per session (one call in flight, 6 per minute), and the grid size limits for generated tasks only; learner boards aren't size-checked yet. The other limits are planned for deployment ([plan.md](plan.md#2-backend)).
-- **Implementation.** In-memory token buckets in the single backend process. Running several instances would need a shared store such as Redis; that is noted for scale, not built for the prototype.
-- **Configuration.** All limits are settings in `config.yaml` (§5).
+Where each limit applies on the way to Claude: a per-session or per-IP rate first, then the shared daily budget. Evaluation has no budget gate.
+
+```mermaid
+flowchart LR
+    subgraph IN["Requests"]
+        WS["WebSocket connect"]
+        GEN["POST /api/tasks/generate"]
+        BU["board.update"]
+        TR["tutor.request / reaction"]
+        PRE["Pre-generation<br/>(background)"]
+    end
+    WS -->|"sessions per IP<br/>30/h, 3 open"| S[Session]
+    GEN -->|"REST per IP 60/min<br/>generations per IP 10/h"| B1{"Budget<br/>< 100%?"}
+    BU -->|"20/s per session<br/>(coalesced) + grid size"| EV["Evaluator<br/>no Claude, never limited by budget"]
+    TR -->|"6/min per session<br/>one in flight"| B1
+    PRE --> B2{"Budget<br/>< 80%?"}
+    B1 -->|yes| C[(Claude)]
+    B2 -->|yes| C
+    C -->|"cost of each call"| BUD["Daily budget<br/>$20, resets 00:00 UTC<br/>state/claude-budget.json"]
+```
+
+- **Budget in dollars, not calls.** Calls differ a lot in cost (a generation turn costs about 2.5 times a reaction), so the budget counts the estimated spend that the usage log already computes from the `pricing` table in `config.yaml`. Every Claude call adds its cost as it completes. A call is only checked before it starts, so the last calls of the day can overshoot the cap slightly.
+- **Pre-generation stops first.** Background generations (the first-task pool, the next task) need the budget under `background_share`; a learner waiting for a task or the tutor can use the rest.
+- **The budget survives restarts.** The day's spend is kept in `state/claude-budget.json` (gitignored), on the Fly volume when deployed ([deployment.md](deployment.md#5-logs)), so a deploy doesn't reset it. All other counters are in memory and start from zero on a restart; that's harmless.
+- **Per IP, where there's no session.** Generation is a REST call without a session ID, so it's limited per IP. The IP is the `Fly-Client-IP` header, set by Fly's proxy; locally, the socket's address.
+- **Implementation.** Sliding windows per key and a daily budget, in memory in the single backend process. Running several instances would need a shared store such as Redis; that is noted for scale, not built for the prototype.
+
+```yaml
+claude_budget:
+  usd_per_day: 20              # estimated spend of all Claude calls (pricing in config.yaml); resets 00:00 UTC
+  background_share: 0.8        # pre-generation stops at this share, keeping the rest for waiting learners
+  state_dir: state             # the day's spend survives restarts; SCHEMATICS_STATE_DIR overrides it (Fly: /data/state)
+
+tutor:
+  calls_per_session_per_min: 6   # reactions and learner requests together; one call in flight
+
+task_generation:
+  per_ip_per_hour: 10          # REST generation has no session, so it's counted per IP
+
+sessions:
+  per_ip_per_hour: 30          # WebSocket sessions, reconnects included
+  open_per_ip: 3
+
+rest:
+  requests_per_ip_per_min: 60  # /api/*, except /api/health
+
+board_updates:
+  per_session_per_sec: 20      # beyond this, updates are coalesced: only the latest board is evaluated
+
+grid:                          # learner boards and generated tasks; also bounds solver time
+  max_points: 30               # per side
+  max_components: 40
+  max_wires: 300
+```
+
+### Operations
+
 - **Usage and cost log.** When `logs.enabled` is on, the backend writes one JSON-lines log per run, `logs/run-<timestamp>.<part>.jsonl` (gitignored). It records server start and stop, every Claude call (purpose, model, learner session ID, token usage, estimated cost from the `pricing` table), each log archive, and a run summary with totals. Each `./start.sh` is one run; a code reload continues it in a new part. Earlier parts are gzipped into `logs/history/` within a size budget ([deployment.md](deployment.md#5-logs)).
 - **Deployment.** Fly.io: one Docker image on one always-on machine, shipped from GitHub Actions with the `deploy` label: deployed, smoke tested live, then merged, or rolled back. Details are in [deployment.md](deployment.md).
 - **Message size.** No fixed limit yet; the grid size caps already bound it indirectly. Typical message sizes will be observed in practice before a limit is set.
 
 ## 5. Configuration
 
-The Claude models, behavior knobs, logging and pricing live in one YAML file, [`config.yaml`](../config.yaml) in the repo root, not in code. That lets us switch models, for example Opus vs. Haiku for reactions, and tune thresholds without code changes. The API key is never in this file; it comes from the environment.
+The Claude models, behavior knobs, logging and pricing live in one YAML file, [`config.yaml`](../config.yaml) in the repo root, not in code. Rate limits have a file of their own, [`ratelimiting.yaml`](../ratelimiting.yaml) (§4). That lets us switch models, for example Opus vs. Haiku for reactions, and tune thresholds without code changes. The API key is never in this file; it comes from the environment.
 
 ```yaml
 public: false                  # true for a public deployment: hides debug features
@@ -193,18 +251,6 @@ pregeneration:                 # tasks generated ahead of time and cached (§3)
   max_entries: 50              # cached or running generations, oldest dropped first
   ttl_s: 3600                  # a cached task older than this is dropped
 
-rate_limits:
-  tutor_calls_per_session_per_min: 6
-  task_generations_per_session_per_hour: 10
-  board_updates_per_session_per_sec: 20
-  grid_max_points: 30            # per side
-  grid_max_components: 40
-  grid_max_wires: 300
-  sessions_per_ip_per_hour: 10
-  open_sessions_per_ip: 3
-  rest_requests_per_ip_per_min: 60
-  claude_calls_per_day: 5000
-
 evaluator:
   near_target_ratio: 0.10      # "near_target" when within 10% of every target
   resistor_max_power_w: 5      # above this, a resistor is "overcurrent"
@@ -232,7 +278,8 @@ A snapshot of the repository; it is updated as the structure changes. Entries ma
 schematics-ai-tutor/
 ├── README.md                  project overview and how to run
 ├── LICENSE
-├── config.yaml                models, knobs, rate limits, logging, pricing (§5)
+├── config.yaml                models, knobs, logging, pricing (§5)
+├── ratelimiting.yaml          rate limits and the daily Claude budget (§4)
 ├── Dockerfile                 production image: built frontend + backend (docs/deployment.md)
 ├── fly.toml                   Fly.io app: region, one always-on machine, health check
 ├── .dockerignore
@@ -268,6 +315,7 @@ schematics-ai-tutor/
 │   │   ├── config.py          loads the root config.yaml
 │   │   ├── usage_log.py       per-run usage and cost log
 │   │   ├── log_archive.py     log files in parts; gzip into history/, size cap, nightly
+│   │   ├── rate_limits.py     rate limits and the daily Claude budget (ratelimiting.yaml)
 │   │   ├── grid.py            grid format validation
 │   │   ├── graph.py           grid → graph conversion, nets
 │   │   ├── solver.py          DC modified nodal analysis
@@ -323,6 +371,7 @@ schematics-ai-tutor/
 │   ├── node_modules/          npm packages, installed by start.sh (gitignored)
 │   └── dist/                  production build output (gitignored)
 ├── logs/                      usage and cost logs, one per run (gitignored)
+├── state/                     state kept across restarts: the day's Claude spend (gitignored)
 └── .run/                      PID files and server output from start.sh (gitignored)
 ```
 

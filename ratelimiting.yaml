@@ -1,0 +1,29 @@
+# Rate limits and the daily Claude budget. Documented in docs/design.md §4.
+# They protect the cost of Claude calls and the server; evaluation never depends on Claude.
+# Read by the backend at startup (backend/app/rate_limits.py); restart it after a change.
+
+claude_budget:
+  usd_per_day: 20              # estimated spend of all Claude calls (pricing in config.yaml); resets 00:00 UTC
+  background_share: 0.8        # pre-generation stops at this share, keeping the rest for waiting learners
+  state_dir: state             # the day's spend survives restarts; SCHEMATICS_STATE_DIR overrides it (Fly: /data/state)
+
+tutor:
+  calls_per_session_per_min: 6   # reactions and learner requests together; one call in flight
+
+task_generation:
+  per_ip_per_hour: 10          # REST generation has no session, so it's counted per IP
+
+sessions:
+  per_ip_per_hour: 30          # WebSocket sessions, reconnects included
+  open_per_ip: 3
+
+rest:
+  requests_per_ip_per_min: 60  # /api/*, except /api/health
+
+board_updates:
+  per_session_per_sec: 20      # beyond this, updates are coalesced: only the latest board is evaluated
+
+grid:                          # learner boards and generated tasks; also bounds solver time
+  max_points: 30               # per side
+  max_components: 40
+  max_wires: 300

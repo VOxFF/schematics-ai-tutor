@@ -55,7 +55,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Configuration loader for the root `config.yaml`
 - [x] Usage and cost log per backend run (`logs/`, on/off in `config.yaml`)
 - [x] Integrity checks: `./check.sh` locally and in GitHub Actions on every PR
-- [ ] Rate limiting (per session, per IP, global Claude budget) and API key handling
+- [x] Rate limiting (per session, per IP, daily Claude budget in dollars) in `rate_limits.py` with `ratelimiting.yaml`; API key handling ([design.md](design.md#rate-limits))
 - [x] Test suite tiers: `unit`, `api` (fake Claude), `live` (real Claude, opt-in); `./test.sh`
 - [x] Tests for the evaluator
 
@@ -91,7 +91,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] `public` flag in `config.yaml`: a public build hides debug features (the editor's JSON view)
 - [x] Hosting decision: Fly.io ([deployment.md](deployment.md))
 - [x] Deploy backend and frontend: `Dockerfile` and `fly.toml`, one image serving both, at https://schematics-ai-tutor.fly.dev
-- [x] Continuous deployment: GitHub Actions deploys each pull request and smoke tests it before the merge ([deployment.md](deployment.md#3-continuous-deployment))
+- [x] Continuous deployment: GitHub Actions deploys each pull request and smoke tests it before the merge (replaced by the `deploy` label, below)
 - [x] Ship with the `deploy` label: merge only after a live smoke test passes; automatic rollback on failure ([deployment.md](deployment.md#3-continuous-deployment))
 - [x] Log archive on a Fly volume: startup, size and nightly triggers, compressed history with a size cap ([deployment.md](deployment.md#5-logs))
 - [ ] Learner experience collection from the deployed app
