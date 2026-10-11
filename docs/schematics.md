@@ -122,6 +122,7 @@ The backend rejects a document that breaks any of these rules, before any electr
 - Every wire segment joins orthogonal neighbors, and every wire piece has one of the four shapes.
 - No two components share a point: neither pins nor bodies may overlap. Components connect only through wires.
 - Resistor values have at most two significant digits (e.g. 20, 60, 120, 4700), so they can be drawn as a 4-band color code (two digits and a multiplier, from ×0.01 to ×1M). This keeps generated values realistic.
+- Generation prefers values a beginner can work out in their head: currents and voltage shares come out as simple numbers (12 V across 60 Ω gives 0.2 A), not 2.25 V. This is a preference in the generation prompt, not a check: a calculator is allowed, and an awkward value is fine when the task needs it.
 
 ### Notes
 
@@ -239,7 +240,7 @@ Every generated task passes the same validator that checks learner boards. All o
 | Stage | Checks |
 |---|---|
 | 1. Format and level | The §1 format rules hold for the complete board; `removed_ids`, `decoys` and `target_meter_ids` refer to valid, unique IDs; the task fits its curriculum level; the circuit is centered |
-| 2. Solvable | Evaluated without targets, the complete board's graph has a source, no short circuit, a successful solve and **no issues at all** (no open loop, floating, bypassed or overloaded part, no meter misuse). Every target meter sits in the working circuit and reads a non-zero value. |
+| 2. Solvable | Evaluated without targets, the complete board's graph has a source, no short circuit, a successful solve and **no issues at all** (no open loop, floating, bypassed or overloaded part, no meter misuse, no leftover wire). Every target meter sits in the working circuit and reads a non-zero value. |
 | 3. Not already solved | The task grid does **not** meet the targets. Removed parts are not `fixed`, and target meters are not removed. |
 | 4. Not a repeat | The complete board's **signature** differs from those of the learner's recent tasks. The signature lists, for each net, the parts touching it (type and value), plus the target meter types. Same parts wired differently (series vs. parallel) count as different; moving parts around the grid does not. |
 
@@ -312,6 +313,7 @@ Each check reads the graph and its nets. Each issue lists the pins involved, whi
 | `open_circuit` | A source exists, but its current is below the ammeter resolution (0.1 mA), and no `voltmeter_series` explains it | `open_circuit` |
 | `floating_part` | A component has a pin that is connected to no other pin | `floating_part` |
 | `bypassed` | A component's two pins are in the same net, so it reads 0 V and carries 0 A | `bypassed` |
+| `unused_wire` | A wire piece whose removal leaves every pin connection unchanged: a stray piece, a dead-end stub, or a duplicate. Pieces are checked newest first against the ones still kept, so of two duplicates only the later one counts. Found on the grid, not the graph. | none: the status stays as it is |
 
 ### Status precedence
 

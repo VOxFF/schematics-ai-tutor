@@ -256,6 +256,20 @@ test("the header shows the curriculum level and the task within it", () => {
   expect(screen.getByText("Task 1 of 2")).toBeDefined();
 });
 
+test("while the next task loads, the header keeps the last curriculum level", async () => {
+  const level = { ...LEVEL, curriculum: { level: 3, task: 2, tasks: 2, concept: "voltage divider" } };
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 7, history: [] }, level, chat: [] }));
+  let arrive;
+  vi.stubGlobal("fetch", vi.fn(() => new Promise((resolve) => { arrive = resolve; })));
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Next" }));
+  expect(screen.getByLabelText("Skill level").textContent).toBe("Level 3"); // not skill_level 8
+  const next = { ...LEVEL, id: "gen-next", title: "Parallel paths", curriculum: { level: 4, task: 1, tasks: 2, concept: "parallel" } };
+  arrive(ok({ level: next, difficulty: 3, rationale: "", attempts: 1 }));
+  await screen.findByRole("heading", { name: "Parallel paths" });
+  expect(screen.getByLabelText("Skill level").textContent).toBe("Level 4");
+});
+
 test("dragging from the inventory: hint bar guides, Esc cancels, and the board goes to the session", async () => {
   localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [] }));
   render(<App />);

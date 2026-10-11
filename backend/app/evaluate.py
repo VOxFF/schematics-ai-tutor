@@ -1,6 +1,6 @@
 """Deterministic evaluation of a grid: status, readings and issues (docs/schematics.md §4–§6)."""
 
-from .graph import UnionFind, assign_nets, to_graph
+from .graph import UnionFind, assign_nets, to_graph, unused_wires
 from .grid import METER_TYPES
 from .solver import solve
 
@@ -32,7 +32,13 @@ def default_tolerance(value: float, meter_type: str) -> float:
 def evaluate(grid: dict, settings: dict | None = None) -> dict:
     """Evaluate a format-valid grid. Returns {status, readings, issues}."""
     graph, pin_points = to_graph(grid)
-    return evaluate_graph(graph, pin_points, settings)
+    result = evaluate_graph(graph, pin_points, settings)
+    # Leftover wire pieces don't change the circuit, so they don't change the status either.
+    for wire in unused_wires(grid):
+        ends = {tuple(p) for segment in wire["segments"] for p in segment}
+        result["issues"].append({"code": "unused_wire", "component_ids": [], "wire_ids": [wire["id"]],
+                                 "pins": [], "points": [list(p) for p in sorted(ends)]})
+    return result
 
 
 def evaluate_graph(graph: dict, pin_points: dict, settings: dict | None = None) -> dict:
@@ -125,7 +131,7 @@ def evaluate_graph(graph: dict, pin_points: dict, settings: dict | None = None) 
                 if not blocking:
                     issue("open_circuit", sources, [p for s in sources for p in (pin(s, 0), pin(s, 1))])
 
-    statuses = {ISSUE_STATUS[i["code"]] for i in issues}
+    statuses = {ISSUE_STATUS.get(i["code"]) for i in issues}
     status = next((s for s in STATUS_ORDER if s in statuses), None)
     if status is None:
         status = target_status(graph, readings, near_ratio)

@@ -46,6 +46,8 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Tutor chat pipeline: learner message → backend context → Claude → validated `TutorMessage` (no hint ladder)
 - [x] Tutor reactions on editing pauses
 - [x] Snapshot recording and idle-triggered reactions
+- [x] Highlights in replies: the cause of a problem by ID, and the two grid points a missing or misplaced connection should join
+- [x] Leftover wires: `unused_wire` issue (no status change); on `solved` the tutor suggests tidying up and highlights them
 - [x] Circuit summary line for the tutor
 - [x] Location-talk backstop with regeneration and fallback messages
 - [x] WebSocket session: `session.start`, `board.update`, `tutor.request` (message), per-session rate limit
@@ -104,11 +106,12 @@ Built after the core workflow runs end to end.
 - [ ] Solved checkmark fades out after ~2 s and leaves a small green check in the Task / Targets panel
 - [ ] If the learner breaks a solved circuit, the checkmark disappears and Next is disabled again
 - [ ] Tutor highlights: glow and pulsing (`attention` pulses)
+- [ ] Tutor highlights: different visuals for "remove this" and "connect here" (e.g. a dashed line between the two points); if Claude still highlights part of a wire run, extend wire highlights to the whole run in the backend
 - [ ] Status display on the learning screen (e.g. a colored badge in the Task / Targets panel)
 - [ ] Event log for measuring success: task started/solved, status changes, tutor calls, misconception labels
 - [ ] State the supported devices (desktop: mouse and keyboard)
 - [ ] Revisit the redundancy of component `orientation` and `pins`
-- [ ] Compact reaction context: one-line action descriptions and evaluation deltas instead of full snapshots, and a `dangling_wire` issue for spatial missteps
+- [ ] Compact reaction context: one-line action descriptions and evaluation deltas instead of full snapshots
 - [ ] Append-only multi-turn tutor conversation, so earlier turns are served from the prompt cache
 - [ ] Tutor evaluation set: ~20 broken boards, physics-focus rubric, backstop trip rate
 - [ ] Experiment: let Claude stay silent on neutral moves

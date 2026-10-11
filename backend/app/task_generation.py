@@ -52,6 +52,11 @@ Task rules
 - The removed parts must matter: without them the task is not solved.
 - Never compute or state target values; the backend computes them.
 - Resistor values have at most two significant digits (e.g. 20, 60, 120, 4700).
+- Prefer values a beginner can reason about in their head: choose the source voltage
+  and resistors so that currents and voltage shares come out as simple numbers
+  (12 V across 60 Ω gives 0.2 A; 20 Ω and 40 Ω split 12 V into 4 V and 8 V), not
+  2.25 V or 0.0367 A. This is a preference, not a requirement: the learner may use a
+  calculator, and an awkward value is fine when the task needs it.
 - Write `intro` in plain language for a beginner, without numbers that depend
   on solving the circuit. Fill `rationale` with one sentence on why this task
   fits this learner now.
