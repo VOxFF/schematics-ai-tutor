@@ -314,11 +314,19 @@ export function pickAt(roots, x, y, tolerance = 0) {
   return null;
 }
 
+// World depths of the highlight layer: above the grid points (0), below every wire (1) and
+// part (2), so a highlight never covers an element; the selection sits above tutor highlights.
+export const HIGHLIGHT_Z = 0.4;
+export const SELECTION_Z = 0.5;
+
 // Outline the element `node` (a highlight, docs/gui.md §4): each of its shapes is copied,
-// grown by `width` and drawn just behind it (at depth `z`) in `color`, so only a silhouette line shows.
-export function outline(node, color = STYLE.selection.color, width = STYLE.selection.width, z = -0.05) {
+// grown by `width` and drawn in `color` at world depth `z`, under the elements, so only a
+// silhouette line shows.
+export function outline(node, color = STYLE.selection.color, width = STYLE.selection.width, z = SELECTION_Z) {
   const meshes = [];
   node.traverse((o) => o.isMesh && !o.userData.outline && meshes.push(o));
+  node.updateWorldMatrix(true, true);
+  const base = new THREE.Vector3();
   for (const mesh of meshes) {
     const g = mesh.geometry.parameters;
     const geometry = {
@@ -329,7 +337,7 @@ export function outline(node, color = STYLE.selection.color, width = STYLE.selec
     if (!geometry) continue;
     const copy = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color }));
     copy.userData.outline = true;
-    copy.position.set(mesh.position.x, mesh.position.y, z); // behind the element's own shapes
+    copy.position.set(mesh.position.x, mesh.position.y, z - mesh.parent.getWorldPosition(base).z);
     copy.rotation.copy(mesh.rotation);
     mesh.parent.add(copy);
   }
@@ -337,14 +345,16 @@ export function outline(node, color = STYLE.selection.color, width = STYLE.selec
 }
 
 // Draw a tutor highlight ({ target: { component | wire | point }, style }) into the board's
-// scene `root`: an outline around the component or wire piece, wider than the selection's and
-// behind it so both show, or a ring around the grid point. Returns false when the target isn't there.
-export function drawHighlight(root, { target, style }) {
+// scene `root` (at the origin): an outline around the component or wire piece, wider than the
+// selection's and under it so both show, or a ring around the grid point. On the `selected`
+// element ({ kind, id }) it goes around the selection outline instead. All of it is in the
+// highlight layer, under the elements. Returns false when the target isn't there.
+export function drawHighlight(root, { target, style }, selected = null) {
   const { width, ring_radius: radius, [style]: color = STYLE.highlight.attention } = STYLE.highlight;
   if (target.point) {
     const p = toWorld(target.point);
     const ring = new THREE.Mesh(new THREE.RingGeometry(radius - width, radius, 32), new THREE.MeshBasicMaterial({ color }));
-    ring.position.set(p.x, p.y, 1);
+    ring.position.set(p.x, p.y, HIGHLIGHT_Z);
     ring.userData.outline = true;
     root.add(ring);
     return true;
@@ -352,7 +362,8 @@ export function drawHighlight(root, { target, style }) {
   const kind = target.component ? "component" : "wire";
   const node = root.getObjectByName(target.component ?? target.wire);
   if (!node || node.userData.kind !== kind) return false;
-  outline(node, color, width, -0.1);
+  const around = selected?.kind === kind && selected.id === node.name ? STYLE.selection.width : 0;
+  outline(node, color, width + around, HIGHLIGHT_Z);
   return true;
 }
 

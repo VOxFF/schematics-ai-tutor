@@ -127,7 +127,7 @@ Editing the file and saving reloads the page in development.
 | Tutor `success` | Green outline | Claude points at what was done right |
 | Net hover | Light grey, on points and pins | Everything electrically connected to the hovered point |
 
-A tutor highlight lasts until the next tutor message, or until the learner edits the highlighted element. It is drawn wider than the selection outline and behind it, so a selected, highlighted element shows both. A highlighted grid point gets a ring in the highlight color. Colors and sizes are in `schematic-style.yaml` (`highlight`).
+A tutor highlight lasts until the next tutor message, or until the learner edits the highlighted element. Highlights are a bottom layer: above the grid points, below every wire and part, so where a highlighted pinhole and a highlighted wire meet, the wire stays on top. A tutor highlight is wider than the selection outline and under it; on a selected element it goes around the selection outline, so both show in full. A highlighted grid point gets a ring in the highlight color. Colors and sizes are in `schematic-style.yaml` (`highlight`).
 
 **Interaction**
 

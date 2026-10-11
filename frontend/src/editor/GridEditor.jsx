@@ -108,7 +108,7 @@ export default function GridEditor({ board, startBoard, readings, drag, onStartD
       disposeTree(state.root);
     }
     state.root = buildBoard(board, readings ?? {});
-    for (const h of highlights ?? []) drawHighlight(state.root, h);
+    for (const h of highlights ?? []) drawHighlight(state.root, h, selected);
     const node = selected && state.root.getObjectByName(selected.id);
     if (node && node.userData.kind === selected.kind) outline(node);
     state.scene.add(state.root);
