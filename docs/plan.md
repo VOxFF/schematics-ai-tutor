@@ -68,7 +68,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Schematic style config: `frontend/src/editor/schematic-style.yaml`
 - [x] Drag from the inventory and the wire palette onto the grid: ghost preview, blue/red target points, R to rotate, Esc and release-outside snap back, live `board.update`
 - [x] Picking by drawn shape (grown by 2 px), drag without a jump (grab offset), and moving placed parts and wires with the same drag as the inventory
-- [x] Selection on the grid: click to select (4 px drag threshold), outline highlight (color in `schematic-style.yaml`), R to rotate in place, Del to remove (parts back to the inventory)
+- [x] Selection on the grid: click to select, on release (a 4 px move makes it a drag), outline highlight (color in `schematic-style.yaml`), R to rotate in place, Del to remove (parts back to the inventory)
 - [x] Wire palette: horizontal, vertical, corner, T, + (non-depleting, R to rotate)
 - [x] Inventory drawn inside the editor scene: same scale as the board, two columns, fixed width, scale fixed per task, grid centered, lifted slot and floating ghost while dragging
 - [x] Hint bar: idle, dragging, can't-place and selection hints

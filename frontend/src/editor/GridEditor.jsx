@@ -1,8 +1,8 @@
 // Grid editor: one three.js scene (orthographic, top-down) with the board and, to its right,
 // the inventory region, so both share one scale by construction. HTML labels via
 // CSS2DRenderer; every element is its own scene node (scene.js). Pressing an inventory item
-// starts a drag; pressing a board element selects it (blue outline), and moving the pointer a
-// few pixels turns that press into the same drag. A dragged item is held where it was grabbed
+// starts a drag. A click (press and release without moving) on a board element selects it
+// (blue outline); moving the pointer a few pixels instead turns the press into the same drag. A dragged item is held where it was grabbed
 // (no jump to the pointer); over the grid a ghost shows blue/red target points, and a drop places it.
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
@@ -14,7 +14,7 @@ import { CELL, STYLE } from "./style.js";
 
 const MARGIN = 1.04; // a little air around the grid
 const PICK_TOLERANCE_PX = 2; // shapes are hit-tested grown by this many screen pixels
-const DRAG_THRESHOLD_PX = 4; // a press on a board element that moves less than this is a click
+const DRAG_THRESHOLD_PX = 4; // a press on the board that moves less than this is a click
 
 // Props: `drag` is the current drag ({ item, rotation, base?, origin? }, see TutorScreen) or null;
 // `onStartDrag(drag)` starts one, `onDrop(point)` ends it on a grid point, and `onPlan(fits)`
@@ -31,7 +31,7 @@ export default function GridEditor({ board, startBoard, readings, drag, onStartD
   const pointer = useRef(null); // grid point under the dragged item's anchor (null off the grid)
   const pointerWorld = useRef(null); // world position of the dragged item's anchor, for the free-floating ghost
   const grab = useRef({ x: 0, y: 0 }); // pointer minus the item's anchor, fixed when the drag starts
-  const pending = useRef(null); // a press on a movable board element that may still become a drag
+  const pending = useRef(null); // a press on the board: a click (selection) or the start of a drag
   const [unsupported, setUnsupported] = useState(false);
   const [hover, setHover] = useState(null); // under the pointer: "grab" (movable), "select" (fixed) or null
 
@@ -227,8 +227,11 @@ export default function GridEditor({ board, startBoard, readings, drag, onStartD
     const held = pending.current;
     if (held) {
       if (Math.hypot(event.clientX - held.x, event.clientY - held.y) < DRAG_THRESHOLD_PX) return;
-      pending.current = null;
-      begin(held.world, held.carried); // from where it was pressed: no jump
+      held.moved = true; // no longer a click
+      if (held.carried) {
+        pending.current = null;
+        begin(held.world, held.carried); // from where it was pressed: no jump
+      }
       return;
     }
     if (!drag) {
@@ -247,13 +250,13 @@ export default function GridEditor({ board, startBoard, readings, drag, onStartD
   };
   const press = (event) => {
     const { world, hit } = hitUnder(event);
-    if (hit?.kind !== "inventory") onSelect?.(hit ? { kind: hit.kind, id: hit.id } : null); // empty space deselects
     const carried = dragFor(hit);
-    if (!carried) return;
-    event.preventDefault();
-    event.currentTarget.setPointerCapture?.(event.pointerId); // keep the drag when leaving the canvas
-    if (hit.kind === "inventory") begin(world, carried);
-    else pending.current = { x: event.clientX, y: event.clientY, world, carried };
+    if (carried) {
+      event.preventDefault();
+      event.currentTarget.setPointerCapture?.(event.pointerId); // keep the drag when leaving the canvas
+    }
+    if (hit?.kind === "inventory") begin(world, carried);
+    else pending.current = { x: event.clientX, y: event.clientY, world, hit, carried, moved: false };
   };
   const leave = () => {
     setHover(null);
@@ -264,7 +267,13 @@ export default function GridEditor({ board, startBoard, readings, drag, onStartD
     }
   };
   const drop = (event) => {
-    pending.current = null; // released before moving: just a click (selection)
+    const held = pending.current;
+    pending.current = null;
+    if (held && !held.moved) {
+      // A click: select the element under it, or deselect on empty space.
+      onSelect?.(held.hit ? { kind: held.hit.kind, id: held.hit.id } : null);
+      return;
+    }
     if (!drag) return;
     const point = snap(anchorAt(event));
     pointer.current = null;

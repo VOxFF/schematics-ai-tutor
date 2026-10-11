@@ -113,7 +113,7 @@ Editing the file and saving reloads the page in development.
 
 **Selection and highlights**
 
-- **Selection** is a state. The selected element is **editable**: it can be dragged, rotated and deleted. Only one element is selected at a time.
+- **Selection** is a state, set by a click. The selected element can be rotated (R) and deleted (Del). Dragging doesn't need a selection: any movable element can be dragged straight away. Only one element is selected at a time.
 - **A highlight** is visual only: an outline (silhouette line) around the element's shape. Selection shows a highlight, but a highlight does not make an element selected or editable.
 - **Highlight colors:**
 
@@ -133,7 +133,7 @@ A tutor highlight lasts until the next tutor message, or until the learner edits
 
 | Action | Behavior |
 |---|---|
-| Mouse down on an element | Selects it (blue outline). Moving the pointer 4 px or more while pressed turns the same press into a drag, with no separate click needed; less is a click. |
+| Click an element | Selects it (blue outline) on release. A press that moves 4 px or more is a drag instead and leaves the selection as it was, so nothing flickers when a drag starts. |
 | Drag from the inventory, the wire palette, or the grid | The grid points nearest the element's pins are highlighted, showing where it will connect |
 | **R** while dragging | Rotates the element; the pin highlights follow the new orientation |
 | **R** while selected | Rotates the element in place, a quarter turn clockwise: a part around its body, a wire piece around its anchor. If the turned element wouldn't fit, nothing changes and the hint bar says why. |
@@ -141,11 +141,11 @@ A tutor highlight lasts until the next tutor message, or until the learner edits
 | Release on an invalid spot | The element snaps back to where it came from: the inventory, the palette, or its previous position |
 | **Esc** while dragging | Cancels the drag; the element snaps back |
 | **Del** on the selection | A part goes back to the inventory; a wire piece is deleted |
-| Click empty grid, or **Esc** | Deselects |
+| Click empty space, or **Esc** | Deselects |
 | Hover a point | Highlights every point and pin in the same net |
 
 - **Fixed parts** and the task's own wires can be selected, so they show the outline and the hint bar explains them, but they can't be dragged, rotated or deleted.
-- **Selection outline.** Every shape of the element is copied, grown by `selection.width` and drawn just behind it in `selection.color` (both in `schematic-style.yaml`), so only a silhouette line shows. The copies don't count for picking. The selection survives moves and rotations (the element keeps its `id`), and clears on Del, Esc, a press on empty space, Reset board, or a new task.
+- **Selection outline.** Every shape of the element is copied, grown by `selection.width` and drawn just behind it in `selection.color` (both in `schematic-style.yaml`), so only a silhouette line shows. The copies don't count for picking. The selection survives moves and rotations (the element keeps its `id`), and clears on Del, Esc, a click on empty space, Reset board, or a new task.
 - **Keys** (R, Del, Esc) are ignored while the learner is typing in the chat.
 - **Sending edits.** Each finished edit (drop, rotate, delete) sends one `board.update`. Dragging stays local until the drop.
 - **Anchor points.** A part is dropped by its **body** point; its pins land on the neighboring points in the direction of its orientation (new parts start horizontal, `E`). A wire piece is dropped by its **anchor**: the left end of a straight piece, or the shared point of a corner, T or +.
