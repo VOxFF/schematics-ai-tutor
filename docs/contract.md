@@ -66,7 +66,7 @@ Errors: `404` for an unknown level, `429` when the rate limit is exceeded.
 
 ### WebSocket session
 
-> **Build status.** Implemented: `session.start`, `board.update` → `evaluation`, idle-triggered reactions, `tutor.request` with `action: "message"` → `tutor.started` → `tutor.message`, and `error`. The server keeps generated levels' reference solutions in memory by level ID for the tutor. The editor sends `board.update` on every drop. The UI shows the chat text and draws the highlights on the grid. Still to come: `task.next` / `task.ready` and `hint`.
+> **Build status.** Implemented: `session.start`, `board.update` → `evaluation`, idle-triggered reactions, `tutor.request` with `action: "message"` → `tutor.started` → `tutor.message`, and `error`. The server keeps generated levels' reference solutions in memory by level ID for the tutor. The editor sends `board.update` on every drop. The UI shows the chat text and draws the highlights on the grid. `tutor.request` with `action: "hint"` follows the hint ladder. Still to come: `task.next` / `task.ready`.
 
 One connection is one learning session, and it can span several tasks.
 
@@ -83,11 +83,11 @@ Every message is a JSON object with a `type` field.
 
 | `type` | Payload | Effect |
 |---|---|---|
-| `session.start` | `progress?`, `level?`, `board?`, `history?` | Starts a session (the server sends `task.ready` with the curated level for the skill level) or resumes one (`level` given). The server also replies with `evaluation`. With `progress` and `level`, the server pre-generates the task after this one ([design.md](design.md#3-system-architecture)). |
+| `session.start` | `progress?`, `level?`, `board?`, `history?`, `hint_level?` | Starts a session (the server sends `task.ready` with the curated level for the skill level) or resumes one (`level` given). The server also replies with `evaluation`. With `progress` and `level`, the server pre-generates the task after this one ([design.md](design.md#3-system-architecture)). `hint_level` is the hint level reached in this task (0–3), so a resumed session continues the ladder. |
 | `task.next` | — | Asks for the next task, usually after the current one is solved |
 | `summary.request` | — | Bonus: asks for the learner's skill summary (Learning Path screen) |
 | `board.update` | `seq`, `board` | Sent on each finished edit (a part dropped, a wire piece placed or removed). The server records a snapshot, re-evaluates and replies with `evaluation` carrying the same `seq`. |
-| `tutor.request` | `request_id`, `action` (`"message"`, or `"hint"` later), `learner_text?` | Runs the evaluator and then Claude on the latest board. `"hint"` arrives with the hint ladder, in the learning-depth phase ([plan.md](plan.md#5-learning-depth)). |
+| `tutor.request` | `request_id`, `action` (`"message"` or `"hint"`), `learner_text?` | Runs the evaluator and then Claude on the latest board. `"message"` needs `learner_text`. `"hint"` asks for the next level of the hint ladder ([tutor.md](tutor.md#3-hint-ladder)); the server picks the level. |
 
 **Server → client**
 
@@ -98,7 +98,7 @@ Every message is a JSON object with a `type` field.
 | `summary.ready` | `summary: SkillSummary` or `error` | Bonus: the reply to `summary.request` |
 | `evaluation` | `seq`, `evaluation: Evaluation` | The client ignores any `seq` older than the last one it applied |
 | `tutor.started` | `request_id`, `trigger` (`"reaction"` or `"request"`) | The UI shows "tutor is thinking". Reactions get a server-generated `request_id`. |
-| `tutor.message` | `request_id`, `seq`, `evaluation`, `message: TutorMessage` | The complete reply, sent only after the backend has validated it. `seq` is the board the reply is about (0: the `session.start` board); when the learner has edited since, the client shows the text but drops the highlights and the evaluation, which are out of date. |
+| `tutor.message` | `request_id`, `seq`, `evaluation`, `message: TutorMessage`, `hint_offered` | The complete reply, sent only after the backend has validated it. `hint_offered` is true when the reply offers a hint, so the UI highlights the Hint button. `seq` is the board the reply is about (0: the `session.start` board); when the learner has edited since, the client shows the text but drops the highlights and the evaluation, which are out of date. |
 | `error` | `code`, `message`, `request_id?` | Codes: `bad_message`, `unknown_level`, `rate_limited`, `tutor_unavailable`, `no_session` (a request arrived before `session.start`, e.g. after a server restart: the client re-sends `session.start` and repeats the request), `session_rejected` (the saved level or board can't be resumed: the client offers a new task). Limits are in [design.md](design.md#4-security-and-operations). Generation failures never surface: they fall back to a curated level. |
 
 **Rules**
@@ -327,7 +327,7 @@ The order runs from most stable to least stable, so the cached prefix stays vali
 - **Location-talk backstop** ([tutor.md](tutor.md#6-guardrails-physics-not-placement)): scan `chat.text` for coordinates, pin references and the words "row", "column" and "point".
   - On a match, regenerate once with the problem named.
   - If it fails again, send a safe generic message for the status.
-- Enforce `meta.hint_level` server-side: the session tracks the highest hint given. Claude may go at most one level higher, and anything beyond that is clamped. Until the hint ladder exists, it is always set to 0.
+- Enforce `meta.hint_level` server-side: the session tracks the highest hint given and decides each hint's level (one higher, at most 3). Claude's value is overwritten with it; replies that aren't hints get 0. A level-1 hint's highlights are dropped.
 - **Highlight wire format.** In Claude's structured output, each highlight has `component`, `wire` and `point` fields, with the unused ones `null`, plus `style`. The backend converts each into a `Highlight` (`{ target, style }`).
 - Check every highlight against the latest snapshot: the component ID exists, the wire ID exists, and the point is inside the grid. Drop any that fail.
 - The returned `evaluation` always comes from the evaluator, never from Claude.
