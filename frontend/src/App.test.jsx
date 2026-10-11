@@ -220,6 +220,38 @@ test("a reply about an older board shows its text but not its readings", async (
   expect(screen.getByLabelText("Task and targets").textContent).toContain("VM1: 7");
 });
 
+test("the Hint button climbs the ladder, lights up when a hint is offered, and Next records it", async () => {
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 2, history: [] }, level: LEVEL, chat: [] }));
+  const fetch = mockFetch(ok({ level: { ...LEVEL, id: "gen-next", title: "Parallel paths" }, difficulty: 3, rationale: "", attempts: 1 }));
+  render(<App />);
+  await screen.findByPlaceholderText("Ask the tutor…");
+  const ws = FakeSocket.last;
+  expect(ws.sent[0]).toMatchObject({ type: "session.start", hint_level: 0 });
+  const reply = (extra, meta) => ws.serverSends({
+    type: "tutor.message", request_id: "r", seq: 0, ...extra,
+    evaluation: { status: "open_circuit", readings: { VM1: 0 }, issues: [] },
+    message: { meta: { principle: "closed_loop", highlights: [], hint_level: 0, misconception: null, ...meta },
+               chat: { kind: "question", text: `Reply ${ws.sent.length}` } },
+  });
+
+  reply({ hint_offered: true }, {});
+  const hint = screen.getByRole("button", { name: "Hint 1/3" });
+  expect(hint.className).toContain("offered");
+  fireEvent.click(hint);
+  expect(ws.sent.at(-1)).toMatchObject({ type: "tutor.request", action: "hint" });
+  expect(screen.getByText("Hint 1/3, please")).toBeDefined();
+  expect(screen.getByRole("button", { name: "Hint 1/3" }).className).not.toContain("offered");
+  reply({}, { hint_level: 1, misconception: "current_used_up" });
+  expect(screen.getByRole("button", { name: "Hint 2/3" })).toBeDefined();
+
+  solve();
+  fireEvent.click(screen.getByRole("button", { name: "Next" }));
+  await screen.findByRole("heading", { name: "Parallel paths" });
+  const summary = JSON.parse(fetch.mock.calls.at(-1)[1].body).history.at(-1);
+  expect(summary).toMatchObject({ hints_used: 1, misconceptions: ["current_used_up"] });
+  expect(screen.getByRole("button", { name: "Hint 1/3" })).toBeDefined(); // a fresh ladder
+});
+
 test("a tutor error shows in the chat", async () => {
   localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [] }));
   render(<App />);

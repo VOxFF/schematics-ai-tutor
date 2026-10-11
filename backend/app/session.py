@@ -1,7 +1,8 @@
 """WebSocket learning session (docs/contract.md §1): session.start, board.update, tutor.request.
 
 Every board.update records a snapshot; when editing pauses for `tutor.idle_threshold_ms`, the
-tutor reacts to the snapshots since its last call. A learner message cancels a pending reaction.
+tutor reacts to the snapshots since its last call. A learner message or hint request cancels a
+pending reaction. The session runs the task's hint ladder (docs/tutor.md §3).
 """
 
 import asyncio
@@ -11,7 +12,7 @@ from collections import deque
 
 import anthropic
 
-from .evaluate import evaluate
+from .evaluate import STATUS_RANK, evaluate
 from .graph import to_graph
 from .grid import validate_grid
 from .task_cache import solved
@@ -37,6 +38,9 @@ class Session:
         self.snapshots: list[dict] = []  # boards since the tutor's last call, oldest first
         self.started_at = time.monotonic()
         self.idle: asyncio.Task | None = None  # pending reaction timer
+        self.hint_level = 0  # highest hint given in this task (0-3)
+        self.best_rank = -1  # best status reached in this task, by STATUS_RANK
+        self.stalled = 0  # reactions in a row without beating best_rank
 
     async def handle(self, message: dict) -> None:
         kind = message.get("type")
@@ -74,6 +78,8 @@ class Session:
         self.seq = 0
         self.level = level
         self.history = [t for t in message.get("history", []) if isinstance(t, dict)]
+        hint_level = message.get("hint_level", 0)
+        self.hint_level = min(max(hint_level, 0), 3) if isinstance(hint_level, int) else 0
         self.usage_log.event("session_started", session_id=self.id, level_id=level.get("id"))
         await self.send({"type": "evaluation", "seq": 0, "evaluation": self._evaluate()})
         # A resumed task (e.g. after a server restart, which empties the cache) gets its next
@@ -132,7 +138,23 @@ class Session:
         self.calls.append(time.monotonic())
         request_id = f"react-{uuid.uuid4().hex[:8]}"
         await self.send({"type": "tutor.started", "request_id": request_id, "trigger": "reaction"})
-        await self._answer(request_id, None)
+        await self._answer(request_id, None, offer_hint=self._offer_hint())
+
+    def _offer_hint(self) -> bool:
+        """Whether this reaction offers a hint: after `tutor.offer_hint_after_reactions` reactions in
+        a row without the status beating the best one in this task (docs/tutor.md §3)."""
+        status = self._evaluate()["status"]
+        rank = STATUS_RANK.index(status) if status in STATUS_RANK else -1
+        if rank > self.best_rank:
+            self.best_rank, self.stalled = rank, 0
+            return False
+        self.stalled += 1
+        if status == "solved" or self.hint_level >= 3:
+            return False
+        if self.stalled >= self.config.get("tutor", {}).get("offer_hint_after_reactions", 3):
+            self.stalled = 0
+            return True
+        return False
 
     def _over_rate_limit(self) -> bool:
         limit = self.config.get("rate_limits", {}).get("tutor_calls_per_session_per_min", 6)
@@ -144,11 +166,13 @@ class Session:
     async def request(self, message: dict) -> None:
         request_id = message.get("request_id") or uuid.uuid4().hex[:8]
         text = str(message.get("learner_text") or "").strip()
+        action = message.get("action")
         if self.level is None:
             # The server lost or never had the session (e.g. it restarted); the client resends session.start.
             await self.error("no_session", "send session.start first", request_id)
-        elif message.get("action") != "message" or not text:
-            await self.error("bad_message", "tutor.request needs action 'message' and learner_text", request_id)
+        elif action not in ("message", "hint") or (action == "message" and not text):
+            await self.error("bad_message", "tutor.request needs action 'hint', or 'message' with learner_text",
+                             request_id)
         elif self.claude is None:
             await self.error("tutor_unavailable", "The tutor is not configured.", request_id)
         elif self.busy or self._over_rate_limit():
@@ -158,11 +182,15 @@ class Session:
             self.busy = True
             self.calls.append(time.monotonic())
             await self.send({"type": "tutor.started", "request_id": request_id, "trigger": "request"})
+            # The server decides a hint's level: one above the highest given, at most 3.
+            hint = min(self.hint_level + 1, 3) if action == "hint" else 0
             # Run the Claude call in the background so the session keeps receiving messages.
-            self._start_task(self._answer(request_id, text))
+            self._start_task(self._answer(request_id, text or None, hint=hint, asked=True))
 
-    async def _answer(self, request_id: str, text: str | None) -> None:
-        """A tutor call for a learner message (`text`) or a reaction (`text` None)."""
+    async def _answer(self, request_id: str, text: str | None, *, hint: int = 0, asked: bool = False,
+                      offer_hint: bool = False) -> None:
+        """A tutor call for a learner request (`asked`: a message, or a hint of level `hint`) or
+        a reaction, which may end by offering a hint."""
         # Earlier boards since the last call; the current board is added by the tutor context.
         snapshots, self.snapshots = self.snapshots[:-1], []
         board, seq = self.board, self.seq  # edits may arrive during the call; the reply is about this board
@@ -171,21 +199,25 @@ class Session:
             reply, evaluation = await answer(
                 self.claude, self.config, self.usage_log, level=self.level, board=board,
                 reference=reference, history=self.history, learner_text=text, snapshots=snapshots,
-                session_id=self.id,
+                session_id=self.id, hint_level=hint, offer_hint=offer_hint,
             )
-            if text is not None:
+            if hint:
+                self.hint_level = max(self.hint_level, hint)
+                self.stalled = 0
+                self.history.append({"role": "learner", "text": f"(asked for hint {hint}/3) {text or ''}".strip()})
+            elif text is not None:
                 self.history.append({"role": "learner", "text": text})
             self.history.append({"role": "tutor", "text": reply["chat"]["text"]})
             # `seq` names the board the reply is about: the client drops its highlights and
             # evaluation when the learner has edited since.
             await self.send({"type": "tutor.message", "request_id": request_id, "seq": seq,
-                             "evaluation": evaluation, "message": reply})
+                             "evaluation": evaluation, "message": reply, "hint_offered": offer_hint})
         except anthropic.APIError as e:
-            purpose = "tutor_request" if text is not None else "tutor_reaction"
+            purpose = "tutor_request" if asked else "tutor_reaction"
             self.usage_log.event("claude_error", purpose=purpose, session_id=self.id, error=str(e)[:300])
             # A failed reaction carries no request_id: the client stops "thinking" without a chat error.
             await self.error("tutor_unavailable", "The tutor is unavailable right now; try again shortly.",
-                             request_id if text is not None else None)
+                             request_id if asked else None)
         finally:
             self.busy = False
         if self.snapshots and self.idle is None:

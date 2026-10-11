@@ -10,6 +10,8 @@ DECIMALS = {"voltmeter": 2, "ammeter": 4}
 # Most severe first (docs/schematics.md §6). Issues missing from ISSUE_STATUS (unused_wire)
 # are reported but never set the status.
 STATUS_ORDER = ["short_circuit", "no_source", "overcurrent", "meter_misuse", "open_circuit", "floating_part", "bypassed"]
+# Every status, worst first: progress is a move to the right (used for offering hints).
+STATUS_RANK = [*STATUS_ORDER, "misplaced", "near_target", "solved"]
 ISSUE_STATUS = {
     "short_circuit": "short_circuit",
     "no_source": "no_source",

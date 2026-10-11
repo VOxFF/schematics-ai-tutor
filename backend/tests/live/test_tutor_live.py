@@ -62,3 +62,20 @@ def test_tutor_suggests_tidying_up_leftovers_when_solved(config):
     print(f"cost: ${usage_log.totals['cost_usd']:.4f}")
     assert evaluation["status"] == "solved"
     assert {"target": {"wire": "W90"}, "style": "attention"} in message["meta"]["highlights"]
+
+
+def test_tutor_gives_a_hint_at_each_level(config):
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        pytest.skip("ANTHROPIC_API_KEY is not set (./test.sh live loads backend/keys/apikey.txt)")
+    usage_log = UsageLog.from_config(config, REPO_ROOT, "live-test")
+    level, spec = example_level()
+    client = anthropic.AsyncAnthropic()
+    for hint_level in (1, 2, 3):
+        message, _ = asyncio.run(answer(
+            client, config, usage_log, level=level, board=level["board"], reference=spec["complete_board"],
+            history=[], session_id="live", hint_level=hint_level,
+        ))
+        print(hint_level, json.dumps(message["chat"]), json.dumps(message["meta"]["highlights"]))
+        assert message["meta"]["hint_level"] == hint_level and message["chat"]["kind"] == "hint"
+        assert location_talk(message["chat"]["text"]) == []
+    print(f"cost: ${usage_log.totals['cost_usd']:.4f}")

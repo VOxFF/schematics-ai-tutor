@@ -1,7 +1,7 @@
 // Learning (tutor) screen layout from the sketch (docs/gui.md §2). The editor shows the
 // received task JSON until the grid editor exists.
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import GridEditor from "../editor/GridEditor.jsx";
 import { partName } from "../editor/naming.js";
 import { WIRE_PALETTE, lift, nextOrientation, place, removeSelected, rotateSelected } from "../editor/placement.js";
@@ -174,7 +174,8 @@ function InventoryList({ board, onStartDrag }) {
   );
 }
 
-function Chat({ chat, connected, thinking, onSend }) {
+// `hintLevel`: the hint level reached in this task; the Hint button asks for the next one (docs/gui.md §7).
+function Chat({ chat, connected, thinking, onSend, hintLevel, hintOffered, onHint }) {
   const [draft, setDraft] = useState("");
   const end = useRef(null);
 
@@ -208,6 +209,10 @@ function Chat({ chat, connected, thinking, onSend }) {
           onChange={(e) => setDraft(e.target.value)}
           disabled={!connected || thinking}
         />
+        <button type="button" className={hintOffered ? "hint offered" : "hint"} onClick={onHint}
+                disabled={!connected || thinking} title="Ask the tutor for a hint, one step at a time">
+          Hint {Math.min(hintLevel + 1, 3)}/3
+        </button>
       </form>
     </aside>
   );
@@ -227,11 +232,22 @@ function hint(drag, fits, selection, solved) {
   return "Drop onto the highlighted points to connect · R to rotate · Esc to cancel";
 }
 
-export default function TutorScreen({ session, loading, error, onRestart, onRetry, onChat, onNext, onBoard }) {
+export default function TutorScreen({ session, loading, error, onRestart, onRetry, onChat, onNext, onBoard, onTask }) {
   const { progress, level } = session;
   const chat = session.chat ?? [];
   const board = session.board ?? level?.board ?? null;
-  const tutor = useTutorSession(level, chat, onChat, board, progress);
+  const hintLevel = session.hint_level ?? 0;
+  // Each reply updates the task's record: the hint level reached, an offered hint, misconceptions.
+  const onReply = useCallback((meta, offered) => onTask?.((current) => ({
+    hint_level: Math.max(current.hint_level ?? 0, meta.hint_level ?? 0),
+    hint_offered: offered || (current.hint_offered && !meta.hint_level),
+    misconceptions: meta.misconception && !(current.misconceptions ?? []).includes(meta.misconception)
+      ? [...(current.misconceptions ?? []), meta.misconception] : current.misconceptions ?? [],
+  })), [onTask]);
+  const tutor = useTutorSession(level, chat, onChat, board, progress, { hintLevel, onReply });
+  const askHint = () => {
+    if (tutor.askHint()) onTask?.(() => ({ hint_offered: false }));
+  };
   // { item, rotation, base?, origin? }: `base` is the board without a placed element being moved,
   // `origin` its anchor and rotation before the move.
   const [drag, setDrag] = useState(null);
@@ -337,7 +353,8 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
         </div>
         <InventoryList board={board} onStartDrag={startDrag} />
       </div>
-      <Chat chat={chat} connected={tutor.connected} thinking={tutor.thinking} onSend={tutor.send} />
+      <Chat chat={chat} connected={tutor.connected} thinking={tutor.thinking} onSend={tutor.send}
+            hintLevel={hintLevel} hintOffered={Boolean(session.hint_offered)} onHint={askHint} />
     </div>
   );
 }

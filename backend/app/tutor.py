@@ -72,6 +72,17 @@ to the latest status, in at most 2 sentences:
   also lists unused_wire issues (leftover wire pieces that connect nothing), suggest
   tidying them up and highlight each one by wire id with style attention.
 If nothing meaningful changed, keep it to one short line. Never give the solution.
+If the request has "offer_hint": true, end the reaction by briefly offering a hint
+(e.g. "Want a hint?"), without giving it.
+
+Hints (request action "hint"): give exactly the level in request.hint_level, in at
+most 4 sentences:
+1 orient: name the concept that matters. No highlights.
+2 focus: point to where to look and the principle; highlight the relevant part
+  (attention).
+3 method: reason with the learner's numbers and stop one step before the answer;
+  never state the value to pick or the part to place. A repeated level-3 hint says
+  it differently and goes no further.
 
 Free chat (request action "message"):
 - Concept questions ("What is a voltmeter?") get a full, plain explanation;
@@ -104,7 +115,7 @@ pieces as one wire, so when a run has to change, highlight every piece in it,
 from one part pin or junction to the next.
 For misplaced, also highlight the target meter (attention); for near_target and
 solved, highlight the target meter with success. no_source needs no highlight.
-Set meta.hint_level to 0. Set meta.misconception only when the
+Set meta.hint_level to request.hint_level for a hint, else 0. Set meta.misconception only when the
 learner's words or circuit show one, using only these labels:
 {", ".join(MISCONCEPTIONS)}.
 
@@ -195,13 +206,21 @@ def _usage(response) -> dict:
 
 async def answer(client, config: dict, usage_log, *, level: dict, board: dict, reference: dict | None,
                  history: list[dict], learner_text: str | None = None, snapshots: list[dict] | None = None,
-                 session_id: str | None = None) -> tuple[dict, dict]:
-    """Return (TutorMessage, evaluation) for a learner message, or a reaction when `learner_text`
-    is None. Raises anthropic.APIError on API failure."""
-    reaction = learner_text is None
+                 session_id: str | None = None, hint_level: int = 0, offer_hint: bool = False) -> tuple[dict, dict]:
+    """Return (TutorMessage, evaluation) for a learner message, a hint of `hint_level` (1-3, decided
+    by the session), or a reaction when both are absent; a reaction with `offer_hint` ends by
+    offering a hint. Raises anthropic.APIError on API failure."""
+    reaction = learner_text is None and not hint_level
     purpose = "tutor_reaction" if reaction else "tutor_request"
     settings = config["claude"][purpose]
-    request = {"trigger": "reaction"} if reaction else {"action": "message", "learner_text": learner_text}
+    if hint_level:
+        request = {"action": "hint", "hint_level": hint_level}
+        if learner_text:
+            request["learner_text"] = learner_text
+    elif reaction:
+        request = {"trigger": "reaction", "offer_hint": True} if offer_hint else {"trigger": "reaction"}
+    else:
+        request = {"action": "message", "learner_text": learner_text}
     user_turn, evaluation = build_context(
         level, board, reference, history, request,
         config.get("tutor", {}).get("history_turns", 6), config.get("evaluator"), snapshots,
@@ -231,9 +250,12 @@ async def answer(client, config: dict, usage_log, *, level: dict, board: dict, r
             break
         found = location_talk(message["chat"]["text"])
         if not found:
-            message["meta"]["hint_level"] = 0  # no hint ladder yet
+            # The hint ladder is enforced here, not by Claude (docs/tutor.md §3).
+            message["meta"]["hint_level"] = hint_level
+            if hint_level:
+                message["chat"]["kind"] = "hint"
             returned = message["meta"].get("highlights", [])
-            message["meta"]["highlights"] = clean_highlights(returned, board)
+            message["meta"]["highlights"] = [] if hint_level == 1 else clean_highlights(returned, board)
             # What Claude pointed at and what survived the board check, to see why nothing shows.
             usage_log.event("tutor_highlights", purpose=purpose, session_id=session_id, status=evaluation["status"],
                             returned=returned, kept=message["meta"]["highlights"])
@@ -241,4 +263,8 @@ async def answer(client, config: dict, usage_log, *, level: dict, board: dict, r
         usage_log.event("tutor_backstop", session_id=session_id, attempt=attempt, matches=found)
         content = (user_turn + "\n\nYour previous reply described locations (" + ", ".join(found)
                    + "). Explain the physics instead and point with highlights.")
-    return fallback_message(evaluation["status"]), evaluation
+    fallback = fallback_message(evaluation["status"])
+    if hint_level:  # still a hint: it counts on the ladder and shows as one
+        fallback["meta"]["hint_level"] = hint_level
+        fallback["chat"]["kind"] = "hint"
+    return fallback, evaluation

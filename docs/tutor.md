@@ -117,7 +117,7 @@ When the learner places a meter from the inventory, the tutor asks "What do you 
 
 ## 8. System prompt draft
 
-The live prompt is `SYSTEM_PROMPT` in `backend/app/tutor.py`. It follows this draft, adds the reaction rules from §2 and the free-chat rules from §4, and leaves out hints until the hint ladder exists.
+The live prompt is `SYSTEM_PROMPT` in `backend/app/tutor.py`. It follows this draft and adds the reaction rules from §2, the hint offer and levels from §3, and the free-chat rules from §4.
 
 ```text
 You are a patient electronics tutor for complete beginners. The learner builds
