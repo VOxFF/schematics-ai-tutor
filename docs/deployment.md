@@ -24,7 +24,7 @@ How the prototype is hosted and how changes reach it. The security and rate-limi
 | Secret | Where | Scope |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | Fly secret on the app | Read by the backend at startup |
-| `FLY_API_TOKEN` | GitHub repository secret | A deploy token for this app only: `fly tokens create deploy -a schematics-ai-tutor` |
+| `FLY_API_TOKEN` | GitHub repository secret | A deploy token for this app only, created in the Fly dashboard (app → Tokens) or with `fly tokens create deploy -a schematics-ai-tutor` by a user token allowed to create tokens |
 
 - Neither one is ever in the repo or in the image; `.dockerignore` keeps `backend/keys/` and `.env` out of the build context.
 - The GitHub token is a deploy token, not a personal or org token. A leak could deploy or read this one app, nothing else in the account.
@@ -87,6 +87,6 @@ fly secrets list                   # names only, never values
 - [x] `ANTHROPIC_API_KEY` set as a Fly secret
 - [x] First deploy, by hand (2026-10-11): health, page, assets, HTTPS redirect and WebSocket upgrade checked
 - [x] Playthrough in the browser on the public URL: a couple of tasks solved, task generation and the tutor working
-- [ ] Deploy token in GitHub secrets
+- [x] Deploy token in GitHub secrets (2026-10-11)
 - [ ] `deploy` job with the smoke test in `.github/workflows/check.yml`
 - [ ] Logs and learner experience collection (to be designed)
