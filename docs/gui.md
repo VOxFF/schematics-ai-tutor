@@ -122,12 +122,12 @@ Editing the file and saving reloads the page in development.
 | Selection | Blue outline | The learner selected this element; it is editable |
 | Drop target, valid | Blue, on the grid points nearest the element's pins | Where the element will connect if dropped |
 | Drop target, invalid | Red, on those points | The spot is taken or off the grid; dropping snaps back |
-| Tutor `attention` | Amber, pulsing outline | Claude draws attention here |
+| Tutor `attention` | Amber outline (pulsing in polishing) | Claude draws attention here |
 | Tutor `error` | Red outline | Claude points at a problem |
 | Tutor `success` | Green outline | Claude points at what was done right |
 | Net hover | Light grey, on points and pins | Everything electrically connected to the hovered point |
 
-A tutor highlight lasts until the next tutor message, or until the learner edits the highlighted element.
+A tutor highlight lasts until the next tutor message, or until the learner edits the highlighted element. It is drawn wider than the selection outline and behind it, so a selected, highlighted element shows both. A highlighted grid point gets a ring in the highlight color. Colors and sizes are in `schematic-style.yaml` (`highlight`).
 
 **Interaction**
 
@@ -158,7 +158,7 @@ A tutor highlight lasts until the next tutor message, or until the learner edits
   - **Movable:** non-`fixed` parts and wire pieces the learner placed. `fixed` parts and the task's own wires stay put.
   - Over the grid the ghost snaps with blue/red target points; elsewhere it floats. Esc, an invalid spot, or a release off the grid puts the element back where it came from.
   - The drag survives the pointer leaving the editor (pointer capture).
-- **Build status.** Shape picking, dragging from the inventory, the wire palette and the board, selection with its outline, R in place and Del are implemented. Tutor highlights and net hover come later.
+- **Build status.** Shape picking, dragging from the inventory, the wire palette and the board, selection with its outline, R in place and Del are implemented. Tutor highlights are drawn (static outlines and rings; glow and pulsing come in polishing). Net hover comes later.
 
 ## 5. Hint bar
 

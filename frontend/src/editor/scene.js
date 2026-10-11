@@ -315,8 +315,8 @@ export function pickAt(roots, x, y, tolerance = 0) {
 }
 
 // Outline the element `node` (a highlight, docs/gui.md §4): each of its shapes is copied,
-// grown by `width` and drawn just behind it in `color`, so only a silhouette line shows.
-export function outline(node, color = STYLE.selection.color, width = STYLE.selection.width) {
+// grown by `width` and drawn just behind it (at depth `z`) in `color`, so only a silhouette line shows.
+export function outline(node, color = STYLE.selection.color, width = STYLE.selection.width, z = -0.05) {
   const meshes = [];
   node.traverse((o) => o.isMesh && !o.userData.outline && meshes.push(o));
   for (const mesh of meshes) {
@@ -329,11 +329,31 @@ export function outline(node, color = STYLE.selection.color, width = STYLE.selec
     if (!geometry) continue;
     const copy = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color }));
     copy.userData.outline = true;
-    copy.position.set(mesh.position.x, mesh.position.y, -0.05); // behind the element's own shapes
+    copy.position.set(mesh.position.x, mesh.position.y, z); // behind the element's own shapes
     copy.rotation.copy(mesh.rotation);
     mesh.parent.add(copy);
   }
   return node;
+}
+
+// Draw a tutor highlight ({ target: { component | wire | point }, style }) into the board's
+// scene `root`: an outline around the component or wire piece, wider than the selection's and
+// behind it so both show, or a ring around the grid point. Returns false when the target isn't there.
+export function drawHighlight(root, { target, style }) {
+  const { width, ring_radius: radius, [style]: color = STYLE.highlight.attention } = STYLE.highlight;
+  if (target.point) {
+    const p = toWorld(target.point);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(radius - width, radius, 32), new THREE.MeshBasicMaterial({ color }));
+    ring.position.set(p.x, p.y, 1);
+    ring.userData.outline = true;
+    root.add(ring);
+    return true;
+  }
+  const kind = target.component ? "component" : "wire";
+  const node = root.getObjectByName(target.component ?? target.wire);
+  if (!node || node.userData.kind !== kind) return false;
+  outline(node, color, width, -0.1);
+  return true;
 }
 
 // Where a slot draws its item's anchor (a part's body, a wire piece's [0, 0]), in the

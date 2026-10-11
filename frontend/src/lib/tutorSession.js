@@ -2,6 +2,7 @@
 // Self-healing: reconnects on close, re-sends session.start and repeats the request when the
 // server has lost the session (no_session), and reports a saved task the server rejects.
 import { useCallback, useEffect, useRef, useState } from "react";
+import { liveHighlights } from "../editor/highlights.js";
 
 const RECONNECT_MS = 2000;
 
@@ -17,6 +18,8 @@ export function useTutorSession(level, chat, onChat, board) {
   const [thinking, setThinking] = useState(false);
   const [evaluation, setEvaluation] = useState(null);
   const [startError, setStartError] = useState(null);
+  // The latest tutor message's highlights and the board they were made for.
+  const [marked, setMarked] = useState({ highlights: [], board: null });
   const socket = useRef(null);
   const pending = useRef(null); // { request_id, learner_text, replayed }
   const chatRef = useRef(chat);
@@ -49,6 +52,7 @@ export function useTutorSession(level, chat, onChat, board) {
     let closed = false;
     let retry;
     setStartError(null);
+    setMarked({ highlights: [], board: null });
 
     const open = () => {
       const ws = new WebSocket(socketUrl());
@@ -66,6 +70,7 @@ export function useTutorSession(level, chat, onChat, board) {
           setThinking(false);
           setEvaluation(message.evaluation);
           append({ role: "tutor", kind: message.message.chat.kind, text: message.message.chat.text });
+          setMarked({ highlights: message.message.meta?.highlights ?? [], board: boardRef.current });
         } else if (message.type === "error") handleError(ws, message);
       };
       ws.onclose = () => {
@@ -124,5 +129,6 @@ export function useTutorSession(level, chat, onChat, board) {
     [append, sendRequest],
   );
 
-  return { connected, thinking, evaluation, startError, send };
+  const highlights = liveHighlights(marked.highlights, marked.board, board);
+  return { connected, thinking, evaluation, startError, highlights, send };
 }

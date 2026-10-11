@@ -85,9 +85,18 @@ only, never describe it), <history> (recent chat), <request> (a reaction, or the
 learner's message).
 
 Output: choose meta.principle first, then write chat.text explaining that
-principle. Use meta.highlights to point at relevant components (by id), wires
-(by id) or grid points, with style attention, error or success; leave unused
-fields null. Set meta.hint_level to 0. Set meta.misconception only when the
+principle. meta.highlights point at components (by id), wires (by id) or grid
+points ([column, row], as in the grid), with style attention, error or success;
+leave unused fields null. They show the learner WHERE, so your words don't have to.
+When the status shows a problem, always highlight it:
+- the parts and wires that cause it, by id: a misplaced wire or part, the parts
+  on a short path, the misused meter. Style error for short_circuit, overcurrent
+  and meter_misuse; attention otherwise.
+- a missing or misplaced connection: the two grid points that should be
+  connected, as two point highlights with style attention. A misplaced wire gets
+  its id plus the two points it should connect instead.
+For misplaced, also highlight the target meter (attention); for near_target and
+solved, highlight the target meter with success. no_source needs no highlight. Set meta.hint_level to 0. Set meta.misconception only when the
 learner's words or circuit show one, using only these labels:
 {", ".join(MISCONCEPTIONS)}.
 
@@ -215,7 +224,11 @@ async def answer(client, config: dict, usage_log, *, level: dict, board: dict, r
         found = location_talk(message["chat"]["text"])
         if not found:
             message["meta"]["hint_level"] = 0  # no hint ladder yet
-            message["meta"]["highlights"] = clean_highlights(message["meta"].get("highlights", []), board)
+            returned = message["meta"].get("highlights", [])
+            message["meta"]["highlights"] = clean_highlights(returned, board)
+            # What Claude pointed at and what survived the board check, to see why nothing shows.
+            usage_log.event("tutor_highlights", purpose=purpose, session_id=session_id, status=evaluation["status"],
+                            returned=returned, kept=message["meta"]["highlights"])
             return message, evaluation
         usage_log.event("tutor_backstop", session_id=session_id, attempt=attempt, matches=found)
         content = (user_turn + "\n\nYour previous reply described locations (" + ", ".join(found)

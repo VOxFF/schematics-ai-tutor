@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { resistorBands } from "./colorCode.js";
-import { boardBounds, buildBoard, floatingNode, inventoryNode, layoutInventory, outline, pickAt, sceneBounds, slotAnchor, toWorld } from "./scene.js";
+import { boardBounds, buildBoard, drawHighlight, floatingNode, inventoryNode, layoutInventory, outline, pickAt, sceneBounds, slotAnchor, toWorld } from "./scene.js";
 import { CELL, STYLE } from "./style.js";
 
 describe("resistor color bands", () => {
@@ -118,6 +118,42 @@ describe("band order on screen", () => {
   ])("%s: digit bands first, gold last, reading left→right or top→bottom", (orientation, pins, axis) => {
     const order = bandPositions(orientation, pins).map((p) => (axis === "x" ? p.x : -p.y));
     expect(order).toEqual([...order].sort((a, b) => a - b));
+  });
+});
+
+describe("tutor highlights", () => {
+  const board = { grid: { columns: 8, rows: 6 }, inventory: [], targets: {},
+                  wires: [{ id: "W1", segments: [[[4, 3], [6, 3]]] }],
+                  components: [{ id: "R1", type: "resistor", value: 20, fixed: false, orientation: "E", pins: { a: [4, 3], b: [2, 3] } }] };
+  const copies = (node) => {
+    const found = [];
+    node.traverse((o) => o.isMesh && o.userData.outline && found.push(o));
+    return found;
+  };
+
+  test("a component or wire highlight outlines it in the style's color, behind a selection outline", () => {
+    const root = buildBoard(board);
+    expect(drawHighlight(root, { target: { component: "R1" }, style: "error" })).toBe(true);
+    expect(drawHighlight(root, { target: { wire: "W1" }, style: "success" })).toBe(true);
+    const r1 = copies(root.getObjectByName("R1"));
+    expect(r1[0].material.color.getHexString()).toBe(STYLE.highlight.error.slice(1));
+    expect(r1.every((c) => c.position.z < -0.05)).toBe(true);
+    expect(copies(root.getObjectByName("W1"))[0].material.color.getHexString()).toBe(STYLE.highlight.success.slice(1));
+  });
+
+  test("a point highlight is a ring around the grid point, not pickable", () => {
+    const root = buildBoard(board);
+    drawHighlight(root, { target: { point: [7, 5] }, style: "attention" });
+    const ring = root.children.find((o) => o.geometry?.type === "RingGeometry");
+    expect(ring.position.x).toBe(toWorld([7, 5]).x);
+    expect(ring.material.color.getHexString()).toBe(STYLE.highlight.attention.slice(1));
+    expect(pickAt([root], ring.position.x, ring.position.y)).toBeNull();
+  });
+
+  test("a highlight on a missing element draws nothing", () => {
+    const root = buildBoard(board);
+    expect(drawHighlight(root, { target: { component: "R9" }, style: "error" })).toBe(false);
+    expect(drawHighlight(root, { target: { wire: "R1" }, style: "error" })).toBe(false);
   });
 });
 

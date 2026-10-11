@@ -80,7 +80,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Persist the chat
 - [x] Persist the edited grid
 - [x] Live meter readings on the grid and in the Targets column
-- [ ] Tutor highlights on the grid (components, wires, points)
+- [x] Tutor highlights on the grid (components, wires, points)
 - [x] Tutor panel: chat bubbles, thinking indicator, errors; live readings in the Task panel
 - [x] Backend integration: task generation over REST, session, evaluation and tutor over the WebSocket
 
@@ -103,6 +103,7 @@ Built after the core workflow runs end to end.
 
 - [ ] Solved checkmark fades out after ~2 s and leaves a small green check in the Task / Targets panel
 - [ ] If the learner breaks a solved circuit, the checkmark disappears and Next is disabled again
+- [ ] Tutor highlights: glow and pulsing (`attention` pulses)
 - [ ] Status display on the learning screen (e.g. a colored badge in the Task / Targets panel)
 - [ ] Event log for measuring success: task started/solved, status changes, tutor calls, misconception labels
 - [ ] State the supported devices (desktop: mouse and keyboard)

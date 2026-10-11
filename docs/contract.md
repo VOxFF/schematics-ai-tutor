@@ -273,7 +273,7 @@ interface Highlight {
     | { component: string }        // a component id, e.g. "R1"
     | { wire: string }             // a wire id, e.g. "W2"
     | { point: Point };            // a single grid point, e.g. a dangling wire end
-  style: "attention" | "error" | "success";  // pulse, red outline, green outline
+  style: "attention" | "error" | "success";  // amber, red, green outline
 }
 ```
 
@@ -281,6 +281,7 @@ interface Highlight {
 - three.js draws each highlight on the referenced component, wire piece or point.
 - **Lifetime:** a highlight stays until the next tutor message, or until the learner edits the highlighted element.
 - **Style:** a nudge typically uses `attention` or `error` on the problem, and praise uses `success` on what was just done right.
+- **Connections:** a missing or misplaced connection is shown as two `point` highlights, the grid points that should be connected ([tutor.md](tutor.md#2-reactions-by-status)).
 
 ## 2. Backend ↔ Claude API
 
