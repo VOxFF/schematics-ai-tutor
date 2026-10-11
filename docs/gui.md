@@ -68,7 +68,7 @@ The sketch shows placement only; its values are placeholders.
 ## 3. Header
 
 - **Progress** shows the current skill level as a badge and the number of tasks solved.
-- **Next** is disabled until the status is `solved`. Clicking it sends `task.next`; the skill level goes up by one and the next task appears.
+- **Next** is disabled until the status is `solved`. Clicking it sends `task.next`; the skill level goes up by one and the next task appears. The solved task stays on screen for up to 300 ms while the next one arrives: a pre-generated task replaces it directly, without the wait view flashing in between; a slower one gets the wait view.
 - **Restart Learning** wipes all progress and history and returns to the start screen (§1).
 
 ## 4. Grid

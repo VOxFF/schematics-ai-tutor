@@ -8,6 +8,9 @@ import { clearSession, loadSession, newSession, saveSession } from "./lib/sessio
 // New learners see the start screen; a saved session resumes on the tutor screen (docs/gui.md §1).
 // Debug (hidden in a public build): /start shows the start screen without touching the saved
 // session; Start Learning then returns to it, or starts fresh if there is none.
+// How long Next keeps the finished task on screen while the next one arrives (see fetchTask).
+const QUIET_MS = 300;
+
 const previewStart = () => !PUBLIC && window.location.pathname === "/start";
 
 export default function App() {
@@ -17,19 +20,28 @@ export default function App() {
   const [error, setError] = useState(null);
   const inFlight = useRef(false); // one generation at a time (each costs a Claude call)
 
-  const fetchTask = useCallback(async (current) => {
+  // Fetch the task for `current` (a session without a task). With `quietMs`, the screen keeps
+  // showing the previous task that long: a pre-generated task arrives at once, and switching to
+  // the wait view and back would make the whole screen flicker. Slower tasks get the wait view.
+  const fetchTask = useCallback(async (current, quietMs = 0) => {
     if (inFlight.current) return;
     inFlight.current = true;
-    setLoading(true);
     setError(null);
+    const wait = () => {
+      setSession(current);
+      setLoading(true);
+    };
+    const timer = quietMs ? setTimeout(wait, quietMs) : wait();
     try {
       const { level } = await generateTask(current.progress);
       const next = { ...current, level, board: null }; // a new task starts from its own board
       saveSession(next);
       setSession(next);
     } catch (e) {
+      setSession(current);
       setError(e.message);
     } finally {
+      clearTimeout(timer);
       inFlight.current = false;
       setLoading(false);
     }
@@ -61,6 +73,7 @@ export default function App() {
   // Next (enabled once the status is `solved`): records the solved task in the history,
   // raises the skill level and fetches the next task.
   const next = () => {
+    if (inFlight.current) return;
     const { level, progress } = session;
     const summary = {
       title: level.title,
@@ -74,13 +87,13 @@ export default function App() {
     const advanced = {
       ...session,
       progress: { skill_level: progress.skill_level + 1, history: [...progress.history, summary] },
-      level: null, // the resume effect fetches the next task
+      level: null, // saved without a task: a reload mid-fetch resumes by fetching it
       lastLevel: level.curriculum?.level, // the header shows it until the next task arrives
       board: null,
       chat: [...(session.chat ?? []), { role: "notice", text: `Next task (after “${level.title}”)` }],
     };
     saveSession(advanced);
-    setSession(advanced);
+    fetchTask(advanced, QUIET_MS);
   };
 
   // The learner's edited board; null means the task's starting board.

@@ -302,6 +302,30 @@ test("Next records the solved task, raises the level and fetches the next task",
   expect(screen.getByText(/Next task \(after/)).toBeDefined();
 });
 
+test("Next with a ready task never shows the wait view; a slow one shows it after a moment", async () => {
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 2, history: [] }, level: LEVEL, chat: [] }));
+  mockFetch(ok({ level: { ...LEVEL, id: "gen-next", title: "Parallel paths" }, difficulty: 3, rationale: "", attempts: 1 }));
+  render(<App />);
+  await screen.findByPlaceholderText("Ask the tutor…");
+  solve();
+  fireEvent.click(screen.getByRole("button", { name: "Next" }));
+  expect(screen.queryByText("Generating your task…")).toBeNull(); // the solved task stays on screen
+  expect(await screen.findByRole("heading", { name: "Parallel paths" })).toBeDefined();
+  expect(screen.queryByText("Generating your task…")).toBeNull();
+
+  vi.useFakeTimers();
+  try {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {}))); // never arrives
+    solve();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.queryByText("Generating your task…")).toBeNull();
+    act(() => vi.advanceTimersByTime(300));
+    expect(screen.getByText("Generating your task…")).toBeDefined();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 test("the header shows the curriculum level and the task within it", () => {
   const level = { ...LEVEL, curriculum: { level: 2, task: 1, tasks: 2, concept: "Ohm's law" } };
   localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 3, history: [] }, level, chat: [] }));
