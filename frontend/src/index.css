@@ -602,3 +602,22 @@ body.dragging-item * {
     animation-duration: 3s;
   }
 }
+
+/* Solved: a bright green check in the editor's top-left corner; it ignores the pointer (docs/gui.md §4). */
+.solved-check {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  pointer-events: none;
+}
+
+.solved-check svg {
+  display: block;
+  width: 192px;
+  height: 192px;
+  fill: none;
+  stroke: #22c55e; /* the grid's success highlight (schematic-style.yaml) */
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

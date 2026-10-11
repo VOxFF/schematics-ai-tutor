@@ -16,17 +16,18 @@ sequenceDiagram
     C-->>BE: TaskSpec
     BE->>EV: validate + compute targets
     BE-->>FE: evaluation
-    loop learner edits the board
+    loop fast feedback: learner edits the board
         FE->>BE: board.update (seq, board) on each finished edit
+        Note over FE: the edit clears Claude's highlights
         BE->>EV: evaluate(level, board)
         EV-->>BE: Evaluation
-        BE-->>FE: evaluation (seq)
+        BE-->>FE: evaluation (seq): readings and status at once
     end
-    Note over BE: editing pauses ≥ idle threshold
+    Note over BE: slow feedback: editing pauses ≥ idle threshold
     BE-->>FE: tutor.started (trigger: reaction)
     BE->>C: snapshots since last call
     C-->>BE: TutorMessage
-    BE-->>FE: tutor.message
+    BE-->>FE: tutor.message (seq): text, new highlights
     FE->>BE: tutor.request (action, learner_text)
     BE-->>FE: tutor.started
     BE->>C: level + summary + snapshots + learner input

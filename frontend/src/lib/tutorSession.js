@@ -53,6 +53,7 @@ export function useTutorSession(level, chat, onChat, board) {
     let closed = false;
     let retry;
     setStartError(null);
+    setEvaluation(null); // the previous task's status must not carry over (it would unlock Next)
     setMarked({ highlights: [], board: null });
 
     const open = () => {

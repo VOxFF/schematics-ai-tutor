@@ -47,8 +47,8 @@ export default function App() {
     setSession(null);
   };
 
-  // TEMPORARY (until the editor reports `solved`): Next counts the current task as solved,
-  // records it in the history, raises the skill level and fetches the next task.
+  // Next (enabled once the status is `solved`): records the solved task in the history,
+  // raises the skill level and fetches the next task.
   const next = () => {
     const { level, progress } = session;
     const summary = {

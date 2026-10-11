@@ -71,7 +71,7 @@ The sketch shows placement only; its values are placeholders.
 
 ## 4. Grid
 
-Rendered with three.js in an orthographic, top-down view (`frontend/src/editor/`). Every component and wire piece is its own scene node, a `THREE.Group` named by its `id` with `userData.kind`, ready for picking and highlights. Grid points are one instanced mesh. Labels and readings are HTML overlays (`CSS2DRenderer`), so text stays crisp at any zoom. A small **JSON** toggle in the corner shows the raw task for debugging.
+Rendered with three.js in an orthographic, top-down view (`frontend/src/editor/`). Every component and wire piece is its own scene node, a `THREE.Group` named by its `id` with `userData.kind`, ready for picking and highlights. Grid points are one instanced mesh. Labels and readings are HTML overlays (`CSS2DRenderer`), so text stays crisp at any zoom. A small **JSON** toggle in the corner shows the raw task for debugging; a public build (`public: true` in `config.yaml`) hides it.
 
 **Schematic style.** Sizes and colors of the drawing live in `frontend/src/editor/schematic-style.yaml`, in grid units where one grid step is 40:
 - wire thickness and color
@@ -108,7 +108,7 @@ Editing the file and saving reloads the page in development.
   Examples: 20 Ω = red, black, black, gold; 60 Ω = blue, black, black, gold; 120 Ω = brown, red, brown, gold.
 
   The bands always read left to right (horizontal parts) or top to bottom (vertical parts), with the gold band last, whatever the part's orientation.
-- **Solved.** When the status becomes `solved`, a big green checkmark appears over the grid and **Next** is enabled. The checkmark is a non-blocking overlay: semi-transparent and centered, and it ignores clicks, so the learner can still observe the readings and read the tutor's praise in the chat. Refinements are in polishing: fading out, and reacting when the solution is broken again.
+- **Solved.** When the status becomes `solved`, a bright green checkmark appears in the editor's top-left corner and **Next** is enabled. The checkmark is a non-blocking overlay that ignores clicks, so the learner can still observe the readings and read the tutor's praise in the chat. When an edit breaks the solution, the checkmark disappears and Next is disabled again. Fading out is a polishing refinement.
 - Meters show `--` when the reading is `null`.
 - `fixed` parts show a small lock and cannot be moved.
 
@@ -168,6 +168,7 @@ The frontend generates the hint text from the current UI state. Claude and the b
 | UI state | Hint |
 |---|---|
 | Nothing selected | "Drag a part or a wire piece from the inventory onto the grid, or move one you placed" |
+| Nothing selected, task solved | "Solved! Press Next for the next task, or keep exploring" |
 | Part or wire selected | "R2 selected · drag to move · R to rotate · Del to remove · Esc to deselect" |
 | Fixed part or task wire selected | "V1 is part of the task: it can't be moved, rotated or removed · Esc to deselect" |
 | R pressed, but the turned element doesn't fit | "Can't rotate R2 here: the turned part would overlap or leave the grid" |

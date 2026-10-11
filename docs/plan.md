@@ -76,8 +76,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Skill level badge in the header; chat spans the full height
 - [x] Visual style: neutral chrome, one accent, meaning colors as CSS variables
 - [x] Header: tasks solved, Restart Learning (confirm, wipe, start screen)
-- [x] TEMPORARY: Next always enabled; counts the task as solved, records it in the history, raises the skill level, fetches the next task
-- [ ] Completing a task: when the status becomes `solved`, a green checkmark overlay appears on the grid and Next is enabled; Next records the solved task and raises the skill level (replaces the temporary always-enabled Next)
+- [x] Completing a task: when the status becomes `solved`, a bright green checkmark appears in the editor's top-left corner and Next is enabled; Next records the solved task and raises the skill level (replaces the temporary always-enabled Next)
 - [x] Session persistence in `localStorage`: progress and level; resume on reload
 - [x] Persist the chat
 - [x] Persist the edited grid
@@ -89,6 +88,7 @@ The major steps to build the product. A step is checked off when it is complete,
 ## 4. Integration and deployment
 
 - [ ] End-to-end playthrough of all levels
+- [x] `public` flag in `config.yaml`: a public build hides debug features (the editor's JSON view)
 - [ ] Hosting decision
 - [ ] Deploy backend and frontend
 - [ ] Smoke test on the public URL
@@ -104,7 +104,7 @@ Built after the core workflow runs end to end.
 ## 6. Polishing
 
 - [ ] Solved checkmark fades out after ~2 s and leaves a small green check in the Task / Targets panel
-- [ ] If the learner breaks a solved circuit, the checkmark disappears and Next is disabled again
+- [x] If the learner breaks a solved circuit, the checkmark disappears and Next is disabled again
 - [ ] Tutor highlights: glow and pulsing (`attention` pulses)
 - [ ] Tutor highlights: different visuals for "remove this" and "connect here" (e.g. a dashed line between the two points); if Claude still highlights part of a wire run, extend wire highlights to the whole run in the backend
 - [ ] Status display on the learning screen (e.g. a colored badge in the Task / Targets panel)
