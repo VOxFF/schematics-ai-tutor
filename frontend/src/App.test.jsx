@@ -189,6 +189,24 @@ test("a tutor reaction arrives unprompted, and a failed one ends quietly", async
   expect(JSON.parse(localStorage.getItem(SESSION_KEY)).chat.map((m) => m.role)).toEqual(["tutor"]);
 });
 
+test("a reply about an older board shows its text but not its readings", async () => {
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [] }));
+  render(<App />);
+  await screen.findByPlaceholderText("Ask the tutor…");
+  const ws = FakeSocket.last;
+  const reply = (seq, reading, text) => ws.serverSends({
+    type: "tutor.message", request_id: `react-${seq}`, seq,
+    evaluation: { status: "open_circuit", readings: { VM1: reading }, issues: [] },
+    message: { meta: { principle: "closed_loop", highlights: [], hint_level: 0, misconception: null },
+               chat: { kind: "question", text } },
+  });
+  reply(3, 9, "About a board that has changed since.");
+  expect(screen.getByText("About a board that has changed since.")).toBeDefined();
+  expect(screen.getByLabelText("Task and targets").textContent).not.toContain("VM1: 9");
+  reply(0, 7, "About the current board.");
+  expect(screen.getByLabelText("Task and targets").textContent).toContain("VM1: 7");
+});
+
 test("a tutor error shows in the chat", async () => {
   localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [] }));
   render(<App />);

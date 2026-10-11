@@ -39,6 +39,7 @@ def test_chat_round_trip(config):
         assert ws.receive_json() == {"type": "tutor.started", "request_id": "r1", "trigger": "request"}
         reply = ws.receive_json()
         assert reply["type"] == "tutor.message" and reply["request_id"] == "r1"
+        assert reply["seq"] == 0  # about the session.start board
         assert reply["message"]["chat"]["text"] == "What does the voltmeter need to measure across?"
         assert reply["evaluation"]["readings"] == {"VM1": 12.0}
     context = fake.requests[0]["messages"][0]["content"]
@@ -100,6 +101,7 @@ def test_editing_pause_gets_a_reaction(config):
         assert started["type"] == "tutor.started" and started["trigger"] == "reaction"
         reply = ws.receive_json()
         assert reply["type"] == "tutor.message" and reply["request_id"] == started["request_id"]
+        assert reply["seq"] == 2  # about the latest board
         assert reply["message"]["chat"]["text"] == "What path does the current take now?"
     assert len(fake.requests) == 1
     context = fake.requests[0]["messages"][0]["content"]

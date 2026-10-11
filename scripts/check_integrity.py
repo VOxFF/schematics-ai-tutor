@@ -21,6 +21,7 @@ DESIGN = ROOT / "docs" / "design.md"
 # Terms from superseded design decisions that must not reappear in the docs.
 STALE_TERMS = [
     "breadboard",
+    "liveHighlights",
     "backend/config.yaml",
     "goal_met",
     "tutor.delta",

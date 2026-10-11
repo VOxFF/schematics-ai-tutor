@@ -2,7 +2,6 @@
 // Self-healing: reconnects on close, re-sends session.start and repeats the request when the
 // server has lost the session (no_session), and reports a saved task the server rejects.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { liveHighlights } from "../editor/highlights.js";
 
 const RECONNECT_MS = 2000;
 
@@ -18,7 +17,8 @@ export function useTutorSession(level, chat, onChat, board) {
   const [thinking, setThinking] = useState(false);
   const [evaluation, setEvaluation] = useState(null);
   const [startError, setStartError] = useState(null);
-  // The latest tutor message's highlights and the board they were made for.
+  // The latest tutor message's highlights and the board they were made for: any edit clears them
+  // (the new evaluation arrives at once; Claude's follow-up brings new highlights).
   const [marked, setMarked] = useState({ highlights: [], board: null });
   const socket = useRef(null);
   const pending = useRef(null); // { request_id, learner_text, replayed }
@@ -38,6 +38,7 @@ export function useTutorSession(level, chat, onChat, board) {
       .filter((m) => m.role === "learner" || m.role === "tutor")
       .filter((m, i, all) => !(pending.current && i === all.length - 1 && m.role === "learner"))
       .map(({ role, text }) => ({ role, text }));
+    seq.current = 0; // a new server session numbers boards from 0 (its session.start board)
     ws.send(JSON.stringify({ type: "session.start", level: levelRef.current, board: boardRef.current, history }));
   }, []);
 
@@ -68,9 +69,13 @@ export function useTutorSession(level, chat, onChat, board) {
         else if (message.type === "tutor.message") {
           pending.current = null;
           setThinking(false);
-          setEvaluation(message.evaluation);
           append({ role: "tutor", kind: message.message.chat.kind, text: message.message.chat.text });
-          setMarked({ highlights: message.message.meta?.highlights ?? [], board: boardRef.current });
+          // The reply is about board `seq`. After a newer edit, the fast evaluation already shows
+          // the current readings, and the highlights would point at a board that's gone.
+          if ((message.seq ?? seq.current) === seq.current) {
+            setEvaluation(message.evaluation);
+            setMarked({ highlights: message.message.meta?.highlights ?? [], board: boardRef.current });
+          }
         } else if (message.type === "error") handleError(ws, message);
       };
       ws.onclose = () => {
@@ -129,6 +134,6 @@ export function useTutorSession(level, chat, onChat, board) {
     [append, sendRequest],
   );
 
-  const highlights = liveHighlights(marked.highlights, marked.board, board);
+  const highlights = marked.board === board ? marked.highlights : [];
   return { connected, thinking, evaluation, startError, highlights, send };
 }

@@ -65,7 +65,7 @@ Errors: `404` for an unknown level, `429` when the rate limit is exceeded.
 
 ### WebSocket session
 
-> **Build status.** Implemented: `session.start`, `board.update` → `evaluation`, idle-triggered reactions, `tutor.request` with `action: "message"` → `tutor.started` → `tutor.message`, and `error`. The server keeps generated levels' reference solutions in memory by level ID for the tutor. The editor sends `board.update` on every drop. The UI shows only the chat part of a reply; the metadata (highlights) is not used yet. Still to come: `task.next` / `task.ready` and `hint`.
+> **Build status.** Implemented: `session.start`, `board.update` → `evaluation`, idle-triggered reactions, `tutor.request` with `action: "message"` → `tutor.started` → `tutor.message`, and `error`. The server keeps generated levels' reference solutions in memory by level ID for the tutor. The editor sends `board.update` on every drop. The UI shows the chat text and draws the highlights on the grid. Still to come: `task.next` / `task.ready` and `hint`.
 
 One connection is one learning session, and it can span several tasks.
 
@@ -97,13 +97,14 @@ Every message is a JSON object with a `type` field.
 | `summary.ready` | `summary: SkillSummary` or `error` | Bonus: the reply to `summary.request` |
 | `evaluation` | `seq`, `evaluation: Evaluation` | The client ignores any `seq` older than the last one it applied |
 | `tutor.started` | `request_id`, `trigger` (`"reaction"` or `"request"`) | The UI shows "tutor is thinking". Reactions get a server-generated `request_id`. |
-| `tutor.message` | `request_id`, `evaluation`, `message: TutorMessage` | The complete reply, sent only after the backend has validated it |
+| `tutor.message` | `request_id`, `seq`, `evaluation`, `message: TutorMessage` | The complete reply, sent only after the backend has validated it. `seq` is the board the reply is about (0: the `session.start` board); when the learner has edited since, the client shows the text but drops the highlights and the evaluation, which are out of date. |
 | `error` | `code`, `message`, `request_id?` | Codes: `bad_message`, `unknown_level`, `rate_limited`, `tutor_unavailable`, `no_session` (a request arrived before `session.start`, e.g. after a server restart: the client re-sends `session.start` and repeats the request), `session_rejected` (the saved level or board can't be resumed: the client offers a new task). Limits are in [design.md](design.md#4-security-and-operations). Generation failures never surface: they fall back to a curated level. |
 
 **Rules**
 
 - The server starts generating the next task in the background as soon as a task is delivered, so `task.next` is usually instant.
 - The client sends `board.update` only on finished edits. Dragging stays local to three.js until the drop.
+- **Two feedbacks per edit.** *Fast:* the evaluator's `evaluation` comes back at once (no Claude call), so readings and status update within a split second, and the edit clears Claude's highlights, which described the previous board. *Slow:* after the idle pause, Claude's reaction brings new text and highlights; if the learner edited during the call, its `seq` is out of date and only the text is shown.
 - **Reactions.** The server starts an idle timer on every `board.update`. When editing pauses for at least the **idle threshold** (`tutor.idle_threshold_ms`, default 1.5 s), the server calls Claude with the snapshots recorded since the previous Claude call.
   - A burst of quick edits, each within a split second of the last, produces one reaction, not one per edit.
   - If edits arrive while a reaction is running, they wait for the next pause.
@@ -282,7 +283,7 @@ interface Highlight {
 
 **Highlights**
 - three.js draws each highlight on the referenced component, wire piece or point.
-- **Lifetime:** a highlight stays until the next tutor message, or until the learner edits the highlighted element.
+- **Lifetime:** a highlight stays until the next tutor message or the learner's next edit, whichever comes first.
 - **Style:** a nudge typically uses `attention` or `error` on the problem, and praise uses `success` on what was just done right.
 - **Connections:** a missing or misplaced connection is shown as two `point` highlights, the grid points that should be connected ([tutor.md](tutor.md#2-reactions-by-status)).
 

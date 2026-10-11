@@ -236,7 +236,6 @@ schematics-ai-tutor/
 │   │   │   ├── GridEditor.jsx three.js renderer, camera fit, label layer
 │   │   │   ├── scene.js       scene graph: one node per component and wire; the inventory region; outlines and highlights
 │   │   │   ├── placement.js   where a dragged part or wire piece goes, whether it fits, the new board
-│   │   │   ├── highlights.js  which tutor highlights still show after the learner's edits
 │   │   │   ├── naming.js      captions and names of inventory parts (20 Ω, 4.7 kΩ)
 │   │   │   ├── colorCode.js   resistor 4-band color code
 │   │   │   ├── schematic-style.yaml  sizes and colors of the schematic (wires, pins, symbols)
