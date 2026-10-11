@@ -1,24 +1,27 @@
 #!/usr/bin/env bash
 # Smoke test of a deployed app: health, page, assets, HTTPS redirect, WebSocket upgrade. No Claude calls.
-# Usage: ./smoke.sh [url]      (defaults to the production URL; see docs/deployment.md)
-# Run by .github/workflows/deploy.yml after every deploy.
+# Usage: ./smoke.sh [url] [commit]   (url defaults to production; with a commit, /api/health must report it)
+# Run by .github/workflows/ci.yml and deploy.yml after every deploy (docs/deployment.md §3).
 set -euo pipefail
 
 URL="${1:-https://schematics-ai-tutor.fly.dev}"
 URL="${URL%/}"
+COMMIT="${2:-}"
 failures=0
 
 pass() { echo "ok    $1"; }
 fail() { echo "FAIL  $1" >&2; failures=$((failures + 1)); }
 
-# A fresh deploy may still be starting: wait up to ~60 s for the health check.
+# A fresh deploy may still be starting, or the old release still answering: wait up to ~60 s.
+healthy() { grep -q '"status":"ok"' <<< "$1" && { [ -z "$COMMIT" ] || grep -q "\"commit\":\"$COMMIT\"" <<< "$1"; }; }
 health=""
 for _ in $(seq 1 12); do
   health="$(curl -sf -m 10 "$URL/api/health" || true)"
-  [ "$health" = '{"status":"ok"}' ] && break
+  healthy "$health" && break
   sleep 5
 done
-[ "$health" = '{"status":"ok"}' ] && pass "GET /api/health" || fail "GET /api/health: '${health}'"
+label="GET /api/health${COMMIT:+ reports commit ${COMMIT:0:7}}"
+healthy "$health" && pass "$label" || fail "$label: '${health}'"
 
 page="$(curl -sf -m 10 "$URL/" || true)"
 if grep -q "<title>Schematics AI Tutor</title>" <<< "$page"; then

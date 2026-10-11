@@ -131,7 +131,7 @@ flowchart LR
 - **Implementation.** In-memory token buckets in the single backend process. Running several instances would need a shared store such as Redis; that is noted for scale, not built for the prototype.
 - **Configuration.** All limits are settings in `config.yaml` (§5).
 - **Usage and cost log.** When `logs.enabled` is on, the backend writes one JSON-lines log per run, `logs/run-<timestamp>.<part>.jsonl` (gitignored). It records server start and stop, every Claude call (purpose, model, learner session ID, token usage, estimated cost from the `pricing` table), each log archive, and a run summary with totals. Each `./start.sh` is one run; a code reload continues it in a new part. Earlier parts are gzipped into `logs/history/` within a size budget ([deployment.md](deployment.md#5-logs)).
-- **Deployment.** Fly.io: one Docker image on one always-on machine, deployed from GitHub Actions when a PR merges to `main`, then smoke tested. Details are in [deployment.md](deployment.md).
+- **Deployment.** Fly.io: one Docker image on one always-on machine, deployed and smoke tested from GitHub Actions for each pull request, before it's merged. Details are in [deployment.md](deployment.md).
 - **Message size.** No fixed limit yet; the grid size caps already bound it indirectly. Typical message sizes will be observed in practice before a limit is set.
 
 ## 5. Configuration
@@ -245,8 +245,8 @@ schematics-ai-tutor/
 ├── .gitignore
 ├── .github/
 │   └── workflows/
-│       ├── check.yml          runs ./check.sh on every PR and on main
-│       └── deploy.yml         deploys to Fly.io after check passes on main, then ./smoke.sh
+│       ├── ci.yml             PRs: ./check.sh, deploy to Fly.io, ./smoke.sh; main: ./check.sh
+│       └── deploy.yml         deploys main: by hand, or when a PR closes unmerged
 ├── scripts/
 │   └── check_integrity.py     docs, config, layout and secrets checks used by check.sh
 ├── docs/

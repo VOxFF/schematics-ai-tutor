@@ -106,7 +106,8 @@ def get_task_cache(conn: HTTPConnection) -> TaskCache | None:
 
 @app.get("/api/health")
 def health() -> dict:
-    return {"status": "ok"}
+    # The deployed commit, set by the deploy workflows; lets ./smoke.sh confirm the new release is live.
+    return {"status": "ok", "commit": os.environ.get("SCHEMATICS_COMMIT")}
 
 
 class GenerateTaskRequest(BaseModel):
