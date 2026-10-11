@@ -84,8 +84,9 @@ fly secrets list                   # names only, never values
 
 - [x] `Dockerfile`, `fly.toml`, `.dockerignore`; the backend serves the built frontend
 - [x] Fly app created
-- [ ] `ANTHROPIC_API_KEY` set as a Fly secret
-- [ ] First deploy, by hand, and a manual smoke test
+- [x] `ANTHROPIC_API_KEY` set as a Fly secret
+- [x] First deploy, by hand (2026-10-11): health, page, assets, HTTPS redirect and WebSocket upgrade checked
+- [ ] Playthrough in the browser on the public URL (Claude: task generation and tutor)
 - [ ] Deploy token in GitHub secrets
 - [ ] `deploy` job with the smoke test in `.github/workflows/check.yml`
 - [ ] Logs and learner experience collection (to be designed)
