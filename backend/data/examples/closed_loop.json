@@ -2,6 +2,7 @@
   "concept": "closed circuit",
   "title": "Close the loop",
   "intro": "The voltmeter should show the full source voltage across R1. Something is missing.",
+  "welcome": "Welcome! Every circuit starts with one big idea: current needs a complete path.",
   "complete_board": {
     "grid": {"columns": 12, "rows": 8},
     "components": [

@@ -54,7 +54,7 @@ The frontend and backend talk over two channels:
 | `GET` | `/api/levels` | `LevelSummary[]`: the curated levels, each tagged with a skill level |
 | `GET` | `/api/levels/{id}` | `Level` |
 | `GET` | `/api/health` | `{ "status": "ok" }` |
-| `POST` | `/api/tasks/generate` | `{ level: Level, difficulty, rationale, attempts }`. The request body is `{ skill_level, history: TaskSummary[] }`. |
+| `POST` | `/api/tasks/generate` | `{ level: Level, welcome, difficulty, rationale, attempts }`. The request body is `{ skill_level, history: TaskSummary[], profile?: LearnerProfile }`. `welcome` is the tutor's chat message for the new task, composed like a tutor reply (`kind`, `icon`, `title`, `text`, `terms`; [design.md](design.md#welcome-message)). |
 
 **`POST /api/tasks/generate`** is the task generation pipeline (backend → Claude → backend), exposed directly. The WebSocket `task.next` flow will call the same service. It returns `503` when no API key is configured and `502` when generation fails after retries. Target values in the returned board are computed by the evaluator from the complete board.
 
@@ -191,6 +191,7 @@ interface LevelSummary {
 interface Level extends LevelSummary {
   curriculum?: { level: number; task: number; tasks: number; concept: string };  // generated levels
   intro: string;                 // learner-facing task text
+  welcome?: string;              // generated levels: the tutor's chat message for the task
   board: Board;                  // the starting board; fixed parts, inventory and targets included
   difficulty?: number;           // generated levels: 1–5, from the TaskSpec
   shape?: string;                // generated levels: parts summary, e.g. "V + 2R + VM"
@@ -398,6 +399,7 @@ The prompt has two parts: **task context**, which is the same for every request 
    - no repeats of recent tasks
    - never compute target values
    - write `intro` in plain language for beginners
+   - write `welcome`, the tutor's chat message for the task: link to recent tasks, name the new idea, no solution, no location talk
 2. **Format.** The `grid` document rules from [schematics.md](schematics.md#1-board-format-the-grid-document), plus the `TaskSpec` fields and their meaning.
 3. **Examples.** 2–3 complete `TaskSpec` examples at different difficulty levels.
    - They are stored as files in `backend/` and loaded into the prompt.
@@ -446,6 +448,7 @@ interface TaskSpec {
   concept: string;
   title: string;
   intro: string;                    // learner-facing task text, with no numbers that depend on the solve
+  welcome: string;                  // the tutor's chat message when the task appears; no location talk
   complete_board: {                 // the solved circuit; no inventory, no targets
     grid: { columns: number; rows: number };
     components: Component[];

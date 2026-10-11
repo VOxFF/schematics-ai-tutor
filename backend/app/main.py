@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from .config import REPO_ROOT, config_path, load_config
 from .log_archive import LogArchive
 from .rate_limits import RateLimiter, client_ip
+from .reply_composer import welcome
 from .session import Session
 from .task_cache import TaskCache
 from .task_generation import generate_task
@@ -139,6 +140,7 @@ def health() -> dict:
 class GenerateTaskRequest(BaseModel):
     skill_level: int = Field(1, ge=1)
     history: list[dict] = Field(default_factory=list, description="TaskSummary entries, oldest first")
+    profile: dict | None = Field(None, description="LearnerProfile, to compose the welcome message")
 
 
 @app.post("/api/tasks/generate")
@@ -177,6 +179,7 @@ async def generate(
     references[result.level["id"]] = result.spec["complete_board"]
     return {
         "level": result.level,
+        "welcome": welcome(result.level, body.profile, body.skill_level),
         "difficulty": result.spec["difficulty"],
         "rationale": result.spec["rationale"],
         "attempts": result.attempts,

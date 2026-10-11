@@ -2,6 +2,7 @@
   "concept": "parallel circuits",
   "title": "Parallel paths",
   "intro": "Add a second resistor next to R1 so the ammeter shows twice the current.",
+  "welcome": "So far current had one path. This time it gets a second one to choose from.",
   "complete_board": {
     "grid": {"columns": 12, "rows": 8},
     "components": [

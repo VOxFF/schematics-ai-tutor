@@ -1,6 +1,6 @@
 """Reply composer: bounded profile changes, new topics, icon and title."""
 
-from app.reply_composer import ICONS, compose, term_spans
+from app.reply_composer import ICONS, compose, term_spans, welcome
 from app.tutor import KINDS
 
 
@@ -84,3 +84,11 @@ def test_topic_terms_are_marked_once_each_longest_first():
     text = "🔋 The voltage source pushes current; voltage splits in series. Ohm’s law uses ohms. Currents add."
     marked = [text.encode("utf-16-le")[2 * a:2 * b].decode("utf-16-le") for a, b in term_spans(text, p)]
     assert marked == ["voltage source", "current", "voltage", "series", "Ohm’s law", "ohms"]
+
+
+def test_a_welcome_without_text_or_with_location_talk_falls_back_to_a_plain_line():
+    level = {"title": "Close the loop", "welcome": "Check row 3 first.", "board": {"components": [], "inventory": []}}
+    message = welcome(level, None, 1)
+    assert message["text"] == "New task: Close the loop. Let's see what you make of it!"
+    assert message["kind"] == "knowledge"  # a new learner meets the level-1 topics
+    assert welcome({**level, "welcome": ""}, None, 1)["text"].startswith("New task: Close the loop.")

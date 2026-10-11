@@ -116,6 +116,8 @@ Not Boring Chat ([design.md](design.md#4-tutoring-experience-learning-path-learn
 - [x] Tutor context and prompt: focus topics, score rules, when to teach (`knowledge`) and when to ask
 - [x] Reply composer: clamp and apply score changes, add Claude's new topics, icon and title, profile in `tutor.message`
 - [x] Contract and tutor docs for the profile, the new `meta` fields and the `knowledge` kind
+- [x] Learner's topics in bold in tutor messages (`chat.terms`)
+- [x] Welcome message in the chat for each new task, written by the generator (`TaskSpec.welcome`)
 
 Other polishing:
 

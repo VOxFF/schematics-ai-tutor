@@ -214,7 +214,16 @@ flowchart LR
 ```
 
 - **Why Claude decides and the code bounds it.** Judging evidence of understanding from a learner's edits and words is what Claude is good at. Code can't do it. But scores that drift by several points per reply, or topics added in bulk, would make the profile meaningless. So the backend clamps every change, the same split as for verdicts and readings (§1).
-- **Build status.** Built: the catalog, the profile (`learner_profile.py`), the reply composer (`reply_composer.py`), the prompt rules and the chat bubbles. Interfaces are in [contract.md](contract.md), the prompt rules in [tutor.md](tutor.md#teaching-from-the-learner-profile).
+### Welcome message
+
+Each new task opens with a tutor message in the chat, so the learner knows what's new before they start.
+
+- **Written by the generator, not a tutor call.** The `TaskSpec` has a `welcome` field: one or two sentences linking to the learner's recent tasks and naming the new idea or part ("You've worked with one resistor. Now two share the source's push: how do they split it?"). It costs a few dozen output tokens on a call that is made anyway, and it's ready when the task is: tasks are pre-generated (§3). A separate tutor call would cost about as much as a reaction per task and arrive seconds later.
+- **Checked like a tutor reply.** Location talk in `welcome` is a validation error, so the generator fixes it before answering. A cached task without one, or one that still fails the check, gets a plain line ("New task: …").
+- **Composed when served.** The generate request carries the learner profile. The reply composer makes the welcome a `knowledge` message when the task brings topics new to the learner, else `feedback`, with the icon and the terms in bold. The frontend adds it to the chat when the task arrives, so a reload doesn't repeat it.
+- **Accepted limit:** the welcome is written before the previous task is finished, so it knows the learner's history but not that task's chat. The first reaction after the learner's first edit has the full profile.
+
+- **Build status.** Built: the catalog, the profile (`learner_profile.py`), the reply composer (`reply_composer.py`), the prompt rules, the welcome message and the chat bubbles. Interfaces are in [contract.md](contract.md), the prompt rules in [tutor.md](tutor.md#teaching-from-the-learner-profile).
 - **Later uses.** The profile is ready to feed task generation (target weak topics) and the Learning Path screen ([gui.md](gui.md#9-learning-path-screen-bonus)). Neither is part of this change.
 
 ## 5. Security and operations

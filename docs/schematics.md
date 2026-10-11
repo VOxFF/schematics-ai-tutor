@@ -225,6 +225,7 @@ Claude returns a `TaskSpec` ([contract.md](contract.md#22-task-generation-call))
 - **decoys:** extra parts that aren't needed
 - **target meter IDs:** the meters whose readings define the goal
 - **difficulty** (1–5) and a one-sentence **rationale** for why the task suits this learner
+- a **welcome:** the tutor's chat message when the task appears ([design.md](design.md#welcome-message))
 
 Claude does **not** produce the task grid or any target value. The backend derives both:
 

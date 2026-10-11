@@ -208,6 +208,7 @@ The inventory is drawn **inside the editor's three.js scene**, in a column right
   | `hint` | purple | 🔑 |
 
   The icon and the title come from the backend's reply composer; the tints are CSS variables in `frontend/src/index.css`.
+- **Welcome:** each new task opens with a tutor message, added to the chat when the task arrives ([design.md](design.md#welcome-message)). It is gold (`knowledge`) when the task brings new topics, else blue (`feedback`).
 - While a call is running, it shows "tutor is thinking".
 - The learner can type at any time. Sending creates a `tutor.request` with `action: "message"`.
 - **Hint button** beside the chat input, labelled with the next level: "Hint 1/3", "Hint 2/3", "Hint 3/3". It sends a `tutor.request` with `action: "hint"`, and the chat shows the request as the learner's line ("Hint 1/3, please"). After level 3 it stays "Hint 3/3" and repeats that level in other words. It is disabled while the tutor is thinking or disconnected.

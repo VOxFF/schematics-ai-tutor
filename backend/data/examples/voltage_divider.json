@@ -2,6 +2,7 @@
   "concept": "voltage divider",
   "title": "Share the voltage",
   "intro": "Pick a resistor for the gap so the voltmeter across it shows 4 V.",
+  "welcome": "You've worked with one resistor. Now two share the source's push: how do they split it?",
   "complete_board": {
     "grid": {"columns": 12, "rows": 8},
     "components": [

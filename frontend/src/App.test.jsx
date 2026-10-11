@@ -61,7 +61,8 @@ afterEach(() => {
 });
 
 test("a new learner sees the start screen, then gets a task", async () => {
-  const fetch = mockFetch(ok({ level: LEVEL, difficulty: 3, rationale: "", attempts: 1 }));
+  const welcome = { kind: "knowledge", icon: "📘", title: null, text: "Welcome! Current needs a complete path.", terms: [[9, 16]] };
+  const fetch = mockFetch(ok({ level: LEVEL, welcome, difficulty: 3, rationale: "", attempts: 1 }));
   render(<App />);
   expect(screen.getByRole("button", { name: "Start Learning" })).toBeDefined();
 
@@ -75,7 +76,11 @@ test("a new learner sees the start screen, then gets a task", async () => {
   expect(screen.getByLabelText("R2 resistor 20 Ω")).toBeDefined(); // drawn as a symbol, named for a11y
   expect(screen.getByRole("button", { name: "Next" }).disabled).toBe(true); // until the task is solved
   expect(fetch).toHaveBeenCalledTimes(1);
+  expect(JSON.parse(fetch.mock.calls[0][1].body).profile).toEqual({ topics: [] });
   expect(JSON.parse(localStorage.getItem(SESSION_KEY)).level.id).toBe("gen-1234");
+  // The tutor's welcome is the first chat message, with its terms in bold.
+  expect(screen.getByText("Current").closest(".tutor-message").classList.contains("kind-knowledge")).toBe(true);
+  expect(JSON.parse(localStorage.getItem(SESSION_KEY)).chat).toEqual([{ role: "tutor", ...welcome }]);
 });
 
 test("/start shows the start screen and keeps the saved progress", async () => {

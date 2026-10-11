@@ -35,6 +35,21 @@ def test_generate_returns_a_level(config):
     assert body["level"]["board"]["inventory"][0]["id"] == "R2"
     assert body["difficulty"] == 3 and body["attempts"] == 1
     assert body["level"]["id"] in REFERENCES  # reference kept server-side for the tutor
+    # A new learner: the task brings topics they haven't met, so the welcome teaches.
+    assert body["welcome"]["text"] == load_example()["welcome"]
+    assert body["welcome"]["kind"] == "knowledge" and body["welcome"]["icon"] == "📘"
+
+
+def test_the_welcome_is_feedback_when_the_task_brings_nothing_new(config):
+    from app.learner_profile import join
+    from tests.conftest import example_level
+
+    level, _ = example_level()
+    profile = {"topics": []}
+    join(profile, {"curriculum": {"level": 8}}, level["board"], 20)  # every topic this task could bring
+    fake = FakeClaude([text_response(as_claude_output(load_example()))])
+    response = client_with(fake, config).post("/api/tasks/generate", json={"skill_level": 3, "profile": profile})
+    assert response.json()["welcome"]["kind"] == "feedback"
 
 
 def test_generate_serves_from_the_cache(config):

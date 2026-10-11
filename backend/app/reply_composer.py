@@ -9,7 +9,8 @@ in the text, which the chat shows in bold.
 
 import re
 
-from .learner_profile import MAX_SCORE, add, find, load_catalog, topic_entry
+from .learner_profile import MAX_SCORE, add, find, join, load_catalog, sanitize, topic_entry
+from .tutor import location_talk
 
 ICONS = {
     "praise": "🎉",
@@ -112,3 +113,17 @@ def compose(message: dict, profile: dict, skill_level: int) -> tuple[dict, list[
     title = taught["name"] if kind == "knowledge" and taught else None
     return {"kind": kind, "icon": ICONS.get(kind, "💬"), "title": title, "text": chat["text"],
             "terms": term_spans(chat["text"], profile)}, dropped
+
+
+def welcome(level: dict, profile, skill_level: int) -> dict:
+    """The chat message for a new task: the generator's `welcome`, or a plain line when it has
+    none or describes locations. It's `knowledge` when the task brings topics new to the learner,
+    else `feedback`. The learner's profile (as the browser sent it) only marks the terms; the
+    session adds the task's topics for real when it starts."""
+    profile = sanitize(profile)
+    new_topics = join(profile, level, level.get("board") or {}, skill_level)
+    text = level.get("welcome") or ""
+    if not text or location_talk(text):
+        text = f"New task: {level.get('title', 'a new circuit')}. Let's see what you make of it!"
+    kind = "knowledge" if new_topics else "feedback"
+    return {"kind": kind, "icon": ICONS[kind], "title": None, "text": text, "terms": term_spans(text, profile)}
