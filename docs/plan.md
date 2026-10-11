@@ -112,6 +112,7 @@ Built after the core workflow runs end to end.
 - [ ] Append-only multi-turn tutor conversation, so earlier turns are served from the prompt cache
 - [ ] Tutor evaluation set: ~20 broken boards, physics-focus rubric, backstop trip rate
 - [ ] Experiment: let Claude stay silent on neutral moves
+- [ ] Adaptive communication style: fewer questions when the learner doesn't engage in the chat (e.g. short statements and highlights instead), more dialogue when they do
 - [ ] Observe typical WebSocket message sizes, then set a message size limit
 - [ ] Tune the idle threshold for reactions
 - [ ] Choose the model for reactions (Opus 5.5 at low effort vs. Haiku 5.5) by measuring cost and quality; switched in `config.yaml`
