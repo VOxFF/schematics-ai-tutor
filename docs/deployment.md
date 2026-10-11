@@ -224,5 +224,5 @@ fly ssh sftp get /data/logs/history/<file>   # copy an archived log (§5)
 - [x] Ship with the `deploy` label designed (§3): check, deploy, smoke, merge; rollback to the last good image on failure
 - [x] `ci.yml` back to `check` only; `deploy.yml` ships on the label and rolls back; the `deploy` label created
 - [x] First ship with the label: PR #29 (2026-10-11): check, record, deploy, smoke, merge; merged by the workflow, `2dc3ae1` live
-- [ ] Rollback tested on a deliberately failing smoke test
-- [ ] Learner experience collection (to be designed)
+- [x] Rate limits and the daily Claude budget: PR #30, shipped with the label (2026-10-11, `94c5276`); the budget's state on the volume
+- [x] Rollback drill (2026-10-11, PR #31, closed unmerged): a changed page title failed `smoke`; `rollback` redeployed the recorded image of `94c5276`, and its smoke test passed 35 s after the failure
