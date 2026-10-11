@@ -17,9 +17,10 @@ function socketUrl() {
 // hintLevel: the hint level reached in this task, sent with session.start so the ladder continues;
 // onReply(meta, hintOffered): each tutor reply's metadata, for the task's hint and misconception record;
 // profile / onProfile: the learner profile, sent with session.start and saved from each server update;
-// research: the learner's research consent, sent with session.start (docs/design.md §5).
+// research / onResearch: the learner's research consent and active time, sent with session.start and
+// saved from each server update, since each task is a new connection (docs/design.md §5).
 export function useTutorSession(level, chat, onChat, board, progress,
-                                { hintLevel = 0, onReply, profile, onProfile, research } = {}) {
+                                { hintLevel = 0, onReply, profile, onProfile, research, onResearch } = {}) {
   const [connected, setConnected] = useState(false);
   const [thinking, setThinking] = useState(false);
   const [evaluation, setEvaluation] = useState(null);
@@ -45,6 +46,8 @@ export function useTutorSession(level, chat, onChat, board, progress,
   profileRef.current = profile;
   const researchRef = useRef(research);
   researchRef.current = research;
+  const onResearchRef = useRef(onResearch);
+  onResearchRef.current = onResearch;
   const onProfileRef = useRef(onProfile);
   onProfileRef.current = onProfile;
   const seq = useRef(0);
@@ -88,6 +91,7 @@ export function useTutorSession(level, chat, onChat, board, progress,
       ws.onmessage = (event) => {
         const message = JSON.parse(event.data);
         if (message.profile) onProfileRef.current?.(message.profile);
+        if (message.research) onResearchRef.current?.(message.research);
         if (message.type === "evaluation") setEvaluation(message.evaluation);
         else if (message.type === "tutor.started") setThinking(true);
         else if (message.type === "tutor.message") {

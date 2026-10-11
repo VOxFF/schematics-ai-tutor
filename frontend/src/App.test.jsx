@@ -95,6 +95,11 @@ test("research consent and a name are saved with the session and sent to the ser
   expect(research).toMatchObject({ consent: true, name: "Ada" });
   expect(research.learner_id).toMatch(/^[0-9a-f-]{36}$/);
   expect(FakeSocket.last.sent[0]).toMatchObject({ type: "session.start", research });
+
+  // The server's active time is kept with the consent, so the next task's session continues it.
+  FakeSocket.last.serverSends({ type: "evaluation", seq: 0, evaluation: { status: "open_circuit", readings: {}, issues: [] },
+                                research: { active_s: 312 } });
+  expect(JSON.parse(localStorage.getItem(SESSION_KEY)).research).toEqual({ ...research, active_s: 312 });
 });
 
 test("a blank name gets a generated one; no consent records nothing", async () => {

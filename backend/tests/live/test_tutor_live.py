@@ -118,3 +118,23 @@ def test_feedback_conversation_asks_a_follow_up_without_tutoring(config, tmp_pat
     print(f"cost: ${usage_log.totals['cost_usd']:.4f}")
     assert reply["kind"] == "experience" and reply["text"]
     assert research.thread_open  # a follow-up question, not the end
+
+
+@pytest.mark.parametrize("text, handoff", [
+    ("The feedback is not sufficient for complex schematics like level 6", False),
+    ("Its about my user experience", False),
+    ("Why does the ammeter read zero?", True),
+])
+def test_feedback_conversation_hands_off_only_circuit_questions(config, tmp_path, text, handoff):
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        pytest.skip("ANTHROPIC_API_KEY is not set (./test.sh live loads backend/keys/apikey.txt)")
+    from app.research import Research, ResearchLog
+
+    usage_log = UsageLog.from_config(config, REPO_ROOT, "live-test")
+    research = Research(ResearchLog(tmp_path), config, anthropic.AsyncAnthropic(), usage_log, "live")
+    research.start({"consent": True, "learner_id": "0b7e3c1a-5f2d-4c8e-9a1b-2c3d4e5f6a7b"}, {}, {}, {})
+    research.active_s = 600
+    research.prompt_due(3, "open_circuit")
+    reply = asyncio.run(research.reply(text))
+    print(text, "→", "handoff" if reply is None else reply["text"])
+    assert (reply is None) == handoff

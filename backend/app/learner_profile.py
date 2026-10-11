@@ -60,9 +60,14 @@ def topic_entry(raw, *, source: str, introduced: int) -> dict | None:
 
 
 def sanitize(raw) -> dict:
-    """A well-formed profile from whatever the browser sent; bad entries are dropped."""
+    """A well-formed profile from whatever the browser sent; bad entries are dropped. Catalog topics
+    take the catalog's current name and definition, so a catalog fix reaches saved profiles."""
     topics, seen = [], set()
+    catalog = load_catalog()
     for item in (raw.get("topics") if isinstance(raw, dict) else None) or []:
+        if isinstance(item, dict) and item.get("source") == "catalog" and item.get("id") in catalog:
+            known = catalog[item["id"]]
+            item = {**item, "name": known["name"], "type": known["type"], "definition": known["definition"]}
         introduced = item.get("introduced") if isinstance(item, dict) else None
         source = item.get("source") if isinstance(item, dict) else None
         entry = topic_entry(item, source=source if source in SOURCES else "claude",

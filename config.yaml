@@ -71,6 +71,8 @@ research:                      # learner experience research, with consent (docs
   max_mb_per_learner: 20
   prompt_from_level: 3         # curriculum level
   prompt_every_active_min: 10
+  prompt_idle_s: 8              # the 🔔 prompt waits for this long a pause in editing
+  thread_timeout_active_min: 3 # an unanswered feedback conversation closes after this much active time
   max_followups: 2
 
 evaluator:

@@ -53,17 +53,6 @@ export default function StartScreen({ onStart }) {
           </ol>
         </section>
 
-        <div className="research">
-          <label>
-            <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-            Help improve the tutor: record my session (boards and chat) for research
-          </label>
-          {consent && (
-            <input className="research-name" aria-label="Your name (optional)" placeholder="Your name (optional)"
-                   maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />
-          )}
-        </div>
-
         <div className="start-action">
           <button className="primary large" onClick={() => onStart({ consent, name })}>
             Start Learning
@@ -71,6 +60,17 @@ export default function StartScreen({ onStart }) {
         </div>
       </div>
       <p className="note">Tasks adapt to you, so your path may differ.</p>
+      {/* Outside the card, in the window's bottom-left corner. */}
+      <div className="research">
+        <label>
+          <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+          Share my learning experience with the authors
+        </label>
+        {consent && (
+          <input className="research-name" aria-label="Your name (optional)" placeholder="Your name (optional)"
+                 maxLength={40} value={name} onChange={(e) => setName(e.target.value)} />
+        )}
+      </div>
     </main>
   );
 }

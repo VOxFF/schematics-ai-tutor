@@ -47,6 +47,7 @@ class Session:
         self.snapshots: list[dict] = []  # boards since the tutor's last call, oldest first
         self.started_at = time.monotonic()
         self.idle: asyncio.Task | None = None  # pending reaction timer
+        self.quiet: asyncio.Task | None = None  # pending 🔔 prompt check, after a longer pause
         self.hint_level = 0  # highest hint given in this task (0-3)
         self.best_rank = -1  # best status reached in this task, by STATUS_RANK
         self.stalled = 0  # reactions in a row without beating best_rank
@@ -100,8 +101,9 @@ class Session:
         # The task's topics join the profile; the browser saves the profile that comes back.
         self.profile = sanitize(message.get("profile"))
         join(self.profile, level, level["board"], self.skill_level)
-        await self.send({"type": "evaluation", "seq": 0, "evaluation": self._evaluate(), "profile": self.profile})
         self.research.start(message.get("research"), level, self.profile, progress)
+        await self.send({"type": "evaluation", "seq": 0, "evaluation": self._evaluate(), "profile": self.profile,
+                         **self._research_state()})
         # A resumed task (e.g. after a server restart, which empties the cache) gets its next
         # task generated in the background too, so Next doesn't wait.
         if self.task_cache and isinstance(progress, dict) and isinstance(progress.get("history"), list):
@@ -136,11 +138,11 @@ class Session:
         if await self._set_board(message.get("board")):
             self.seq = message.get("seq", 0)
             evaluation = self._evaluate()
-            await self.send({"type": "evaluation", "seq": message.get("seq", 0), "evaluation": evaluation})
             self._record(message.get("seq", 0), evaluation)
             self.research.board(self.seq, self.board, self.snapshots[-1]["graph"], evaluation)
             self.research.activity()
-            self.research.close_thread("board_edit")  # back to the board: the feedback conversation ends
+            await self.send({"type": "evaluation", "seq": message.get("seq", 0), "evaluation": evaluation,
+                             **self._research_state()})
             self._restart_idle_timer()
 
     def _record(self, seq: int, evaluation: dict) -> None:
@@ -161,10 +163,33 @@ class Session:
         self.idle = None
 
     def _restart_idle_timer(self) -> None:
-        """A burst of quick edits gives one reaction: each edit restarts the timer."""
+        """A burst of quick edits gives one reaction: each edit restarts the timer. With research on,
+        the 🔔 prompt's longer timer restarts too."""
         self._cancel_idle_timer()
         if self.claude is not None:
             self.idle = self._start_task(self._react_after_pause())
+        if self.quiet and not self.quiet.done():
+            self.quiet.cancel()
+        if self.research.active and self.claude is not None:
+            self.quiet = self._start_task(self._prompt_after_quiet())
+
+    async def _prompt_after_quiet(self) -> None:
+        """The 🔔 prompt waits for a real break: `research.prompt_idle_s` without edits, and the tutor
+        done replying. A pause between two drops is the middle of a move, not a break."""
+        await asyncio.sleep(self.config.get("research", {}).get("prompt_idle_s", 8))
+        for _ in range(60):  # the reaction to the same pause may still be running
+            if not self.busy:
+                break
+            await asyncio.sleep(0.5)
+        else:
+            return
+        self.quiet = None
+        if not self.limits.claude_allowed():
+            return  # its replies need Claude
+        evaluation = self._evaluate()
+        prompt = self.research.prompt_due((self.level.get("curriculum") or {}).get("level") or 1, evaluation["status"])
+        if prompt:
+            await self._send_experience(f"research-{uuid.uuid4().hex[:8]}", prompt, evaluation)
 
     async def _react_after_pause(self) -> None:
         await asyncio.sleep(self.config.get("tutor", {}).get("idle_threshold_ms", 1500) / 1000)
@@ -173,13 +198,6 @@ class Session:
             return  # a call is running; the next pause reacts to these snapshots too
         if not self.limits.claude_allowed():
             self.usage_log.event("reaction_skipped", session_id=self.id, reason="claude_budget")
-            return
-        # The 🔔 feedback prompt, when it's due, takes this pause instead of a reaction (no Claude
-        # call); the edits wait for the next reaction.
-        evaluation = self._evaluate()
-        prompt = self.research.prompt_due((self.level.get("curriculum") or {}).get("level") or 1, evaluation["status"])
-        if prompt:
-            await self._send_experience(f"research-{uuid.uuid4().hex[:8]}", prompt, evaluation)
             return
         if not self.limits.tutor.allow(self.id):
             self.usage_log.event("reaction_skipped", session_id=self.id, reason="rate_limited")
@@ -283,20 +301,33 @@ class Session:
         if self.snapshots and self.idle is None:
             self._restart_idle_timer()  # edits arrived during the call: react to them after a pause
 
+    def _research_state(self) -> dict:
+        """`research` for an outgoing message, when recording is on: the browser keeps it (docs/design.md §5)."""
+        state = self.research.state()
+        return {"research": state} if state else {}
+
     async def _send_experience(self, request_id: str, chat: dict, evaluation: dict) -> None:
         """A feedback-conversation message, sent like a tutor reply about the current board."""
         meta = {"principle": None, "highlights": [], "hint_level": 0, "misconception": None,
                 "topic_updates": [], "new_topic": None}
         await self.send({"type": "tutor.message", "request_id": request_id, "seq": self.seq, "evaluation": evaluation,
-                         "message": {"meta": meta, "chat": chat}, "hint_offered": False, "profile": self.profile})
+                         "message": {"meta": meta, "chat": chat}, "hint_offered": False, "profile": self.profile,
+                         **self._research_state()})
 
     async def _experience(self, request_id: str, text: str) -> None:
-        """The learner's answer in the feedback conversation and Claude's follow-up (docs/design.md §5)."""
+        """The learner's answer in the feedback conversation and Claude's follow-up (docs/design.md §5).
+        A message meant for the tutor is handed off: the tutor answers it as a normal request."""
         try:
             chat = await self.research.reply(text)
-            await self._send_experience(request_id, chat, self._evaluate())
         except anthropic.APIError as e:
             self.usage_log.event("claude_error", purpose="experience", session_id=self.id, error=str(e)[:300])
             await self.error("tutor_unavailable", "The tutor is unavailable right now; try again shortly.", request_id)
+            self.busy = False
+            return
+        if chat is None:
+            await self._answer(request_id, text, asked=True)  # releases `busy` when done
+            return
+        try:
+            await self._send_experience(request_id, chat, self._evaluate())
         finally:
             self.busy = False

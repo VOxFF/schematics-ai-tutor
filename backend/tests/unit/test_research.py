@@ -78,7 +78,7 @@ def test_the_prompt_comes_after_ten_active_minutes_from_level_three(tmp_path):
 
 def test_the_conversation_asks_at_most_two_follow_ups(tmp_path):
     def answer(text, done=False):
-        return text_response({"text": text, "done": done})
+        return text_response({"handoff": False, "text": text, "done": done})
 
     fake = FakeClaude([answer("What felt vague?"), answer("Which hint was it?"), answer("Thanks, that helps!", done=False)])
     r = research(tmp_path, claude=fake)
@@ -93,10 +93,50 @@ def test_the_conversation_asks_at_most_two_follow_ups(tmp_path):
     assert turns[-1]["done"] is True
 
 
-def test_editing_the_board_closes_the_thread(tmp_path):
-    r = research(tmp_path)
+def test_an_unanswered_thread_closes_after_three_active_minutes(tmp_path):
+    clock = Clock()
+    r = research(tmp_path, clock=clock)
     r.active_s = 600
     r.prompt_due(3, "open_circuit")
-    r.close_thread("board_edit")
+    for _ in range(3):  # the learner keeps building: the thread stays open meanwhile
+        r.activity()
+        assert r.thread_open
+        clock.now += 60
+    r.activity()
     assert not r.thread_open
-    assert records(tmp_path)[-1] == {**records(tmp_path)[-1], "type": "experience", "closed": "board_edit"}
+    assert records(tmp_path)[-1] == {**records(tmp_path)[-1], "type": "experience", "closed": "timeout"}
+
+
+def test_a_message_for_the_tutor_is_handed_off(tmp_path):
+    fake = FakeClaude([text_response({"handoff": True, "text": "", "done": False})])
+    r = research(tmp_path, claude=fake)
+    r.active_s = 600
+    r.prompt_due(3, "open_circuit")
+    assert asyncio.run(r.reply("Why does the ammeter read zero?")) is None
+    assert not r.thread_open
+    learner, closed = records(tmp_path)[-2:]
+    assert learner["role"] == "learner" and learner["handoff"] is True and closed["closed"] == "handoff"
+
+
+def test_active_time_continues_from_the_browser_across_connections(tmp_path):
+    clock = Clock()
+    r = Research(ResearchLog(tmp_path), SETTINGS, FakeClaude([]), UsageLog(None), "s2", clock)
+    clock.now = 1000.0
+    # The previous task's last activity was 20 s ago: that gap (reading the new task) counts too.
+    r.start({"consent": True, "learner_id": LEARNER, "active_s": 570, "last_ts": 980.0}, {}, {}, {})
+    assert r.state() == {"active_s": 570, "last_ts": 980.0}
+    r.activity()
+    clock.now += 10
+    r.activity()
+    assert r.prompt_due(3, "open_circuit") is not None  # 570 s from earlier tasks + 20 s between + 10 s now
+    assert r.state() == {"active_s": 0, "last_ts": 1010.0}
+    r.start({"consent": True, "learner_id": LEARNER, "active_s": 0, "last_ts": 0.0}, {}, {}, {})
+    r.activity()
+    assert r.active_s == MAX_GAP_S  # a stale last_ts adds one capped gap at most
+    r.start({"consent": True, "learner_id": LEARNER, "last_ts": 10 ** 12}, {}, {}, {})
+    assert r.last_activity != 10 ** 12  # a future time is ignored
+    for saved in (-5, 10 ** 9, "600", True):  # clamped or ignored
+        r.start({"consent": True, "learner_id": LEARNER, "active_s": saved}, {}, {}, {})
+        assert 0 <= r.state()["active_s"] <= 600
+    r.start({"consent": False}, {}, {}, {})
+    assert r.state() is None

@@ -36,14 +36,19 @@ how the tutor is working for them. Your job is to understand their experience, n
 - Be warm and brief: one or two sentences.
 - When followups_left is 0, or they have nothing more to add, thank them in one sentence
   and set done to true. Otherwise set done to false.
+- Messages here may also be meant for the tutor: they keep building while this thread is
+  open. If the learner's latest message is about their circuit or task (a question or a
+  remark for the tutor) rather than about their experience with the tutor or the app, set
+  handoff to true and leave text empty: the tutor answers it, and this thread ends.
+  Feedback about the tutor's help, even when it mentions the circuit, is not a handoff.
 
 Input: <thread> (your check-in and the conversation so far) and <followups_left>.
 """
 
 EXPERIENCE_SCHEMA = {
     "type": "object",
-    "properties": {"text": {"type": "string"}, "done": {"type": "boolean"}},
-    "required": ["text", "done"],
+    "properties": {"handoff": {"type": "boolean"}, "text": {"type": "string"}, "done": {"type": "boolean"}},
+    "required": ["handoff", "text", "done"],
     "additionalProperties": False,
 }
 
@@ -92,7 +97,7 @@ class Research:
     """One learning session's research: inert unless the learner consented."""
 
     def __init__(self, log: ResearchLog | None, config: dict, claude, usage_log, session_id: str = "",
-                 clock=time.monotonic):
+                 clock=time.time):  # wall-clock: the last activity's time is kept across connections
         self.log = log
         self.settings = config.get("research") or {}
         self.claude_settings = (config.get("claude") or {}).get("experience") or {}
@@ -106,6 +111,7 @@ class Research:
         self.prompts = 0
         self.thread: list[dict] | None = None  # the open feedback conversation's turns
         self.followups = 0
+        self.thread_idle_s = 0.0  # active time since the thread last heard from the learner
 
     @property
     def active(self) -> bool:
@@ -121,7 +127,9 @@ class Research:
             self.log.append(self.learner_id, {"ts": now, "session_id": self.session_id, "type": kind, **fields})
 
     def start(self, research, level: dict, profile: dict, progress) -> None:
-        """Turn recording on when the learner consented with a well-formed learner_id."""
+        """Turn recording on when the learner consented with a well-formed learner_id. Active time
+        continues from `research.active_s` and `last_ts`: each task is a new connection, so the
+        browser keeps them, and the gap since the previous task's last activity counts too."""
         self.learner_id = None
         if self.log is None or not isinstance(research, dict) or research.get("consent") is not True:
             return
@@ -129,9 +137,22 @@ class Research:
         if not isinstance(learner_id, str) or not LEARNER_ID.match(learner_id):
             return
         self.learner_id = learner_id
+        saved = research.get("active_s")
+        limit = self.settings.get("prompt_every_active_min", 10) * 60
+        if isinstance(saved, (int, float)) and not isinstance(saved, bool):
+            self.active_s = min(max(float(saved), 0.0), limit)
+        last = research.get("last_ts")
+        if isinstance(last, (int, float)) and not isinstance(last, bool) and last <= self.clock():
+            self.last_activity = float(last)  # any gap still counts at most MAX_GAP_S
         name = research.get("name")
         name = name.strip()[:MAX_NAME] if isinstance(name, str) and name.strip() else "Anonymous"
         self._record("session", name=name, level=level, profile=profile, progress=progress)
+
+    def state(self) -> dict | None:
+        """What the browser keeps between connections: the active time since the last prompt."""
+        if not self.active:
+            return None
+        return {"active_s": round(self.active_s), "last_ts": self.last_activity}
 
     def board(self, seq: int, board: dict, graph: dict, evaluation: dict) -> None:
         self._record("board", seq=seq, board=board, graph=graph, evaluation=evaluation)
@@ -141,11 +162,16 @@ class Research:
         self._record("chat", role=role, message=message, **extra)
 
     def activity(self) -> None:
-        """An edit or a message: adds the time since the last one, up to MAX_GAP_S."""
+        """An edit or a message: adds the time since the last one, up to MAX_GAP_S. An open thread
+        that the learner hasn't answered for `thread_timeout_active_min` closes."""
         now = self.clock()
         if self.last_activity is not None:
-            self.active_s += min(now - self.last_activity, MAX_GAP_S)
+            gap = min(now - self.last_activity, MAX_GAP_S)
+            self.active_s += gap
+            self.thread_idle_s += gap
         self.last_activity = now
+        if self.thread_open and self.thread_idle_s >= self.settings.get("thread_timeout_active_min", 3) * 60:
+            self.close_thread("timeout")
 
     def prompt_due(self, curriculum_level: int, status: str) -> dict | None:
         """The 🔔 chat message when it's time to ask (it opens the thread), else None. The session
@@ -159,15 +185,17 @@ class Research:
         text = PROMPTS[self.prompts % len(PROMPTS)]
         self.prompts += 1
         self.active_s = 0.0
-        self.thread, self.followups = [{"role": "tutor", "text": text}], 0
+        self.thread, self.followups, self.thread_idle_s = [{"role": "tutor", "text": text}], 0, 0.0
         self._record("experience", experience=True, role="tutor", text=text, prompt=True)
         return {"kind": "experience", "icon": ICON, "title": None, "text": text, "terms": []}
 
-    async def reply(self, learner_text: str) -> dict:
+    async def reply(self, learner_text: str) -> dict | None:
         """Claude's answer in the feedback conversation: a follow-up question, or thanks, which
-        closes the thread. Raises anthropic.APIError on API failure (the thread stays open)."""
+        closes the thread. None when the message is for the tutor (a handoff): the thread closes
+        and the session passes the message on. Raises anthropic.APIError on API failure (the
+        thread stays open)."""
         self.thread.append({"role": "learner", "text": learner_text})
-        self._record("experience", experience=True, role="learner", text=learner_text)
+        self.thread_idle_s = 0.0
         left = max(self.settings.get("max_followups", 2) - self.followups, 0)
         settings = self.claude_settings
         content = f"<thread>\n{dumps(self.thread)}\n</thread>\n\n<followups_left>{left}</followups_left>"
@@ -185,6 +213,12 @@ class Research:
                                    stop_reason=response.stop_reason,
                                    duration_ms=int((time.monotonic() - started) * 1000))
         answer = _parse(response)
+        # The learner's turn is recorded as a reply to the check-in either way, flagged when handed off.
+        self._record("experience", experience=True, role="learner", text=learner_text,
+                     **({"handoff": True} if answer["handoff"] else {}))
+        if answer["handoff"]:
+            self.close_thread("handoff")
+            return None
         done = answer["done"] or left == 0
         text = answer["text"] or "Thank you for sharing!"
         self.thread.append({"role": "tutor", "text": text})
@@ -196,7 +230,7 @@ class Research:
         return {"kind": "experience", "icon": ICON, "title": None, "text": text, "terms": []}
 
     def close_thread(self, reason: str) -> None:
-        """The learner went back to the board or asked for a hint: the conversation ends."""
+        """The conversation ends early: a hint request, a handoff, or no reply for a while."""
         if self.thread_open:
             self.thread = None
             self._record("experience", experience=True, closed=reason)
@@ -208,7 +242,8 @@ def _parse(response) -> dict:
         answer = json.loads(text) if text else {}
     except json.JSONDecodeError:
         answer = {}
-    return {"text": str(answer.get("text") or "").strip(), "done": bool(answer.get("done", True))}
+    return {"text": str(answer.get("text") or "").strip(), "done": bool(answer.get("done", True)),
+            "handoff": answer.get("handoff") is True}
 
 
 def _usage(response) -> dict:

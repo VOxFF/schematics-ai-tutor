@@ -251,8 +251,8 @@ function hint(drag, fits, selection, solved) {
   return "Drop onto the highlighted points to connect · R to rotate · Esc to cancel";
 }
 
-export default function TutorScreen({ session, loading, error, onRestart, onRetry, onChat, onProfile, onNext, onBoard,
-                                      onTask }) {
+export default function TutorScreen({ session, loading, error, onRestart, onRetry, onChat, onProfile, onResearch,
+                                      onNext, onBoard, onTask }) {
   const { progress, level } = session;
   const chat = session.chat ?? [];
   const board = session.board ?? level?.board ?? null;
@@ -265,7 +265,8 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
       ? [...(current.misconceptions ?? []), meta.misconception] : current.misconceptions ?? [],
   })), [onTask]);
   const tutor = useTutorSession(level, chat, onChat, board, progress,
-                                { hintLevel, onReply, profile: session.profile, onProfile, research: session.research });
+                                { hintLevel, onReply, profile: session.profile, onProfile, research: session.research,
+                                  onResearch });
   const askHint = () => {
     if (tutor.askHint()) onTask?.(() => ({ hint_offered: false }));
   };

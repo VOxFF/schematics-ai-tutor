@@ -130,6 +130,15 @@ export default function App() {
     });
   }, []);
 
+  // The server's research state (active time) is merged into the session's consent record.
+  const setResearch = useCallback((state) => {
+    setSession((current) => {
+      const next = { ...current, research: { ...current.research, ...state } };
+      saveSession(next);
+      return next;
+    });
+  }, []);
+
   const setChat = useCallback((chat) => {
     setSession((current) => {
       const next = { ...current, chat };
@@ -148,6 +157,7 @@ export default function App() {
       onRetry={() => fetchTask(session)}
       onChat={setChat}
       onProfile={setProfile}
+      onResearch={setResearch}
       onNext={next}
       onBoard={setBoard}
       onTask={updateTask}

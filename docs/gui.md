@@ -18,10 +18,11 @@ One static screen, with no sign-up and no backend call:
 
 1. **What it is:** "Learn electronics by building real circuits, experimenting with components, and discovering how electricity works — with an AI tutor guiding you along the way."
 2. **Your Learning Path:** 8 steps in one column of pills, each with a one-line note on what the learner discovers: Closed Loop, Measuring Voltage, Measuring Current, Ohm's Law, Series Circuits, Parallel Circuits, Power and Safety, Troubleshooting. The first step has a lightning icon (where the learner starts); the rest have a lock icon. Tasks adapt to the learner, so it is shown as a typical path, not a fixed sequence.
-3. **Research consent:** an unchecked checkbox, "Help improve the tutor: record my session (boards and chat) for research". Checking it shows an optional name field; a blank name gets a generated one, e.g. "Curious Otter 42" ([design.md](design.md#5-learner-experience-research)).
-4. **One large, centered Start Learning button.**
+3. **One large, centered Start Learning button.**
 
 Everything sits in one light card with rounded corners. Below the card, at the bottom left, an italic note reads "Tasks adapt to you, so your path may differ."
+
+**Research consent,** outside the card, pinned to the window's bottom-left corner: an unchecked checkbox, "Share my learning experience with the authors". Checking it shows an optional name field to its right, on the same row, so the checkbox doesn't move; a blank name gets a generated one, e.g. "Curious Otter 42" ([design.md](design.md#5-learner-experience-research)).
 
 It also sets expectations about agency up front: the tutor asks rather than tells. That prevents "why won't it just tell me?" frustration, and it gives reviewers opening the URL cold the context in seconds.
 
@@ -35,7 +36,7 @@ A reload or a closed tab must not lose anything. The browser saves the learner's
 - the chat history
 - the previous task's curriculum level, shown in the header while the next task loads
 - the learner profile: the topics the learner has met, with their scores ([design.md](design.md#learner-profile))
-- the research consent for this session: `{ consent, learner_id, name }`
+- the research consent for this session: `{ consent, learner_id, name }`, plus the active time since the last 🔔 prompt
 
 On load, if a saved session exists, the app opens the learning screen and sends it with `session.start` ([contract.md](contract.md#websocket-session)), and the backend resumes from it. The server-side reference solution is lost if the reconnect lands on a different server instance. Grading is unaffected, and the tutor works without the reference.
 
@@ -87,7 +88,7 @@ Rendered with three.js in an orthographic, top-down view (`frontend/src/editor/`
 - battery plate sizes and colors (the positive plate is red), and the size and placement (distance from the plate and from the wire) of the + and − marks
 - meter radius, outline thickness, fills per type (voltmeter light blue, ammeter light amber) and letter size
 - label size and the gap between a part and its labels
-- selection outline color and width
+- selection outline color and width, and the grey for a locked (fixed) selection
 
 Editing the file and saving reloads the page in development.
 
@@ -126,6 +127,7 @@ Editing the file and saving reloads the page in development.
 | Highlight | Color | Meaning |
 |---|---|---|
 | Selection | Blue outline | The learner selected this element; it is editable |
+| Selection, locked | Grey outline (`#8c959f`) | The learner selected a fixed part or a task wire: selected, but it can't be moved, rotated or removed |
 | Drop target, valid | Blue, on the grid points nearest the element's pins | Where the element will connect if dropped |
 | Drop target, invalid | Red, on those points | The spot is taken or off the grid; dropping snaps back |
 | Tutor `attention` | Amber outline (pulsing in polishing) | Claude draws attention here |
@@ -150,7 +152,7 @@ A tutor highlight lasts until the next tutor message or the next edit: it descri
 | Click empty space, or **Esc** | Deselects |
 | Hover a point | Highlights every point and pin in the same net |
 
-- **Fixed parts** and the task's own wires can be selected, so they show the outline and the hint bar explains them, but they can't be dragged, rotated or deleted.
+- **Fixed parts** and the task's own wires can be selected, so a click visibly lands and the hint bar explains them, but they can't be dragged, rotated or deleted. Their outline is grey instead of blue, so blue always means "you can change this".
 - **Selection outline.** Every shape of the element is copied, grown by `selection.width` and drawn just behind it in `selection.color` (both in `schematic-style.yaml`), so only a silhouette line shows. The copies don't count for picking. The selection survives moves and rotations (the element keeps its `id`), and clears on Del, Esc, a click on empty space, Reset board, or a new task.
 - **Keys** (R, Del, Esc) are ignored while the learner is typing in the chat.
 - **Sending edits.** Each finished edit (drop, rotate, delete) sends one `board.update`. Dragging stays local until the drop.

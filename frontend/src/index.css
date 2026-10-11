@@ -162,12 +162,15 @@ button.large {
   color: var(--muted);
 }
 
-/* Research consent: an opt-in checkbox and, once checked, an optional name. */
+/* Research consent: an opt-in checkbox and, once checked, an optional name to its right (one
+   row, so the checkbox never moves), pinned to the window's bottom-left corner, outside the card. */
 .start .research {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 20px;
+  align-items: center;
+  gap: 12px;
   color: var(--info);
   font-size: var(--info-size);
 }
@@ -180,8 +183,7 @@ button.large {
 
 .start .research-name {
   font: inherit;
-  max-width: 260px;
-  margin-left: 24px;
+  width: 220px;
   padding: 6px 8px;
   border: 1px solid var(--border);
   border-radius: 6px;
