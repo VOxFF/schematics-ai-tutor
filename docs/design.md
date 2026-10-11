@@ -9,13 +9,15 @@ The system separates deterministic code from Claude, with strictly divided respo
 | Engine | Responsibility | Nature |
 |---|---|---|
 | Evaluator | Decides what is correct: validates generated tasks, computes target values, grades the learner's work | Deterministic code |
-| Task generator (Claude) | Proposes new tasks tailored to the learner | LLM; output validated |
-| Tutor (Claude) | Decides how to teach: feedback, hints, assessment of the learner's direction | LLM |
+| Task generator (Claude) | Proposes new tasks tailored to the learner, each with a welcome message | LLM; output validated |
+| Tutor (Claude) | Decides how to teach: feedback, hints, knowledge, assessment of the learner's direction and understanding | LLM |
+| Reply composer | Bounds Claude's changes to the learner profile and presents its messages (§4) | Deterministic code |
 
 **Why:** LLMs make calculation errors, and a tutor that is confidently wrong does more harm than no tutor. Deterministic evaluation also makes results reproducible and testable.
 
 **Rules:**
 - Claude never produces or overrides a verdict or a computed value. It receives the evaluator's output as input and reasons about the *learner*.
+- Claude's judgment of the learner (profile scores, new topics) is applied only through the reply composer, which clamps it (§4).
 - Everything Claude produces is untrusted input. Generated tasks pass the same validator as the learner's work, and the system falls back to curated content when they fail (curated levels are planned; today a failed generation shows an error with a retry).
 
 ## 2. The learner keeps agency
@@ -44,6 +46,7 @@ flowchart LR
     C -- "task proposal" --> TG
     TG -- "validate + compute targets" --> E
     TG -- "task" --> W
+    TG -- "welcome" --> RC
     W -- "learner's work" --> E
     E -- verdict + results --> TS
     LP -- "focus topics + scores" --> TS
@@ -55,7 +58,7 @@ flowchart LR
 
 - **Frontend:** JavaScript + React. It owns the interactive workspace and displays the tutor's messages. It holds no secrets and does no grading.
 - **Backend:** Python. It owns the evaluator and all Claude API calls.
-- **Task flow:** Claude proposes a task. The evaluator validates it and computes its targets, and the frontend receives the resulting task. Details are in [schematics.md](schematics.md#3-task-flow).
+- **Task flow:** Claude proposes a task with a welcome message. The evaluator validates it and computes its targets, and the frontend receives the resulting task, with the welcome composed for the chat (§4). Details are in [schematics.md](schematics.md#3-task-flow).
 - **Tasks are pre-generated and cached on the backend.** A generated task takes 20–90 s depending on the level (first tasks ~25 s, level 14 ~60 s at `high` effort), which is too long to wait at Start or Next.
   - *Cache by progress:* the cache key is the learner's progress (skill level and task history). A request for a progress gets the cached task at once; if that task is still being generated, it waits for the same generation instead of starting another; otherwise it generates one now. A task is removed from the cache when it's served, so the same progress later (e.g. after Restart Learning) gets a fresh task.
   - *Next task in the background:* after serving a task, the backend generates the next one, for the progress as if the served task is solved. By the time the learner presses Next it's usually ready. A resumed task (e.g. after a server restart, which empties the cache) does the same when its session starts, from the progress the browser sends with `session.start`.
@@ -118,7 +121,7 @@ flowchart LR
 
 ## 4. Tutoring experience: learning path, learner profile, reply composer
 
-**Problem.** Claude only gets the task, the board and the evaluation, so it can only coach the task. Every reply sounds the same: a question about the circuit. Claude doesn't know which ideas are new to the learner, which ones it has already explained, or which ones the learner has shown they understand. So it can't decide when to stop asking and teach a fundamental rule instead.
+**Problem.** With only the task, the board and the evaluation, Claude can only coach the task, and every reply sounds the same: a question about the circuit. Claude doesn't know which ideas are new to the learner, which ones it has already explained, or which ones the learner has shown they understand. So it can't decide when to stop asking and teach a fundamental rule instead.
 
 **Decision.** The learner gets a **profile** of the topics they have met, with two scores per topic. Claude reads the recent and weak topics with every call, decides what to teach, and reports how the scores change. A backend step, the **reply composer**, applies those changes within strict bounds and prepares the message for the chat.
 
@@ -155,7 +158,7 @@ The profile is the learner's knowledge list: every topic they have met, with two
 
 - **Joining:** when a task starts, the topics of its curriculum level (and of earlier levels, if missing), and of any component type new on its board, join the profile with both scores at 0. Topics from Claude join when it adds them.
 - **Stored with the session.** Like the progress and the chat, the profile is kept in the browser's `localStorage`, sent with `session.start`, and returned in the reply to it and with each tutor message. A reload or a server restart loses nothing.
-- **Focus.** Claude doesn't get the whole profile, only up to 8 **focus topics**: the most recently introduced first, then any older ones with `understanding` 0 or 1. Recent topics are what the current tasks teach. Old weak ones are what keeps tripping the learner up.
+- **Focus.** Claude doesn't get the whole profile, only up to 8 **focus topics**: the 5 most recently introduced, then older ones with `understanding` 0 or 1 (weakest first), then the rest. Each comes with `tasks_ago`, the skill levels since it was introduced. Recent topics are what the current tasks teach. Old weak ones are what keeps tripping the learner up.
 
 ### Rules for Claude
 
@@ -171,6 +174,7 @@ The system prompt gives Claude the rules for the scores and lets it decide what 
   | `explained` ≥ 1, `understanding` ≤ 1 | Don't re-explain. Ask a question that tests it ("Do you need a larger or a smaller resistance?") |
   | `understanding` ≥ 2 | Keep it short: confirm, or praise the strategy, and move on |
 
+- **Vary the kind:** the prompt describes each message kind and asks Claude to pick the one that fits the moment, so not every reply is a question.
 - **Safety first:** for `short_circuit` and `overcurrent` the reply is about safety. A `knowledge` message waits until that's settled.
 - **At most one topic** is taught per reply, and at most one new topic is added.
 - The tutor's other rules don't change: physics, not placement; no invented numbers; the hint ladder ([tutor.md](tutor.md)).
@@ -182,7 +186,7 @@ The tutor service validates Claude's reply and runs the backstop ([tutor.md](tut
 1. **Score changes:** each change must name a topic in the profile, or the topic Claude added. Changes are clamped to ±1 per reply and kept within 0–3, and `explained` never goes down. Anything else is dropped and logged.
 2. **New topic:** its ID must be new and its name and definition short. It joins the profile with `source: claude`.
 3. **Presentation:** it adds the icon for the message's kind and, for a `knowledge` message, the topic's name as a title. It also marks the first mention of each profile topic in the text ("voltage source" before "voltage", plurals included), and the chat shows those words in bold, so the learner sees the vocabulary they are building.
-4. **Message:** it sends the composed chat message and the updated profile in `tutor.message`.
+4. **Message:** it sends the composed chat message and the updated profile in `tutor.message`. A new task's welcome goes through steps 3 and 4 as well, without score changes (see Welcome message).
 
 The composer is plain code, so it is unit tested like the evaluator. It is also the place for later changes to presentation and tone (e.g. not opening three replies in a row with a question), with no change to the prompt.
 
@@ -208,12 +212,14 @@ flowchart LR
     C -- "kind, text, highlights,<br/>topic updates, new topic" --> V["Validate + backstop"]
     V --> RC["Reply composer"]
     RC -- "clamp, apply" --> P[(Learner profile)]
-    RC -- "icon, title" --> M["Composed message"]
+    G["Task generator:<br/>welcome"] --> RC
+    RC -- "icon, title, bold terms" --> M["Composed message"]
     M --> FE["Chat bubble<br/>(tint by kind)"]
     P -- "returned to the browser,<br/>sent back with session.start" --> F
 ```
 
 - **Why Claude decides and the code bounds it.** Judging evidence of understanding from a learner's edits and words is what Claude is good at. Code can't do it. But scores that drift by several points per reply, or topics added in bulk, would make the profile meaningless. So the backend clamps every change, the same split as for verdicts and readings (§1).
+
 ### Welcome message
 
 Each new task opens with a tutor message in the chat, so the learner knows what's new before they start.
@@ -223,8 +229,10 @@ Each new task opens with a tutor message in the chat, so the learner knows what'
 - **Composed when served.** The generate request carries the learner profile. The reply composer makes the welcome a `knowledge` message when the task brings topics new to the learner, else `feedback`, with the icon and the terms in bold. The frontend adds it to the chat when the task arrives, so a reload doesn't repeat it.
 - **Accepted limit:** the welcome is written before the previous task is finished, so it knows the learner's history but not that task's chat. The first reaction after the learner's first edit has the full profile.
 
+### Status
+
 - **Build status.** Built: the catalog, the profile (`learner_profile.py`), the reply composer (`reply_composer.py`), the prompt rules, the welcome message and the chat bubbles. Interfaces are in [contract.md](contract.md), the prompt rules in [tutor.md](tutor.md#teaching-from-the-learner-profile).
-- **Later uses.** The profile is ready to feed task generation (target weak topics) and the Learning Path screen ([gui.md](gui.md#9-learning-path-screen-bonus)). Neither is part of this change.
+- **Later uses.** The profile is ready to feed task generation (target weak topics) and the Learning Path screen ([gui.md](gui.md#9-learning-path-screen-bonus)). Neither is built yet.
 
 ## 5. Security and operations
 
