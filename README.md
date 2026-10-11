@@ -5,7 +5,7 @@ A Claude-based tutor for learning electric circuits and schematics on an interac
 ## Structure
 
 - Full layout: [docs/design.md](docs/design.md#7-repository-layout)
-- [`docs/`](docs/): design documents. Start with [task.md](docs/task.md), then [design.md](docs/design.md), [contract.md](docs/contract.md), [schematics.md](docs/schematics.md), [tutor.md](docs/tutor.md), [gui.md](docs/gui.md) and [plan.md](docs/plan.md).
+- [`docs/`](docs/): design documents. Start with [task.md](docs/task.md), then [design.md](docs/design.md), [contract.md](docs/contract.md), [schematics.md](docs/schematics.md), [tutor.md](docs/tutor.md), [gui.md](docs/gui.md), [deployment.md](docs/deployment.md) and [plan.md](docs/plan.md).
 - [`frontend/`](frontend/): grid editor and tutor UI
 - [`backend/`](backend/): circuit evaluator and Claude API integration
 
@@ -21,7 +21,7 @@ Open http://127.0.0.1:5173. Server output goes to `.run/backend.log` and `.run/f
 
 ## Deploy
 
-Hosted on [Fly.io](https://fly.io) as one machine; details are in [docs/design.md](docs/design.md#4-security-and-operations).
+Hosted on [Fly.io](https://fly.io) at https://schematics-ai-tutor.fly.dev. A merge to `main` will deploy automatically once checks pass (planned); details are in [docs/deployment.md](docs/deployment.md).
 
 ```sh
 fly secrets set ANTHROPIC_API_KEY=...   # once
