@@ -115,6 +115,14 @@ export default function App() {
     });
   }, []);
 
+  const setProfile = useCallback((profile) => {
+    setSession((current) => {
+      const next = { ...current, profile };
+      saveSession(next);
+      return next;
+    });
+  }, []);
+
   const setChat = useCallback((chat) => {
     setSession((current) => {
       const next = { ...current, chat };
@@ -132,6 +140,7 @@ export default function App() {
       onRestart={restart}
       onRetry={() => fetchTask(session)}
       onChat={setChat}
+      onProfile={setProfile}
       onNext={next}
       onBoard={setBoard}
       onTask={updateTask}

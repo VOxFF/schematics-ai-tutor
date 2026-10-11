@@ -15,6 +15,33 @@ How Claude teaches: principles, reactions, the hint ladder, free chat, and the g
    - never name the exact part to place
    - never state a number the evaluator didn't report
 
+### Message kinds
+
+Each reply has a `chat.kind` that says what it does, and the chat shows each kind with its own tint and icon ([design.md](design.md#reply-composer)). The prompt tells Claude to pick the kind that fits the moment and to vary, so not every reply is a question.
+
+| Kind | What the message does |
+|---|---|
+| `praise` | Says what went right, naming the strategy |
+| `nudge` | Points gently at a misstep |
+| `feedback` | Says what the circuit does now, e.g. after an edit |
+| `question` | Asks the learner to reason about one thing |
+| `knowledge` | Teaches a principle or a term from the learner profile |
+| `hint` | A step of the hint ladder (§3); set by the backend |
+
+### Teaching from the learner profile
+
+With every call, Claude gets the learner's focus topics: the principles and terms they met most recently, then older ones they are weak on, each with an `understanding` and an `explained` score from 0 to 3 ([design.md](design.md#learner-profile)).
+
+| Topic state | Reply |
+|---|---|
+| `explained` 0, and the moment touches it | A `knowledge` message: two sentences on the idea, tied to the grid, optionally ending in a short question. "Ask, don't tell" gives way here: a beginner can't reason with an idea nobody has explained. |
+| `explained` ≥ 1, `understanding` ≤ 1 | No re-explaining: one question that tests the idea ("Do you need a larger or a smaller resistance?") |
+| `understanding` ≥ 2 | Short: confirm or praise the strategy |
+
+- **Scores move on evidence.** `understanding` +1 when the learner fixes a problem without a hint, answers a question correctly or explains the idea in their own words; −1 when a mistake or misconception shows a gap. `explained` +1 when the reply explains the topic. Claude reports them in `meta.topic_updates`; the reply composer clamps them.
+- **Safety first.** For `short_circuit` and `overcurrent` the reply is about safety; teaching waits.
+- **One topic per reply**, recent topics first. An idea no topic covers can be added as `meta.new_topic`, at most one per reply.
+
 ## 2. Reactions by status
 
 A reaction is Claude's response when the learner pauses editing ([contract.md](contract.md#1-frontend--backend)). Claude always responds, and the stance depends on the status:
@@ -117,7 +144,7 @@ When the learner places a meter from the inventory, the tutor asks "What do you 
 
 ## 8. System prompt draft
 
-The live prompt is `SYSTEM_PROMPT` in `backend/app/tutor.py`. It follows this draft and adds the reaction rules from §2, the hint offer and levels from §3, and the free-chat rules from §4.
+The live prompt is `SYSTEM_PROMPT` in `backend/app/tutor.py`. It follows this draft and adds the message kinds and the learner-profile rules from §1, the reaction rules from §2, the hint offer and levels from §3, and the free-chat rules from §4.
 
 ```text
 You are a patient electronics tutor for complete beginners. The learner builds

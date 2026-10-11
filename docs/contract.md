@@ -75,7 +75,7 @@ One connection is one learning session, and it can span several tasks.
   - the latest board, the conversation history and the hint level reached
   - the learner's `Progress`: skill level and task history
   - the pre-generated next task
-- **Reconnect.** The client keeps the current `Level`, its board, the conversation history and its `Progress`, plus the chat, all in `localStorage` ([gui.md](gui.md#session-persistence)), so a reload or a later visit resumes. On reconnect it sends them with `session.start`, so the server stays free of storage. Progress therefore lives in one browser, which is accepted for the prototype. If the reconnect lands on a different instance, the reference board is lost. Grading is unaffected because it uses readings only; the tutor just works without the reference.
+- **Reconnect.** The client keeps the current `Level`, its board, the conversation history and its `Progress`, plus the chat and the `LearnerProfile`, all in `localStorage` ([gui.md](gui.md#session-persistence)), so a reload or a later visit resumes. On reconnect it sends them with `session.start`, so the server stays free of storage. Progress therefore lives in one browser, which is accepted for the prototype. If the reconnect lands on a different instance, the reference board is lost. Grading is unaffected because it uses readings only; the tutor just works without the reference.
 
 Every message is a JSON object with a `type` field.
 
@@ -83,7 +83,7 @@ Every message is a JSON object with a `type` field.
 
 | `type` | Payload | Effect |
 |---|---|---|
-| `session.start` | `progress?`, `level?`, `board?`, `history?`, `hint_level?` | Starts a session (the server sends `task.ready` with the curated level for the skill level) or resumes one (`level` given). The server also replies with `evaluation`. With `progress` and `level`, the server pre-generates the task after this one ([design.md](design.md#3-system-architecture)). `hint_level` is the hint level reached in this task (0–3), so a resumed session continues the ladder. |
+| `session.start` | `progress?`, `level?`, `board?`, `history?`, `hint_level?`, `profile?` | Starts a session (the server sends `task.ready` with the curated level for the skill level) or resumes one (`level` given). The server also replies with `evaluation`, which carries the `LearnerProfile` with the task's topics joined. `profile` is the learner profile the browser saved ([design.md](design.md#learner-profile)); the server checks it and drops bad entries. With `progress` and `level`, the server pre-generates the task after this one ([design.md](design.md#3-system-architecture)). `hint_level` is the hint level reached in this task (0–3), so a resumed session continues the ladder. |
 | `task.next` | — | Asks for the next task, usually after the current one is solved |
 | `summary.request` | — | Bonus: asks for the learner's skill summary (Learning Path screen) |
 | `board.update` | `seq`, `board` | Sent on each finished edit (a part dropped, a wire piece placed or removed). The server records a snapshot, re-evaluates and replies with `evaluation` carrying the same `seq`. |
@@ -96,9 +96,9 @@ Every message is a JSON object with a `type` field.
 | `task.ready` | `level: Level`, `source` (`"curated"` or `"generated"`), `progress: Progress` | A new task. The client replaces its board with `level.board` and stores `progress`. |
 | `task.generating` | — | Sent when `task.next` arrives before the pre-generated task is ready |
 | `summary.ready` | `summary: SkillSummary` or `error` | Bonus: the reply to `summary.request` |
-| `evaluation` | `seq`, `evaluation: Evaluation` | The client ignores any `seq` older than the last one it applied |
+| `evaluation` | `seq`, `evaluation: Evaluation`, `profile?: LearnerProfile` | The client ignores any `seq` older than the last one it applied. The reply to `session.start` carries the profile; the client saves it. |
 | `tutor.started` | `request_id`, `trigger` (`"reaction"` or `"request"`) | The UI shows "tutor is thinking". Reactions get a server-generated `request_id`. |
-| `tutor.message` | `request_id`, `seq`, `evaluation`, `message: TutorMessage`, `hint_offered` | The complete reply, sent only after the backend has validated it. `hint_offered` is true when the reply offers a hint, so the UI highlights the Hint button. `seq` is the board the reply is about (0: the `session.start` board); when the learner has edited since, the client shows the text but drops the highlights and the evaluation, which are out of date. |
+| `tutor.message` | `request_id`, `seq`, `evaluation`, `message: TutorMessage`, `hint_offered`, `profile: LearnerProfile` | The complete reply, sent only after the backend has validated and composed it. `profile` is the learner profile after the reply's changes; the client saves it. `hint_offered` is true when the reply offers a hint, so the UI highlights the Hint button. `seq` is the board the reply is about (0: the `session.start` board); when the learner has edited since, the client shows the text but drops the highlights and the evaluation, which are out of date. |
 | `error` | `code`, `message`, `request_id?` | Codes: `bad_message`, `unknown_level`, `rate_limited`, `tutor_unavailable`, `no_session` (a request arrived before `session.start`, e.g. after a server restart: the client re-sends `session.start` and repeats the request), `session_rejected` (the saved level or board can't be resumed: the client offers a new task). `tutor_unavailable` also answers a request over the daily Claude budget. A connection over the per-IP session limit gets `rate_limited` and is closed with code `1008`; the client then waits 30 s before reconnecting. Limits are in [design.md](design.md#rate-limits). Generation failures never surface: they fall back to a curated level. |
 
 **Rules**
@@ -258,11 +258,44 @@ interface TutorMessage {
     highlights: Highlight[];       // draws the learner's attention on the grid
     hint_level: 0 | 1 | 2 | 3;     // 0 if this isn't a hint
     misconception: Misconception | null;  // fixed label (tutor.md §5)
+    topic_updates: TopicUpdate[];  // score changes for the learner profile (design.md §4)
+    new_topic: NewTopic | null;    // a topic Claude adds to this learner's profile
   };
   chat: {
-    kind: "feedback" | "nudge" | "hint" | "question" | "praise";
+    kind: "feedback" | "nudge" | "hint" | "question" | "praise" | "knowledge";
     text: string;                  // learner-facing, plain language
+    // Added by the reply composer, not by Claude:
+    icon?: string;                 // the kind's icon, e.g. "📘"
+    title?: string | null;         // a knowledge message's topic name
   };
+}
+
+interface TopicUpdate {
+  topic: string;                   // a topic id in the profile, or in the catalog (it joins)
+  understanding: number;           // -1, 0 or +1; clamped by the composer
+  explained: number;               // 0 or +1; one topic per reply
+}
+
+interface NewTopic {
+  id: string;                      // snake_case, new to the profile
+  name: string;
+  type: "principle" | "term";
+  definition: string;              // one line
+}
+
+// The learner's knowledge list (design.md §4). Kept by the browser,
+// checked and updated by the backend.
+interface LearnerProfile {
+  topics: {
+    id: string;
+    name: string;
+    type: "principle" | "term";
+    definition: string;
+    introduced: number;            // skill level at which the learner met it
+    understanding: 0 | 1 | 2 | 3;  // what the learner has shown
+    explained: 0 | 1 | 2 | 3;      // how much the tutor has explained it
+    source: "catalog" | "claude";
+  }[];
 }
 
 type Principle =
@@ -320,6 +353,7 @@ The order runs from most stable to least stable, so the cached prefix stays vali
    - `<summary>`: a one-line circuit description written by the backend, e.g. `parts: V1 12 V, R1 40 Ω, VM1; status: meter_misuse; readings: VM1=12.0`
    - `<history>`: the last `tutor.history_turns` tutor and learner chat turns, for continuity
    - `<snapshots>`: the `Snapshot`s recorded since the previous call, up to the last `tutor.max_snapshots`, oldest first. Earlier ones carry the graph and evaluation; the last is the current board (`"current": true`) and also carries its grid, labeled "for highlight references only". They show Claude what the learner did and how the circuit changed. The evaluations are the only source of electrical values.
+   - `<profile>`: the learner's skill level and up to 8 focus topics from the `LearnerProfile`, each with its scores and `tasks_ago` ([design.md](design.md#learner-profile))
    - `<request>`: either `trigger: "reaction"`, or the learner's `action`, the next allowed hint level and `learner_text`
 
 #### Response handling
@@ -332,7 +366,8 @@ The order runs from most stable to least stable, so the cached prefix stays vali
 - **Highlight wire format.** In Claude's structured output, each highlight has `component`, `wire` and `point` fields, with the unused ones `null`, plus `style`. The backend converts each into a `Highlight` (`{ target, style }`).
 - Check every highlight against the latest snapshot: the component ID exists, the wire ID exists, and the point is inside the grid. Drop any that fail.
 - The returned `evaluation` always comes from the evaluator, never from Claude.
-- Only then send the validated `TutorMessage` to the browser as `tutor.message`.
+- **Reply composer** ([design.md](design.md#reply-composer)): apply `meta.topic_updates` and `meta.new_topic` to the learner profile within bounds, then add `chat.icon` and, for a `knowledge` message, `chat.title`. Refused changes go to the run log as `profile_dropped`.
+- Only then send the validated `TutorMessage` to the browser as `tutor.message`, with the updated profile.
 
 ### 2.2 Task generation call
 

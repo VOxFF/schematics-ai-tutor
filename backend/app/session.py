@@ -2,7 +2,8 @@
 
 Every board.update records a snapshot; when editing pauses for `tutor.idle_threshold_ms`, the
 tutor reacts to the snapshots since its last call. A learner message or hint request cancels a
-pending reaction. The session runs the task's hint ladder (docs/tutor.md §3). Its tutor calls,
+pending reaction. The session runs the task's hint ladder (docs/tutor.md §3) and keeps the learner
+profile, which the reply composer updates with each reply (docs/design.md §4). Its tutor calls,
 board updates and board size are rate limited (rate_limits.py, docs/design.md §5).
 """
 
@@ -15,7 +16,9 @@ import anthropic
 from .evaluate import STATUS_RANK, evaluate
 from .graph import to_graph
 from .grid import validate_grid
+from .learner_profile import focus, join, sanitize
 from .rate_limits import RateLimiter
+from .reply_composer import compose
 from .task_cache import solved
 from .tutor import answer
 
@@ -45,6 +48,8 @@ class Session:
         self.hint_level = 0  # highest hint given in this task (0-3)
         self.best_rank = -1  # best status reached in this task, by STATUS_RANK
         self.stalled = 0  # reactions in a row without beating best_rank
+        self.profile = {"topics": []}  # the learner profile, kept by the browser between sessions
+        self.skill_level = 1
 
     async def handle(self, message: dict) -> None:
         kind = message.get("type")
@@ -86,10 +91,15 @@ class Session:
         hint_level = message.get("hint_level", 0)
         self.hint_level = min(max(hint_level, 0), 3) if isinstance(hint_level, int) else 0
         self.usage_log.event("session_started", session_id=self.id, level_id=level.get("id"))
-        await self.send({"type": "evaluation", "seq": 0, "evaluation": self._evaluate()})
+        progress = message.get("progress")
+        skill = progress.get("skill_level") if isinstance(progress, dict) else None
+        self.skill_level = skill if isinstance(skill, int) and skill >= 1 else 1
+        # The task's topics join the profile; the browser saves the profile that comes back.
+        self.profile = sanitize(message.get("profile"))
+        join(self.profile, level, level["board"], self.skill_level)
+        await self.send({"type": "evaluation", "seq": 0, "evaluation": self._evaluate(), "profile": self.profile})
         # A resumed task (e.g. after a server restart, which empties the cache) gets its next
         # task generated in the background too, so Next doesn't wait.
-        progress = message.get("progress")
         if self.task_cache and isinstance(progress, dict) and isinstance(progress.get("history"), list):
             try:
                 self.task_cache.pregenerate(solved({"skill_level": int(progress.get("skill_level", 1)),
@@ -220,7 +230,11 @@ class Session:
                 self.claude, self.config, self.usage_log, level=self.level, board=board,
                 reference=reference, history=self.history, learner_text=text, snapshots=snapshots,
                 session_id=self.id, hint_level=hint, offer_hint=offer_hint,
+                profile={"skill_level": self.skill_level, "focus": focus(self.profile, self.skill_level)},
             )
+            reply["chat"], dropped = compose(reply, self.profile, self.skill_level)
+            if dropped:
+                self.usage_log.event("profile_dropped", session_id=self.id, dropped=dropped)
             if hint:
                 self.hint_level = max(self.hint_level, hint)
                 self.stalled = 0
@@ -231,7 +245,8 @@ class Session:
             # `seq` names the board the reply is about: the client drops its highlights and
             # evaluation when the learner has edited since.
             await self.send({"type": "tutor.message", "request_id": request_id, "seq": seq,
-                             "evaluation": evaluation, "message": reply, "hint_offered": offer_hint})
+                             "evaluation": evaluation, "message": reply, "hint_offered": offer_hint,
+                             "profile": self.profile})
         except anthropic.APIError as e:
             purpose = "tutor_request" if asked else "tutor_reaction"
             self.usage_log.event("claude_error", purpose=purpose, session_id=self.id, error=str(e)[:300])

@@ -33,6 +33,7 @@ A reload or a closed tab must not lose anything. The browser saves the learner's
 - the current grid
 - the chat history
 - the previous task's curriculum level, shown in the header while the next task loads
+- the learner profile: the topics the learner has met, with their scores ([design.md](design.md#learner-profile))
 
 On load, if a saved session exists, the app opens the learning screen and sends it with `session.start` ([contract.md](contract.md#websocket-session)), and the backend resumes from it. The server-side reference solution is lost if the reconnect lands on a different server instance. Grading is unaffected, and the tutor works without the reference.
 
@@ -195,7 +196,18 @@ The inventory is drawn **inside the editor's three.js scene**, in a column right
 
 ## 7. Chat
 
-- The chat shows tutor messages, styled by `chat.kind`: nudge, praise, feedback and so on.
+- The chat shows tutor messages, styled by `chat.kind` ([tutor.md](tutor.md#message-kinds)): each kind has its own tint, a matching left edge and an icon before the text, so color never stands alone. A `knowledge` message also has its topic's name as a bold title. New messages slide in gently (not with reduced motion).
+
+  | Kind | Tint | Icon |
+  |---|---|---|
+  | `praise` | green | 🎉 |
+  | `nudge` | orange | 👉 |
+  | `feedback` | blue | 💡 |
+  | `question` | pink | ❓ |
+  | `knowledge` | gold | 📘 |
+  | `hint` | purple | 🔑 |
+
+  The icon and the title come from the backend's reply composer; the tints are CSS variables in `frontend/src/index.css`.
 - While a call is running, it shows "tutor is thinking".
 - The learner can type at any time. Sending creates a `tutor.request` with `action: "message"`.
 - **Hint button** beside the chat input, labelled with the next level: "Hint 1/3", "Hint 2/3", "Hint 3/3". It sends a `tutor.request` with `action: "hint"`, and the chat shows the request as the learner's line ("Hint 1/3, please"). After level 3 it stays "Hint 3/3" and repeats that level in other words. It is disabled while the tutor is thinking or disconnected.

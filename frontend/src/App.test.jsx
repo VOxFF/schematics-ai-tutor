@@ -179,6 +179,34 @@ test("the learner chats with the tutor through the session socket", async () => 
   expect(saved.map((m) => m.role)).toEqual(["learner", "tutor"]);
 });
 
+test("tutor messages are tinted by kind, and the learner profile is saved and sent back", async () => {
+  const profile = { topics: [{ id: "current", name: "Current", type: "term", definition: "Flow of charge.",
+                               introduced: 1, understanding: 1, explained: 1, source: "catalog" }] };
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [], profile }));
+  render(<App />);
+  await screen.findByPlaceholderText("Ask the tutor…");
+  const ws = FakeSocket.last;
+  expect(ws.sent[0]).toMatchObject({ type: "session.start", profile });
+
+  const joined = { topics: [...profile.topics, { ...profile.topics[0], id: "voltmeter", name: "Voltmeter", explained: 0 }] };
+  ws.serverSends({ type: "evaluation", seq: 0, evaluation: { status: "open_circuit", readings: {}, issues: [] }, profile: joined });
+  expect(JSON.parse(localStorage.getItem(SESSION_KEY)).profile).toEqual(joined);
+
+  ws.serverSends({ type: "tutor.started", request_id: "react-1", trigger: "reaction" });
+  ws.serverSends({
+    type: "tutor.message", request_id: "react-1", seq: 0,
+    evaluation: { status: "open_circuit", readings: {}, issues: [] },
+    message: { meta: { principle: "meter_usage", highlights: [], hint_level: 0, misconception: null },
+               chat: { kind: "knowledge", icon: "📘", title: "Voltmeter", text: "A voltmeter goes across a part." } },
+    profile: joined,
+  });
+  const bubble = screen.getByText("A voltmeter goes across a part.").closest(".tutor-message");
+  expect(bubble.classList.contains("kind-knowledge")).toBe(true);
+  expect(bubble.querySelector(".icon").textContent).toBe("📘");
+  expect(bubble.querySelector(".title").textContent).toBe("Voltmeter");
+  expect(JSON.parse(localStorage.getItem(SESSION_KEY)).chat[0]).toMatchObject({ kind: "knowledge", icon: "📘", title: "Voltmeter" });
+});
+
 test("a tutor reaction arrives unprompted, and a failed one ends quietly", async () => {
   localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [] }));
   render(<App />);

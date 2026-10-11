@@ -153,8 +153,8 @@ The profile is the learner's knowledge list: every topic they have met, with two
 | `explained` | How much the tutor has explained it: 0 never, 1 mentioned, 2 explained, 3 explained more than once |
 | `source` | `catalog` or `claude` |
 
-- **Joining:** when a task starts, the topics of its curriculum level, and of any component type new on its board, join the profile with both scores at 0. Topics from Claude join when it adds them.
-- **Stored with the session.** Like the progress and the chat, the profile is kept in the browser's `localStorage`, sent with `session.start`, and returned with each tutor message. A reload or a server restart loses nothing.
+- **Joining:** when a task starts, the topics of its curriculum level (and of earlier levels, if missing), and of any component type new on its board, join the profile with both scores at 0. Topics from Claude join when it adds them.
+- **Stored with the session.** Like the progress and the chat, the profile is kept in the browser's `localStorage`, sent with `session.start`, and returned in the reply to it and with each tutor message. A reload or a server restart loses nothing.
 - **Focus.** Claude doesn't get the whole profile, only up to 8 **focus topics**: the most recently introduced first, then any older ones with `understanding` 0 or 1. Recent topics are what the current tasks teach. Old weak ones are what keeps tripping the learner up.
 
 ### Rules for Claude
@@ -214,7 +214,7 @@ flowchart LR
 ```
 
 - **Why Claude decides and the code bounds it.** Judging evidence of understanding from a learner's edits and words is what Claude is good at. Code can't do it. But scores that drift by several points per reply, or topics added in bulk, would make the profile meaningless. So the backend clamps every change, the same split as for verdicts and readings (§1).
-- **Build status.** Designed; not built yet ([plan.md](plan.md#6-polishing)). The interfaces go into [contract.md](contract.md) and the prompt rules into [tutor.md](tutor.md) as each part is built.
+- **Build status.** Built: the catalog, the profile (`learner_profile.py`), the reply composer (`reply_composer.py`), the prompt rules and the chat bubbles. Interfaces are in [contract.md](contract.md), the prompt rules in [tutor.md](tutor.md#teaching-from-the-learner-profile).
 - **Later uses.** The profile is ready to feed task generation (target weak topics) and the Learning Path screen ([gui.md](gui.md#9-learning-path-screen-bonus)). Neither is part of this change.
 
 ## 5. Security and operations
@@ -430,10 +430,13 @@ schematics-ai-tutor/
 │   │   ├── task_generation.py Claude task generation with the validate_grid tool
 │   │   ├── task_cache.py      pre-generated tasks cached by progress; the first-task pool
 │   │   ├── tutor.py           tutor call: context, TutorMessage schema, backstop
+│   │   ├── learner_profile.py learner profile: topic catalog, sanitizing, topics joining per task, focus topics
+│   │   ├── reply_composer.py  bounds Claude's profile changes; icon and title per message kind
 │   │   ├── session.py         WebSocket learning session
 │   │   └── jsonfmt.py         readable JSON formatting
 │   ├── data/
 │   │   ├── curriculum.yaml    curriculum levels: tasks per level, rules for generation
+│   │   ├── topics.yaml        topic catalog: principles and terms per curriculum level and component type
 │   │   └── examples/          example TaskSpecs for the generation prompt
 │   ├── tests/
 │   │   ├── conftest.py        examples and a fake Claude client

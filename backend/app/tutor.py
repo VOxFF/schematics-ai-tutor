@@ -19,7 +19,7 @@ MISCONCEPTIONS = [
     "single_wire_enough", "current_used_up", "bigger_r_more_current", "full_voltage_each_resistor",
     "parallel_reduces_current", "meter_in_series_like_wire", "ammeter_across_part", "short_is_harmless",
 ]
-KINDS = ["feedback", "nudge", "hint", "question", "praise"]
+KINDS = ["feedback", "nudge", "hint", "question", "praise", "knowledge"]
 STYLES = ["attention", "error", "success"]
 
 
@@ -40,6 +40,18 @@ TUTOR_MESSAGE_SCHEMA = _object({
         })},
         "hint_level": {"type": "integer"},
         "misconception": {"anyOf": [{"type": "string", "enum": MISCONCEPTIONS}, {"type": "null"}]},
+        # The learner profile (docs/design.md §4): bounded by the reply composer.
+        "topic_updates": {"type": "array", "items": _object({
+            "topic": {"type": "string"},
+            "understanding": {"type": "integer"},
+            "explained": {"type": "integer"},
+        })},
+        "new_topic": {"anyOf": [_object({
+            "id": {"type": "string"},
+            "name": {"type": "string"},
+            "type": {"type": "string", "enum": ["principle", "term"]},
+            "definition": {"type": "string"},
+        }), {"type": "null"}]},
     }),
     "chat": _object({
         "kind": {"type": "string", "enum": KINDS},
@@ -57,7 +69,8 @@ to look, so your words never describe locations: no coordinates, no pin names,
 no "connect X to Y", no naming the exact part to place, no "row", "column" or
 "point".
 
-Ask rather than tell. One question at a time. Plain words; explain any term the
+Ask rather than tell, except when teaching a topic that is new to the learner
+(see Learner profile). One question at a time. Plain words; explain any term the
 first time. Keep replies short: at most 4 sentences.
 
 Reactions (request trigger "reaction"): the learner just edited the board and paused. The
@@ -90,12 +103,48 @@ Free chat (request action "message"):
 - "Just tell me the answer" is kindly redirected: offer to think it through together.
 - Off-topic questions get a gentle redirect back to circuits.
 
+Learner profile: <profile> lists the learner's focus topics, the principles and terms
+they met most recently plus older ones they are weak on, each with two scores from 0
+to 3 and tasks_ago (0: met in this task):
+- understanding: what the learner has SHOWN (0 not yet, 1 shaky, 2 mostly, 3 solid).
+- explained: how much you have explained it (0 never, 1 mentioned, 2 explained,
+  3 more than once).
+Choose the reply by the topic the moment touches:
+- explained 0: teach it. chat.kind "knowledge": two sentences on the idea, tied to
+  what is on the grid (e.g. "An ammeter has almost no resistance, so current flows
+  through it. That's why it goes in the loop."). You may end with a short question;
+  a knowledge reaction may take 3 sentences.
+- explained 1 or more, understanding 0-1: don't re-explain; ask one question that
+  tests it (e.g. "Do you need a larger or a smaller resistance?").
+- understanding 2 or more: keep it short; confirm or praise the strategy.
+Safety first: for short_circuit and overcurrent talk about safety; teaching waits.
+Teach at most one topic per reply, and prefer recent topics (small tasks_ago).
+Report score changes in meta.topic_updates, one entry per topic, by id:
+- understanding +1 only on evidence: the learner fixed a problem without a hint,
+  answered a question correctly, or explained the idea in their own words.
+  understanding -1 when a mistake or misconception shows a gap in that topic.
+- explained +1 when this reply explains the topic; else 0.
+Leave meta.topic_updates empty when nothing shows. You may name any topic in
+<profile>, or a known topic id not listed there (it joins the profile). If you
+teach an idea that no topic covers, add it as meta.new_topic (id in snake_case,
+a short name, type principle or term, a one-line definition) and report its
+explained +1; else leave new_topic null. At most one new topic per reply.
+
 Input: <level> (concept, targets, intro), <reference> (the solution's parts and
 connections; never reveal it), <summary> (one-line description of the learner's
 circuit), <snapshots> (the learner's board after each recent edit, oldest first:
 graph and evaluation; the last one also has the grid, for highlight references
-only, never describe it), <history> (recent chat), <request> (a reaction, or the
+only, never describe it), <profile> (focus topics), <history> (recent chat), <request> (a reaction, or the
 learner's message).
+
+chat.kind says what the message does; the chat shows each kind differently:
+- praise: what went right, naming the strategy.
+- nudge: points at a misstep, gently.
+- feedback: says what the circuit does now (e.g. what changed after an edit).
+- question: asks the learner to reason about one thing.
+- knowledge: teaches a principle or a term (see Learner profile).
+- hint: set for hint requests; don't choose it otherwise.
+Pick the kind that fits the moment, and vary: not every reply has to be a question.
 
 Output: choose meta.principle first, then write chat.text explaining that
 principle. meta.highlights point at components (by id), wires (by id) or grid
@@ -144,7 +193,8 @@ def fallback_message(status: str) -> dict:
         "open_circuit": "Follow the path the current would take from the source. Does it make it all the way back?",
         "solved": "Nice work! What do you think made this circuit work?",
     }.get(status, "Let's think about the path the current takes. What do you notice?")
-    return {"meta": {"principle": "closed_loop", "highlights": [], "hint_level": 0, "misconception": None},
+    return {"meta": {"principle": "closed_loop", "highlights": [], "hint_level": 0, "misconception": None,
+                     "topic_updates": [], "new_topic": None},
             "chat": {"kind": "question", "text": text}}
 
 
@@ -159,11 +209,12 @@ def circuit_summary(graph: dict, evaluation: dict) -> str:
 
 def build_context(level: dict, board: dict, reference: dict | None, history: list[dict], request: dict,
                   history_turns: int, evaluator_settings: dict | None = None,
-                  snapshots: list[dict] | None = None) -> tuple[str, dict]:
+                  snapshots: list[dict] | None = None, profile: dict | None = None) -> tuple[str, dict]:
     """The user turn for a tutor call, and the evaluation it is based on.
 
     `snapshots` are earlier boards since the last call ({seq, t_ms, graph, evaluation}); the
-    current board is always added last, with its grid.
+    current board is always added last, with its grid. `profile` is {skill_level, focus} from
+    the learner profile, or None.
     """
     evaluation = evaluate(board, evaluator_settings)
     graph, _ = to_graph(board)
@@ -175,6 +226,7 @@ def build_context(level: dict, board: dict, reference: dict | None, history: lis
         ("reference", dumps(to_graph({**reference, "inventory": [], "targets": {}})[0]) if reference else "none"),
         ("summary", circuit_summary(graph, evaluation)),
         ("snapshots", dumps(timeline)),
+        ("profile", dumps(profile) if profile else "none"),
         ("history", dumps(history[-history_turns:])),
         ("request", dumps(request)),
     ]
@@ -206,10 +258,12 @@ def _usage(response) -> dict:
 
 async def answer(client, config: dict, usage_log, *, level: dict, board: dict, reference: dict | None,
                  history: list[dict], learner_text: str | None = None, snapshots: list[dict] | None = None,
-                 session_id: str | None = None, hint_level: int = 0, offer_hint: bool = False) -> tuple[dict, dict]:
+                 session_id: str | None = None, hint_level: int = 0, offer_hint: bool = False,
+                 profile: dict | None = None) -> tuple[dict, dict]:
     """Return (TutorMessage, evaluation) for a learner message, a hint of `hint_level` (1-3, decided
     by the session), or a reaction when both are absent; a reaction with `offer_hint` ends by
-    offering a hint. Raises anthropic.APIError on API failure."""
+    offering a hint. `profile` is the learner's focus topics for the context. Raises
+    anthropic.APIError on API failure."""
     reaction = learner_text is None and not hint_level
     purpose = "tutor_reaction" if reaction else "tutor_request"
     settings = config["claude"][purpose]
@@ -223,7 +277,7 @@ async def answer(client, config: dict, usage_log, *, level: dict, board: dict, r
         request = {"action": "message", "learner_text": learner_text}
     user_turn, evaluation = build_context(
         level, board, reference, history, request,
-        config.get("tutor", {}).get("history_turns", 6), config.get("evaluator"), snapshots,
+        config.get("tutor", {}).get("history_turns", 6), config.get("evaluator"), snapshots, profile,
     )
     content = user_turn
     for attempt in (1, 2):

@@ -110,12 +110,12 @@ Built after the core workflow runs end to end.
 Not Boring Chat ([design.md](design.md#4-tutoring-experience-learning-path-learner-profile-reply-composer)):
 
 - [x] Design: learning path topics, learner profile, rules for Claude, reply composer, message kinds
-- [ ] Chat bubbles: a tint and an icon per message kind; the `knowledge` kind
-- [ ] Topic catalog `backend/data/topics.yaml`: principles and terms per curriculum level and per component type
-- [ ] Learner profile in the session: topics join per task, saved in `localStorage`, sent with `session.start`
-- [ ] Tutor context and prompt: focus topics, score rules, when to teach (`knowledge`) and when to ask
-- [ ] Reply composer: clamp and apply score changes, add Claude's new topics, icon and title, profile in `tutor.message`
-- [ ] Contract and tutor docs for the profile, the new `meta` fields and the `knowledge` kind
+- [x] Chat bubbles: a tint and an icon per message kind; the `knowledge` kind
+- [x] Topic catalog `backend/data/topics.yaml`: principles and terms per curriculum level and per component type
+- [x] Learner profile in the session: topics join per task, saved in `localStorage`, sent with `session.start`
+- [x] Tutor context and prompt: focus topics, score rules, when to teach (`knowledge`) and when to ask
+- [x] Reply composer: clamp and apply score changes, add Claude's new topics, icon and title, profile in `tutor.message`
+- [x] Contract and tutor docs for the profile, the new `meta` fields and the `knowledge` kind
 
 Other polishing:
 
