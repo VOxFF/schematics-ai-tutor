@@ -63,7 +63,7 @@ Errors: `404` for an unknown level, `429` when the rate limit is exceeded.
 
 ### WebSocket session
 
-> **Build status.** Implemented: `session.start`, `board.update` → `evaluation`, `tutor.request` with `action: "message"` → `tutor.started` → `tutor.message`, and `error`. The server keeps generated levels' reference solutions in memory by level ID for the tutor. The editor sends `board.update` on every drop; the tutor context carries the current snapshot only, not a list, until reactions exist. Still to come: `task.next` / `task.ready`, reactions, and `hint`.
+> **Build status.** Implemented: `session.start`, `board.update` → `evaluation`, idle-triggered reactions, `tutor.request` with `action: "message"` → `tutor.started` → `tutor.message`, and `error`. The server keeps generated levels' reference solutions in memory by level ID for the tutor. The editor sends `board.update` on every drop. The UI shows only the chat part of a reply; the metadata (highlights) is not used yet. Still to come: `task.next` / `task.ready` and `hint`.
 
 One connection is one learning session, and it can span several tasks.
 
@@ -109,7 +109,8 @@ Every message is a JSON object with a `type` field.
 - Only one Claude tutor call, either a reaction or a request, may be in flight per session.
 - A second `tutor.request` while one is in flight gets `error: rate_limited`.
 - The `evaluation` in `tutor.message` always comes from a fresh server-side evaluator run, never from the client.
-- If Claude fails, the learner still has the latest `evaluation`, and the server sends `error: tutor_unavailable` with the `request_id`.
+- If Claude fails, the learner still has the latest `evaluation`, and the server sends `error: tutor_unavailable`: with the `request_id` for a request, without one for a reaction, so the client only stops "thinking" and shows no error.
+- A reaction over the rate limit is skipped silently.
 
 ### Data model
 

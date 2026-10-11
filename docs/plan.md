@@ -46,12 +46,12 @@ The major steps to build the product. A step is checked off when it is complete,
 - [ ] Level 9, troubleshooting: format extension for replaced parts
 - [x] Prompt examples as files (`backend/data/examples/`), validated in tests
 - [x] Tutor chat pipeline: learner message → backend context → Claude → validated `TutorMessage` (no hint ladder)
-- [ ] Tutor reactions on editing pauses
-- [ ] Snapshot recording and idle-triggered reactions
+- [x] Tutor reactions on editing pauses
+- [x] Snapshot recording and idle-triggered reactions
 - [x] Circuit summary line for the tutor
 - [x] Location-talk backstop with regeneration and fallback messages
 - [x] WebSocket session: `session.start`, `board.update`, `tutor.request` (message), per-session rate limit
-- [ ] WebSocket task delivery (`task.next`, `task.ready`) and reactions
+- [ ] WebSocket task delivery (`task.next`, `task.ready`)
 - [x] Configuration loader for the root `config.yaml`
 - [x] Usage and cost log per backend run (`logs/`, on/off in `config.yaml`)
 - [x] Integrity checks: `./check.sh` locally and in GitHub Actions on every PR

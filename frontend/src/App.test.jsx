@@ -166,6 +166,29 @@ test("the learner chats with the tutor through the session socket", async () => 
   expect(saved.map((m) => m.role)).toEqual(["learner", "tutor"]);
 });
 
+test("a tutor reaction arrives unprompted, and a failed one ends quietly", async () => {
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [] }));
+  render(<App />);
+  await screen.findByPlaceholderText("Ask the tutor…");
+  const ws = FakeSocket.last;
+  ws.serverSends({ type: "tutor.started", request_id: "react-1", trigger: "reaction" });
+  expect(screen.getByText("Tutor is thinking…")).toBeDefined();
+  ws.serverSends({
+    type: "tutor.message",
+    request_id: "react-1",
+    evaluation: { status: "open_circuit", readings: { VM1: 0 }, issues: [] },
+    message: { meta: { principle: "closed_loop", highlights: [], hint_level: 0, misconception: null },
+               chat: { kind: "question", text: "Where does the current go after R1?" } },
+  });
+  expect(screen.getByText("Where does the current go after R1?")).toBeDefined();
+
+  ws.serverSends({ type: "tutor.started", request_id: "react-2", trigger: "reaction" });
+  ws.serverSends({ type: "error", code: "tutor_unavailable", message: "The tutor is unavailable right now; try again shortly.", request_id: null });
+  expect(screen.queryByText("Tutor is thinking…")).toBeNull();
+  expect(screen.queryByText("The tutor is unavailable right now; try again shortly.")).toBeNull();
+  expect(JSON.parse(localStorage.getItem(SESSION_KEY)).chat.map((m) => m.role)).toEqual(["tutor"]);
+});
+
 test("a tutor error shows in the chat", async () => {
   localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [] }));
   render(<App />);
