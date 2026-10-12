@@ -26,6 +26,11 @@ export const WIRE_PALETTE = [
   { key: "plus", label: "+", shape: "plus", rotation: 0 },
 ];
 
+// The task's wire palette (docs/schematics.md §3): straight pieces always, the other shapes only
+// when `shapes` (Level.wire_shapes) lists them. Without it, an older level, the full palette.
+export const wirePalette = (shapes) =>
+  shapes ? WIRE_PALETTE.filter((w) => w.shape === "straight" || shapes.includes(w.shape)) : WIRE_PALETTE;
+
 export const nextOrientation = (o) => ORIENTATIONS[(ORIENTATIONS.indexOf(o) + 1) % 4];
 export const key = ([c, r]) => `${c},${r}`;
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { componentPoints, itemSegments, lift, nextOrientation, place, plan, removeSelected, rotateSelected, wireSegments } from "./placement.js";
+import { componentPoints, itemSegments, lift, nextOrientation, place, plan, removeSelected, rotateSelected, wireSegments, wirePalette, WIRE_PALETTE } from "./placement.js";
 
 const board = () => ({
   grid: { columns: 8, rows: 6 },
@@ -119,4 +119,12 @@ describe("editing the selection", () => {
     expect(wire.wires.map((w) => w.id)).toEqual(["W3"]);
     expect(removeSelected(board(), { kind: "wire", id: "W3" }, board())).toBeNull(); // the task's own wire
   });
+});
+
+test("the wire palette: straight always, other shapes only when the task removed one", () => {
+  const keys = (shapes) => wirePalette(shapes).map((w) => w.key);
+  expect(keys(["straight"])).toEqual(["straight-h", "straight-v"]);
+  expect(keys(["straight", "T"])).toEqual(["straight-h", "straight-v", "T"]);
+  expect(keys([])).toEqual(["straight-h", "straight-v"]);
+  expect(wirePalette(undefined)).toBe(WIRE_PALETTE); // an older level: the full palette
 });

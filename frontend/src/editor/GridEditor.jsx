@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer.js";
-import { lift, plan } from "./placement.js";
+import { WIRE_PALETTE, lift, plan } from "./placement.js";
 import { boardBounds, buildBoard, disposeTree, floatingNode, drawHighlight, inventoryNode, layoutInventory, outline, pickAt,
          previewNode, sceneBounds, slotAnchor, toWorld } from "./scene.js";
 import { EDITOR } from "../lib/build.js";
@@ -34,7 +34,7 @@ const DRAG_THRESHOLD_PX = 4; // a press on the board that moves less than this i
 // task's own wires (not movable) from the ones the learner placed. While a placed
 // element is being moved, `board` is the board without it.
 export default function GridEditor({ board, startBoard, readings, drag, onStartDrag, onDrop, onPlan, selected, onSelect,
-                                     highlights }) {
+                                     highlights, palette = WIRE_PALETTE }) {
   const capacity = startBoard?.inventory?.length ?? 0;
   const host = useRef(null);
   const view = useRef(null);
@@ -126,19 +126,19 @@ export default function GridEditor({ board, startBoard, readings, drag, onStartD
       outline(node, lift(board, selected, startBoard) ? STYLE.selection.color : STYLE.selection.locked_color);
     }
     state.scene.add(state.root);
-    state.layout = layoutInventory(board, capacity);
+    state.layout = layoutInventory(board, capacity, palette);
     state.render();
-  }, [board, startBoard, capacity, readings, selected, highlights, unsupported]);
+  }, [board, startBoard, capacity, palette, readings, selected, highlights, unsupported]);
 
   // Scene bounds: once per task, from its starting board. The inventory column reserves the
   // starting inventory's rows, so its width and height never change during the task.
   useEffect(() => {
     const state = view.current;
     if (!state || !startBoard) return;
-    state.bounds = sceneBounds(startBoard, layoutInventory(startBoard, capacity));
+    state.bounds = sceneBounds(startBoard, layoutInventory(startBoard, capacity, palette));
     state.gridBounds = boardBounds(startBoard);
     state.fit();
-  }, [startBoard, capacity, unsupported]);
+  }, [startBoard, capacity, palette, unsupported]);
 
   // The inventory region; rebuilt when its contents or the drag change.
   useEffect(() => {

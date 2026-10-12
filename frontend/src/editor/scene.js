@@ -225,7 +225,7 @@ function wireSlotHeight(w) {
 // `capacity` reserves rows for the task's starting inventory, so the column (and with it the
 // scene's scale) doesn't shrink as parts are placed on the board.
 // Returns { slots: [{ key, item, label, x, y, w, h }], titles, divider, bounds }.
-export function layoutInventory(board, capacity = 0) {
+export function layoutInventory(board, capacity = 0, palette = WIRE_PALETTE) {
   const grid = boardBounds(board);
   const dividerX = grid.right; // the grid's bounds already include half a step of margin
   const left = dividerX + INVENTORY_MARGIN;
@@ -254,7 +254,7 @@ export function layoutInventory(board, capacity = 0) {
   section("Inventory", (board.inventory ?? []).map((part) => ({
     key: `part:${part.id}`, item: { kind: "part", ...part }, label: partCaption(part), height: PART_SLOT_H,
   })), Math.ceil(capacity / 2), PART_SLOT_H);
-  section("Wires", WIRE_PALETTE.map((w) => ({
+  section("Wires", palette.map((w) => ({
     key: `wire:${w.key}`, item: { kind: "wire", shape: w.shape, rotation: w.rotation }, label: null,
     height: wireSlotHeight(w),
   })));

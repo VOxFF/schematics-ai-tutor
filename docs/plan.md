@@ -152,7 +152,7 @@ Fallback when Claude is unavailable ([design.md](design.md#fallback-when-claude-
 Other polishing:
 
 - [x] Design: wire palette per task, straight always, corner, T and + only when removed (schematics.md §3)
-- [ ] Wire palette: `Level.wire_shapes` from the removed pieces (backend); palette filtered by it (frontend)
+- [x] Wire palette: `Level.wire_shapes` from the removed pieces (backend); palette filtered by it (frontend)
 - [x] One editor scale across tasks: every task fitted to at least a 12 × 8 grid with 4 inventory parts (`config.yaml` `editor`), so parts don't shrink after Level 1
 - [ ] Improve tutoring for complex circuits (Level 6 and up): learner feedback from testing said "the feedback is not sufficient for complex schematics like level 6"
   - [x] Formulas with the board's numbers (see Formulas and paragraphs above)
