@@ -267,7 +267,7 @@ While consent is on, the server appends one JSON line per event to `research/<le
 
 ### The 🔔 feedback prompt
 
-From curriculum level 3 (the "Level 3" badge, after about four tasks), the tutor asks the learner for their thoughts every 10 minutes of active use.
+From curriculum level 3 (the "Level 3" badge, after about four tasks), the tutor asks the learner for their thoughts every 6 minutes of active use. It was 10 at first, but learners aren't busy all the time (reading, thinking and breaks count at most a minute per gap), so 10 active minutes took far longer on the clock.
 
 - **Active time:** the gaps between the learner's edits and messages are added up, each gap counting at most 60 s, so time away from the screen doesn't count. The count carries over from task to task (see Status).
 - **When it's due:** consent is on, the curriculum level is at least `prompt_from_level`, `prompt_every_active_min` of active time have passed since the last prompt (or since the session started), the tutor isn't replying, and the status isn't `short_circuit`. The check runs after a real break: `prompt_idle_s` (8 s) without edits, and after the tutor's reaction to that pause, if one is running. A 1.5 s pause between two drops is the middle of a move; a prompt there would be closed by the next drop before it's read, as testing showed.
@@ -292,7 +292,7 @@ sequenceDiagram
         FE->>S: board.update / tutor.request
         S->>R: board() / chat(), activity()
     end
-    Note over S,R: 8 s without edits, Level ≥ 3, 10 active min since the last prompt
+    Note over S,R: 8 s without edits, Level ≥ 3, 6 active min since the last prompt
     S->>R: prompt_due()
     R-->>FE: 🔔 experience message (thread open)
     L->>FE: "The hints are too vague"
@@ -344,7 +344,7 @@ The `research` block and `claude.experience` in `config.yaml` (§7): the folder,
 
 Built: `research.py` (`ResearchLog`, `Research`), its hooks in `session.py`, the start screen's consent and name, the `experience` chat kind and `research.sh`. Interfaces are in [contract.md](contract.md), the start screen and the chat kind in [gui.md](gui.md), collecting on Fly in [deployment.md](deployment.md#6-manual-operations).
 
-- **Active time survives tasks.** Each task opens a new WebSocket session, and most tasks take a minute or two, so a count kept only in the server's session would never reach 10 minutes. The server sends `research: { active_s, last_ts, thread }` with every `evaluation` and tutor message; the browser keeps it with the consent and sends it back with `session.start`. `Research.start` continues the count from `active_s`, clamped to the prompt interval, and counts the gap since `last_ts`, the previous task's last activity, so the time spent reading a new task isn't lost. That gap is capped at 60 s like any other, so a stale or altered `last_ts` adds a minute at most.
+- **Active time survives tasks.** Each task opens a new WebSocket session, and most tasks take a minute or two, so a count kept only in the server's session would never reach the prompt interval. The server sends `research: { active_s, last_ts, thread }` with every `evaluation` and tutor message; the browser keeps it with the consent and sends it back with `session.start`. `Research.start` continues the count from `active_s`, clamped to the prompt interval, and counts the gap since `last_ts`, the previous task's last activity, so the time spent reading a new task isn't lost. That gap is capped at 60 s like any other, so a stale or altered `last_ts` adds a minute at most.
 
 ## 6. Security and operations
 
@@ -496,7 +496,7 @@ research:                      # learner experience research, with consent (docs
   dir: research                # SCHEMATICS_RESEARCH_DIR overrides it (Fly: /data/research)
   max_mb_per_learner: 20
   prompt_from_level: 3         # curriculum level
-  prompt_every_active_min: 10
+  prompt_every_active_min: 6
   prompt_idle_s: 8              # the 🔔 prompt waits for this long a pause in editing
   thread_timeout_active_min: 3 # an unanswered feedback conversation closes after this much active time
   max_followups: 2

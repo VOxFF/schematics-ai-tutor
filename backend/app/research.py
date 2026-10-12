@@ -146,7 +146,7 @@ class Research:
             return
         self.learner_id = learner_id
         saved = research.get("active_s")
-        limit = self.settings.get("prompt_every_active_min", 10) * 60
+        limit = self.settings.get("prompt_every_active_min", 6) * 60
         if isinstance(saved, (int, float)) and not isinstance(saved, bool):
             self.active_s = min(max(float(saved), 0.0), limit)
         last = research.get("last_ts")
@@ -205,7 +205,7 @@ class Research:
             return None
         if curriculum_level < self.settings.get("prompt_from_level", 3):
             return None
-        if self.active_s < self.settings.get("prompt_every_active_min", 10) * 60:
+        if self.active_s < self.settings.get("prompt_every_active_min", 6) * 60:
             return None
         text = PROMPTS[self.prompts % len(PROMPTS)]
         self.prompts += 1
