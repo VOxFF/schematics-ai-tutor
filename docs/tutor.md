@@ -29,7 +29,7 @@ Each reply has a `chat.kind` that says what it does, and the chat shows each kin
 | `question` | Asks the learner to reason about one thing |
 | `knowledge` | Teaches a principle or a term from the learner profile |
 | `hint` | A step of the hint ladder (§3); set by the backend |
-| `guide` | The how-to on the first visit ([gui.md](gui.md#7-chat)): canned text from `backend/data/guide.yaml`, never from the tutor; not in the history Claude sees |
+| `guide` | The how-to on the first visit ([gui.md](gui.md#7-chat)): canned text from `backend/data/guide.yaml`, never from the tutor |
 | `experience` | The 🔔 research check-in and its follow-ups ([design.md](design.md#5-learner-experience-research)); written by `research.py`'s own prompt, never by the tutor |
 
 ### Teaching from the learner profile

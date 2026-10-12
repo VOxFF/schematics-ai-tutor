@@ -232,8 +232,9 @@ The inventory is drawn **inside the editor's three.js scene**, in a column right
   >
   > 💬 Ask me anything here, or press **Hint** when you're stuck: hints come one step at a time.
 
-  - **Once:** the browser asks for it with `session.start` (`guide: true`) while its saved session has none, and keeps it with the chat, so a reload doesn't repeat it. **Restart Learning** clears the chat, so a fresh start shows it again.
-  - **From the backend:** the text is in `backend/data/guide.yaml`, and the reply composer prepares it like any tutor message (icon, title, bold terms). It is recorded in the research records but not added to the history Claude sees: it is about the tool, not the task.
+  - **Once, from the chat itself:** the browser asks for it with `session.start` (`guide: true`) while its chat has no `guide` message, so a reload or the next task doesn't repeat it and no extra flag is stored. **Restart Learning** clears the chat, so a fresh start shows it again.
+  - **Built like the welcome:** the text is in `backend/data/guide.yaml`, next to `topics.yaml`, and the reply composer prepares it beside the welcome (icon, title, bold terms; no profile changes).
+  - **Sent like the 🔔 prompt:** a `tutor.message` without `tutor.started`, from a session task that waits 1 s, and longer while a tutor call is running, so it never interrupts a reply. It is recorded in the research records, and like every chat message it is part of the recent turns the tutor sees.
 - While a call is running, it shows "tutor is thinking".
 - The learner can type at any time. Sending creates a `tutor.request` with `action: "message"`.
 - **Hint button** beside the chat input, labelled with the next rung: "Hint 1/4" to "Hint 4/4". It sends a `tutor.request` with `action: "hint"`, and the chat shows the request as the learner's line ("Hint 1/4, please"). After rung 4 it stays "Hint 4/4" and repeats that rung in other words. It is disabled while the tutor is thinking or disconnected.
