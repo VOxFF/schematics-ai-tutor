@@ -56,6 +56,8 @@ tutor:
   history_turns: 6
   offer_hint_after_reactions: 3
   react_after_unchanged: 4      # pauses with an unchanged circuit before Claude is called anyway
+  formulas_from_level: 2       # curriculum level from which replies may carry a formula
+  formula_max_lines: 8         # a formula's lines at most (rung 4 of the hint ladder needs the most)
 
 task_generation:
   recent_tasks: 10

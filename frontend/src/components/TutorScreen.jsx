@@ -1,13 +1,15 @@
 // Learning (tutor) screen layout from the sketch (docs/gui.md §2). The editor shows the
 // received task JSON until the grid editor exists.
 
+import katex from "katex";
+import "katex/dist/katex.min.css";
 import { useCallback, useEffect, useRef, useState } from "react";
 import GridEditor from "../editor/GridEditor.jsx";
 import { partName } from "../editor/naming.js";
 import { WIRE_PALETTE, lift, nextOrientation, place, removeSelected, rotateSelected } from "../editor/placement.js";
 import { PUBLIC } from "../lib/build.js";
 import { readableJson } from "../lib/jsonfmt.js";
-import { useTutorSession } from "../lib/tutorSession.js";
+import { MAX_HINT, useTutorSession } from "../lib/tutorSession.js";
 
 
 // Hidden but still taking space: invisible, unreachable by keyboard and screen readers.
@@ -174,21 +176,49 @@ function InventoryList({ board, onStartDrag }) {
   );
 }
 
-// Message text with the learner's topics in bold: `terms` are [start, end] spans from the reply
-// composer, in order and not overlapping (docs/gui.md §7).
-function withTerms(text, terms) {
+// Message text with the learner's topics in bold: `terms` are [start, end] spans of the whole
+// text from the reply composer, in order and not overlapping (docs/gui.md §7). `from` and `to`
+// pick one paragraph out of the text.
+function withTerms(text, terms, from = 0, to = text.length) {
   const parts = [];
-  let at = 0;
+  let at = from;
   for (const [start, end] of terms ?? []) {
-    if (start < at || end > text.length) continue;
+    if (start < at || end > to) continue;
     parts.push(text.slice(at, start), <strong key={start} className="term">{text.slice(start, end)}</strong>);
     at = end;
   }
-  parts.push(text.slice(at));
+  parts.push(text.slice(at, to));
   return parts;
 }
 
-// `hintLevel`: the hint level reached in this task; the Hint button asks for the next one (docs/gui.md §7).
+// A tutor message's paragraphs, separated by a blank line in the text, each with its bold terms.
+function Paragraphs({ text, terms }) {
+  const blocks = [];
+  let from = 0;
+  for (const match of `${text}\n\n`.matchAll(/\n\n/g)) {
+    if (match.index > from) blocks.push([from, match.index]);
+    from = match.index + 2;
+  }
+  return blocks.map(([start, end]) => <p key={start} className="paragraph">{withTerms(text, terms, start, end)}</p>);
+}
+
+// `chat.formula`: lines of LaTeX drawn with KaTeX; a line it can't render shows as plain text.
+function Formula({ lines }) {
+  return (
+    <div className="formula">
+      {lines.map((line, i) => {
+        try {
+          const html = katex.renderToString(line, { displayMode: true, throwOnError: true, output: "html" });
+          return <div key={i} className="formula-line" dangerouslySetInnerHTML={{ __html: html }} />;
+        } catch {
+          return <code key={i} className="formula-line plain">{line}</code>;
+        }
+      })}
+    </div>
+  );
+}
+
+// `hintLevel`: the hint rung reached in this task; the Hint button asks for the next one (docs/gui.md §7).
 function Chat({ chat, connected, thinking, onSend, hintLevel, hintOffered, onHint }) {
   const [draft, setDraft] = useState("");
   const end = useRef(null);
@@ -213,7 +243,8 @@ function Chat({ chat, connected, thinking, onSend, hintLevel, hintOffered, onHin
             {m.role === "tutor" && m.icon && <span className="icon" aria-hidden="true">{m.icon}</span>}
             <div className="body">
               {m.role === "tutor" && m.title && <strong className="title">{m.title}</strong>}
-              {m.role === "tutor" ? withTerms(m.text, m.terms) : m.text}
+              {m.role === "tutor" ? <Paragraphs text={m.text} terms={m.terms} /> : m.text}
+              {m.role === "tutor" && m.formula?.length > 0 && <Formula lines={m.formula} />}
             </div>
           </div>
         ))}
@@ -230,7 +261,7 @@ function Chat({ chat, connected, thinking, onSend, hintLevel, hintOffered, onHin
         />
         <button type="button" className={hintOffered ? "hint offered" : "hint"} onClick={onHint}
                 disabled={!connected || thinking} title="Ask the tutor for a hint, one step at a time">
-          Hint {Math.min(hintLevel + 1, 3)}/3
+          Hint {Math.min(hintLevel + 1, MAX_HINT)}/{MAX_HINT}
         </button>
       </form>
     </aside>

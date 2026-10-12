@@ -22,7 +22,7 @@ from .rate_limits import RateLimiter
 from .reply_composer import compose
 from .research import Research, ResearchLog
 from .task_cache import solved
-from .tutor import answer
+from .tutor import MAX_HINT, answer
 
 
 class Session:
@@ -48,7 +48,7 @@ class Session:
         self.started_at = time.monotonic()
         self.idle: asyncio.Task | None = None  # pending reaction timer
         self.quiet: asyncio.Task | None = None  # pending 🔔 prompt check, after a longer pause
-        self.hint_level = 0  # highest hint given in this task (0-3)
+        self.hint_level = 0  # highest hint rung given in this task (0-4)
         self.best_rank = -1  # best status reached in this task, by STATUS_RANK
         self.stalled = 0  # reactions in a row without beating best_rank
         self.replied_key = None  # circuit_key of the board Claude last replied about
@@ -95,7 +95,7 @@ class Session:
         self.level = level
         self.history = [t for t in message.get("history", []) if isinstance(t, dict)]
         hint_level = message.get("hint_level", 0)
-        self.hint_level = min(max(hint_level, 0), 3) if isinstance(hint_level, int) else 0
+        self.hint_level = min(max(hint_level, 0), MAX_HINT) if isinstance(hint_level, int) else 0
         self.usage_log.event("session_started", session_id=self.id, level_id=level.get("id"))
         progress = message.get("progress")
         skill = progress.get("skill_level") if isinstance(progress, dict) else None
@@ -232,7 +232,7 @@ class Session:
             self.best_rank, self.stalled = rank, 0
             return False
         self.stalled += 1
-        if status == "solved" or self.hint_level >= 3:
+        if status == "solved" or self.hint_level >= MAX_HINT:
             return False
         if self.stalled >= self.config.get("tutor", {}).get("offer_hint_after_reactions", 3):
             self.stalled = 0
@@ -266,8 +266,8 @@ class Session:
                 self._start_task(self._experience(request_id, text))
                 return
             self.research.close_thread("hint")  # a hint request goes back to tutoring
-            # The server decides a hint's level: one above the highest given, at most 3.
-            hint = min(self.hint_level + 1, 3) if action == "hint" else 0
+            # The server decides a hint's rung: one above the highest given, at most 4.
+            hint = min(self.hint_level + 1, MAX_HINT) if action == "hint" else 0
             # Run the Claude call in the background so the session keeps receiving messages.
             self._start_task(self._answer(request_id, text or None, hint=hint, asked=True))
 
@@ -286,6 +286,7 @@ class Session:
                 self.claude, self.config, self.usage_log, level=self.level, board=board,
                 reference=reference, history=self.history, learner_text=text, snapshots=snapshots,
                 session_id=self.id, hint_level=hint, offer_hint=offer_hint, unchanged_moves=unchanged_moves,
+                formulas=self._formulas(),
                 profile={"skill_level": self.skill_level, "focus": focus(self.profile, self.skill_level)},
             )
             if not asked and self.seq != seq and not self._still_true(reply):
@@ -308,6 +309,11 @@ class Session:
         if self.snapshots and self.idle is None:
             self._restart_idle_timer()  # edits arrived during the call: react to them after a pause
 
+    def _formulas(self) -> bool:
+        """Whether replies may carry a formula: from curriculum level `tutor.formulas_from_level`."""
+        level = (self.level.get("curriculum") or {}).get("level") or 1
+        return level >= self.config.get("tutor", {}).get("formulas_from_level", 2)
+
     def _still_true(self, reply: dict) -> bool:
         """Whether an out-of-date reaction still holds for the current board (docs/design.md §3): a
         lesson always does; praise while the board is still solved. Questions, nudges and feedback
@@ -326,7 +332,7 @@ class Session:
         if hint:
             self.hint_level = max(self.hint_level, hint)
             self.stalled = 0
-            self.history.append({"role": "learner", "text": f"(asked for hint {hint}/3) {text or ''}".strip()})
+            self.history.append({"role": "learner", "text": f"(asked for hint {hint}/{MAX_HINT}) {text or ''}".strip()})
         elif text is not None:
             self.history.append({"role": "learner", "text": text})
         self.history.append({"role": "tutor", "text": reply["chat"]["text"]})

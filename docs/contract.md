@@ -32,7 +32,7 @@ sequenceDiagram
     BE-->>FE: tutor.started
     BE->>C: level + summary + snapshots + learner input
     C-->>BE: TutorMessage (structured JSON)
-    Note over BE: validate (backstop, highlights, hint level)
+    Note over BE: validate (backstop, highlights, hint rung, math check)
     BE-->>FE: tutor.message (final TutorMessage)
     FE->>BE: task.next
     BE-->>FE: task.ready (pre-generated task)
@@ -72,7 +72,7 @@ One connection is one learning session, and it can span several tasks.
 
 - **Server state.** The server keeps the session state in memory for the life of the connection:
   - the current task, including its complete reference board, which is never sent to the client
-  - the latest board, the conversation history and the hint level reached
+  - the latest board, the conversation history and the hint rung reached
   - the learner's `Progress`: skill level and task history
   - the pre-generated next task
 - **Reconnect.** The client keeps the current `Level`, its board, the conversation history and its `Progress`, plus the chat, the `LearnerProfile` and the research consent, all in `localStorage` ([gui.md](gui.md#session-persistence)), so a reload or a later visit resumes. On reconnect it sends them with `session.start`, so the server stays free of storage. Progress therefore lives in one browser, which is accepted for the prototype. If the reconnect lands on a different instance, the reference board is lost. Grading is unaffected because it uses readings only; the tutor just works without the reference.
@@ -83,7 +83,7 @@ Every message is a JSON object with a `type` field.
 
 | `type` | Payload | Effect |
 |---|---|---|
-| `session.start` | `progress?`, `level?`, `board?`, `history?`, `hint_level?`, `profile?`, `research?` | Starts a session (the server sends `task.ready` with the curated level for the skill level) or resumes one (`level` given). The server also replies with `evaluation`, which carries the `LearnerProfile` with the task's topics joined. `profile` is the learner profile the browser saved ([design.md](design.md#learner-profile)); the server checks it and drops bad entries. `research` is the learner's consent for this session, `{ consent, learner_id?, name?, active_s?, last_ts?, thread? }`; with `consent: true` and a UUID `learner_id`, the server records the session, and its active-time count continues from `active_s` and the time of the last activity, `last_ts` ([design.md](design.md#5-learner-experience-research)). With `progress` and `level`, the server pre-generates the task after this one ([design.md](design.md#3-system-architecture)). `hint_level` is the hint level reached in this task (0–3), so a resumed session continues the ladder. |
+| `session.start` | `progress?`, `level?`, `board?`, `history?`, `hint_level?`, `profile?`, `research?` | Starts a session (the server sends `task.ready` with the curated level for the skill level) or resumes one (`level` given). The server also replies with `evaluation`, which carries the `LearnerProfile` with the task's topics joined. `profile` is the learner profile the browser saved ([design.md](design.md#learner-profile)); the server checks it and drops bad entries. `research` is the learner's consent for this session, `{ consent, learner_id?, name?, active_s?, last_ts?, thread? }`; with `consent: true` and a UUID `learner_id`, the server records the session, and its active-time count continues from `active_s` and the time of the last activity, `last_ts` ([design.md](design.md#5-learner-experience-research)). With `progress` and `level`, the server pre-generates the task after this one ([design.md](design.md#3-system-architecture)). `hint_level` is the hint rung reached in this task (0–4), so a resumed session continues the ladder. |
 | `task.next` | — | Asks for the next task, usually after the current one is solved |
 | `summary.request` | — | Bonus: asks for the learner's skill summary (Learning Path screen) |
 | `board.update` | `seq`, `board` | Sent on each finished edit (a part dropped, a wire piece placed or removed). The server records a snapshot, re-evaluates and replies with `evaluation` carrying the same `seq`. |
@@ -173,7 +173,7 @@ interface TaskSummary {          // one line of task history
   concept: string;
   shape: string;                 // e.g. "series: V + 2R + AM"
   difficulty: number;            // 1–5, from the TaskSpec
-  hints_used: number;
+  hints_used: number;            // the hint ladder's rung reached, 0–4
   misconceptions: Misconception[];  // fixed tutor labels (tutor.md §5)
   signature: string;             // Level.signature: circuit fingerprint for the repeat check
   final_grid?: Board;            // bonus: the solved grid, for read-only review
@@ -261,7 +261,7 @@ interface TutorMessage {
   meta: {
     principle: Principle;          // the physics this message teaches (tutor.md §5)
     highlights: Highlight[];       // draws the learner's attention on the grid
-    hint_level: 0 | 1 | 2 | 3;     // 0 if this isn't a hint
+    hint_level: 0 | 1 | 2 | 3 | 4; // the hint ladder's rung; 0 if this isn't a hint
     misconception: Misconception | null;  // fixed label (tutor.md §5)
     topic_updates: TopicUpdate[];  // score changes for the learner profile (design.md §4)
     new_topic: NewTopic | null;    // a topic Claude adds to this learner's profile
@@ -269,7 +269,9 @@ interface TutorMessage {
   chat: {
     kind: "feedback" | "nudge" | "hint" | "question" | "praise" | "knowledge"
         | "experience";            // the 🔔 feedback conversation (research), never from the tutor
-    text: string;                  // learner-facing, plain language
+    text: string;                  // learner-facing, plain language; paragraphs separated by a blank line
+    formula?: string[] | null;     // from curriculum level 2: 1–8 lines of LaTeX (a subset), shown under
+                                   // the text; checked by the math check (design.md §4), else dropped
     // Added by the reply composer, not by Claude:
     icon?: string;                 // the kind's icon, e.g. "📘"
     title?: string | null;         // a knowledge message's topic name
@@ -360,9 +362,9 @@ The order runs from most stable to least stable, so the cached prefix stays vali
    - `<reference>`: the reference solution's `graph` when available, so hints can point toward a solution without revealing it
    - `<summary>`: a one-line circuit description written by the backend, e.g. `parts: V1 12 V, R1 40 Ω, VM1; status: meter_misuse; readings: VM1=12.0`
    - `<snapshots>`: the `Snapshot`s recorded since the previous call, up to the last `tutor.max_snapshots`, oldest first. Earlier ones carry the graph and evaluation; the last is the current board (`"current": true`) and also carries its grid, labeled "for highlight references only". They show Claude what the learner did and how the circuit changed. The evaluations are the only source of electrical values.
-   - `<profile>`: the learner's skill level and up to 8 focus topics from the `LearnerProfile`, each with its scores and `tasks_ago` ([design.md](design.md#learner-profile))
+   - `<profile>`: the learner's skill level and up to 8 focus topics from the `LearnerProfile`, each with its scores, `tasks_ago` and, for a catalog topic that has one, its `formula` ([design.md](design.md#learner-profile))
    - `<history>`: the last `tutor.history_turns` tutor and learner chat turns, for continuity
-   - `<request>`: either `trigger: "reaction"`, or the learner's `action`, the next allowed hint level and `learner_text`
+   - `<request>`: either `trigger: "reaction"`, or the learner's `action`, the next allowed hint rung and `learner_text`; `formulas: true` from curriculum level `tutor.formulas_from_level`
 
 #### Response handling
 
@@ -370,11 +372,14 @@ The order runs from most stable to least stable, so the cached prefix stays vali
 - **Location-talk backstop** ([tutor.md](tutor.md#6-guardrails-physics-not-placement)): scan `chat.text` for coordinates, pin references and the words "row", "column" and "point".
   - On a match, regenerate once with the problem named.
   - If it fails again, send a safe generic message for the status.
-- Enforce `meta.hint_level` server-side: the session tracks the highest hint given and decides each hint's level (one higher, at most 3). Claude's value is overwritten with it; replies that aren't hints get 0. A level-1 hint's highlights are dropped.
+- Enforce `meta.hint_level` server-side: the session tracks the highest hint given and decides each hint's rung (one higher, at most 4). Claude's value is overwritten with it; replies that aren't hints get 0.
+- **Math check** ([design.md](design.md#formulas-and-paragraphs)): parse `chat.formula`; every number from the board or an earlier line, the arithmetic within 1%, the rung's limits (none on rung 1, no numbers from the board on rung 2), and no answer before rung 4, in the formula or in `chat.text`. Before curriculum level 2 the formula is dropped.
+  - On a failure, regenerate once with the problem named.
+  - If it fails again, drop the formula (an answer in the text: send the safe generic message). Log `formula_dropped`.
 - **Highlight wire format.** In Claude's structured output, each highlight has `component`, `wire` and `point` fields, with the unused ones `null`, plus `style`. The backend converts each into a `Highlight` (`{ target, style }`).
 - Check every highlight against the latest snapshot: the component ID exists, the wire ID exists, and the point is inside the grid. Drop any that fail.
 - The returned `evaluation` always comes from the evaluator, never from Claude.
-- **Reply composer** ([design.md](design.md#reply-composer)): apply `meta.topic_updates` and `meta.new_topic` to the learner profile within bounds, then add `chat.icon` and, for a `knowledge` message, `chat.title`. Refused changes go to the run log as `profile_dropped`.
+- **Reply composer** ([design.md](design.md#reply-composer)): apply `meta.topic_updates` and `meta.new_topic` to the learner profile within bounds, then normalize the paragraphs (at most one blank line between them, none at the ends) and add `chat.icon` and, for a `knowledge` message, `chat.title`. Refused changes go to the run log as `profile_dropped`.
 - Only then send the validated `TutorMessage` to the browser as `tutor.message`, with the updated profile.
 
 ### 2.2 Task generation call

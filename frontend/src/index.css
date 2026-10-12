@@ -550,6 +550,36 @@ button.danger {
   font-weight: 600;
 }
 
+/* Paragraphs: half a line between them; the line spacing inside one doesn't change. */
+.chat .tutor-message .paragraph {
+  margin: 0;
+}
+
+.chat .tutor-message .paragraph + .paragraph {
+  margin-top: 0.5em;
+}
+
+/* chat.formula: KaTeX lines under the text, centered; a wide line scrolls on its own. */
+.chat .tutor-message .formula {
+  margin-top: 0.5em;
+  color: var(--text);
+}
+
+.chat .tutor-message .formula-line {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.chat .tutor-message .formula-line .katex-display {
+  margin: 0.2em 0;
+}
+
+.chat .tutor-message .formula-line.plain {
+  display: block;
+  text-align: center;
+  font-size: 0.9em;
+}
+
 .chat .kind-praise { --tint: var(--praise-tint); --edge: var(--praise-edge); }
 .chat .kind-nudge { --tint: var(--nudge-tint); --edge: var(--nudge-edge); }
 .chat .kind-feedback { --tint: var(--feedback-tint); --edge: var(--feedback-edge); }

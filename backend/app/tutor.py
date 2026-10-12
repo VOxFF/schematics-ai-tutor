@@ -11,6 +11,7 @@ import time
 import anthropic
 
 from .evaluate import evaluate
+from .formula import answer_in_text, answer_values, board_quantities, check
 from .graph import to_graph
 from .jsonfmt import dumps
 
@@ -21,6 +22,7 @@ MISCONCEPTIONS = [
 ]
 KINDS = ["feedback", "nudge", "hint", "question", "praise", "knowledge"]
 STYLES = ["attention", "error", "success"]
+MAX_HINT = 4  # the hint ladder's top rung (docs/tutor.md §3)
 
 
 def _object(properties: dict) -> dict:
@@ -56,12 +58,15 @@ TUTOR_MESSAGE_SCHEMA = _object({
     "chat": _object({
         "kind": {"type": "string", "enum": KINDS},
         "text": {"type": "string"},
+        # Lines of LaTeX shown under the text; checked by formula.py (docs/design.md §4).
+        "formula": {"anyOf": [{"type": "array", "items": {"type": "string"}}, {"type": "null"}]},
     }),
 })
 
 SYSTEM_PROMPT = f"""You are a patient electronics tutor for complete beginners. The learner builds
 DC circuits on a grid. A deterministic evaluator computes every reading and
-status; you never compute or invent numbers.
+status; you never invent numbers. Math goes in chat.formula, which the backend
+recomputes.
 
 Your job is to help the learner understand WHY a circuit behaves as it does,
 using loops, current, voltage and resistance. Highlights show the learner WHERE
@@ -71,7 +76,22 @@ no "connect X to Y", no naming the exact part to place, no "row", "column" or
 
 Ask rather than tell, except when teaching a topic that is new to the learner
 (see Learner profile). One question at a time. Plain words; explain any term the
-first time. Keep replies short: at most 4 sentences.
+first time. Keep replies short: at most 4 sentences. Separate ideas with a blank
+line: a hint, a chat answer or a knowledge message of more than 2 sentences gets
+paragraphs; a reaction stays one paragraph.
+
+Formulas: only when the request has "formulas": true; else chat.formula is null.
+chat.formula is a list of lines of LaTeX, shown under the text, at most 8 lines,
+one step per line. Use it when the math helps; most reactions need none. Use only:
+symbols with subscripts (R_1, V_{{R2}}, R_{{\\text{{total}}}}), numbers with units
+(40\\,\\Omega, 2\\,\\mathrm{{k\\Omega}}, 12\\,\\mathrm{{V}}, 300\\,\\mathrm{{mA}}, 0.3\\,\\mathrm{{A}},
+2\\,\\mathrm{{W}}), + - \\cdot \\frac{{}}{{}}, parentheses, ^2, = and \\approx. No \\sqrt, no
+words, no \\Rightarrow. Numbers only from the board: part values (placed or in the
+inventory), readings, targets, and results of earlier lines; small whole numbers
+for algebra (2 R_2). The backend recomputes every = and drops a wrong formula.
+Never give the answer, the value of a part the learner still has to place, in the
+formula or the text, except on hint rung 4. A knowledge message about a topic
+with a formula in <profile> shows that formula, symbolic.
 
 Reactions (request trigger "reaction"): the learner just edited the board and paused. The
 <snapshots> show what changed, oldest first, with the evaluator's result for each. Respond
@@ -92,14 +112,19 @@ the <snapshots> to see what they tried.
 If the request has "offer_hint": true, end the reaction by briefly offering a hint
 (e.g. "Want a hint?"), without giving it.
 
-Hints (request action "hint"): give exactly the level in request.hint_level, in at
-most 4 sentences:
-1 orient: name the concept that matters. No highlights.
-2 focus: point to where to look and the principle; highlight the relevant part
-  (attention).
-3 method: reason with the learner's numbers and stop one step before the answer;
-  never state the value to pick or the part to place. A repeated level-3 hint says
-  it differently and goes no further.
+Hints (request action "hint"): give exactly the rung in request.hint_level, in at
+most 4 sentences, with highlights (attention) on the parts that matter:
+1 text: the concept that matters and where to look. No formula.
+2 formula: the symbolic formula and what each symbol is on this board. No
+  numbers in it.
+3 partial numbers: the formula with the known values from the board put in, the
+  unknown left as a symbol for the learner to work out. No answer.
+4 full computation: rearrange, substitute and compute, one step per line, up to
+  8 lines; the value the learner needs may be given. Never the placement. A
+  repeated rung-4 hint says it differently.
+Without "formulas": true (curriculum level 1) all rungs are text: 1 the concept and
+where to look, 2 the principle with the parts involved, 3 walk the path with the
+learner, 4 the full explanation of what is wrong and why.
 
 Free chat (request action "message"):
 - Concept questions ("What is a voltmeter?") get a full, plain explanation;
@@ -211,7 +236,7 @@ def fallback_message(status: str) -> dict:
     }.get(status, "Let's think about the path the current takes. What do you notice?")
     return {"meta": {"principle": "closed_loop", "highlights": [], "hint_level": 0, "misconception": None,
                      "topic_updates": [], "new_topic": None},
-            "chat": {"kind": "question", "text": text}}
+            "chat": {"kind": "question", "text": text, "formula": None}}
 
 
 def circuit_summary(graph: dict, evaluation: dict) -> str:
@@ -266,6 +291,22 @@ def clean_highlights(highlights: list[dict], board: dict) -> list[dict]:
     return kept
 
 
+def _accept(message: dict, hint_level: int, board: dict, evaluation: dict, usage_log, purpose: str,
+            session_id: str | None) -> dict:
+    """A reply that passed the checks, with the hint ladder and the highlights enforced here, not
+    by Claude (docs/tutor.md §3)."""
+    message["meta"]["hint_level"] = hint_level
+    if hint_level:
+        message["chat"]["kind"] = "hint"
+    message["chat"].setdefault("formula", None)
+    returned = message["meta"].get("highlights", [])
+    message["meta"]["highlights"] = clean_highlights(returned, board)
+    # What Claude pointed at and what survived the board check, to see why nothing shows.
+    usage_log.event("tutor_highlights", purpose=purpose, session_id=session_id, status=evaluation["status"],
+                    returned=returned, kept=message["meta"]["highlights"])
+    return message
+
+
 def _usage(response) -> dict:
     usage = getattr(response, "usage", None)
     fields = ("input_tokens", "output_tokens", "cache_read_input_tokens", "cache_creation_input_tokens")
@@ -275,12 +316,14 @@ def _usage(response) -> dict:
 async def answer(client, config: dict, usage_log, *, level: dict, board: dict, reference: dict | None,
                  history: list[dict], learner_text: str | None = None, snapshots: list[dict] | None = None,
                  session_id: str | None = None, hint_level: int = 0, offer_hint: bool = False,
-                 profile: dict | None = None, unchanged_moves: int = 0) -> tuple[dict, dict]:
-    """Return (TutorMessage, evaluation) for a learner message, a hint of `hint_level` (1-3, decided
+                 profile: dict | None = None, unchanged_moves: int = 0,
+                 formulas: bool = False) -> tuple[dict, dict]:
+    """Return (TutorMessage, evaluation) for a learner message, a hint of `hint_level` (1-4, decided
     by the session), or a reaction when both are absent; a reaction with `offer_hint` ends by
     offering a hint. `unchanged_moves` (a reaction) counts the learner's moves that didn't change the
-    circuit since the last reply. `profile` is the learner's focus topics for the context. Raises
-    anthropic.APIError on API failure."""
+    circuit since the last reply. `profile` is the learner's focus topics for the context.
+    `formulas`: the reply may carry a formula (from curriculum level `tutor.formulas_from_level`).
+    Raises anthropic.APIError on API failure."""
     reaction = learner_text is None and not hint_level
     purpose = "tutor_reaction" if reaction else "tutor_request"
     settings = config["claude"][purpose]
@@ -296,11 +339,16 @@ async def answer(client, config: dict, usage_log, *, level: dict, board: dict, r
             request["unchanged_moves"] = unchanged_moves
     else:
         request = {"action": "message", "learner_text": learner_text}
+    if formulas:
+        request["formulas"] = True
     user_turn, evaluation = build_context(
         level, board, reference, history, request,
         config.get("tutor", {}).get("history_turns", 6), config.get("evaluator"), snapshots, profile,
     )
-    content = user_turn
+    placed, inventory = board_quantities(board, evaluation)
+    answers = [] if hint_level == 4 else answer_values(reference, placed)
+    max_lines = config.get("tutor", {}).get("formula_max_lines", 8)
+    content, message, found = user_turn, None, []
     for attempt in (1, 2):
         started = time.monotonic()
         response = await client.with_options(timeout=settings.get("timeout_s", 30)).messages.create(
@@ -318,26 +366,42 @@ async def answer(client, config: dict, usage_log, *, level: dict, board: dict, r
                               duration_ms=int((time.monotonic() - started) * 1000))
         text = next((b.text for b in response.content if b.type == "text"), None)
         if response.stop_reason == "refusal" or text is None:
+            message = None
             break
         try:
             message = json.loads(text)
         except json.JSONDecodeError:
+            message = None
             break
-        found = location_talk(message["chat"]["text"])
-        if not found:
-            # The hint ladder is enforced here, not by Claude (docs/tutor.md §3).
-            message["meta"]["hint_level"] = hint_level
-            if hint_level:
-                message["chat"]["kind"] = "hint"
-            returned = message["meta"].get("highlights", [])
-            message["meta"]["highlights"] = [] if hint_level == 1 else clean_highlights(returned, board)
-            # What Claude pointed at and what survived the board check, to see why nothing shows.
-            usage_log.event("tutor_highlights", purpose=purpose, session_id=session_id, status=evaluation["status"],
-                            returned=returned, kept=message["meta"]["highlights"])
-            return message, evaluation
-        usage_log.event("tutor_backstop", session_id=session_id, attempt=attempt, matches=found)
-        content = (user_turn + "\n\nYour previous reply described locations (" + ", ".join(found)
-                   + "). Explain the physics instead and point with highlights.")
+        chat = message["chat"]
+        # No formula before the formulas level or on hint rung 1: dropped without a retry.
+        if chat.get("formula") and (not formulas or hint_level == 1):
+            usage_log.event("formula_dropped", session_id=session_id, attempt=attempt, formula=chat["formula"],
+                            problems=["no formula allowed here"])
+            chat["formula"] = None
+        found = location_talk(chat["text"])
+        leaked = answer_in_text(chat["text"], answers)
+        problems = (check(chat["formula"], allowed=placed + inventory, answers=answers, rung=hint_level,
+                          max_lines=max_lines) if chat.get("formula") else [])
+        if not found and not leaked and not problems:
+            return _accept(message, hint_level, board, evaluation, usage_log, purpose, session_id), evaluation
+        notes = []
+        if found:
+            usage_log.event("tutor_backstop", session_id=session_id, attempt=attempt, matches=found)
+            notes.append("Your previous reply described locations (" + ", ".join(found)
+                         + "). Explain the physics instead and point with highlights.")
+        if leaked:
+            usage_log.event("tutor_answer", session_id=session_id, attempt=attempt, matches=leaked)
+            notes.append("Your previous reply gave the answer (" + ", ".join(leaked)
+                         + "). Lead the learner to it instead.")
+        if problems:
+            usage_log.event("formula_dropped" if attempt == 2 else "formula_retry", session_id=session_id,
+                            attempt=attempt, formula=chat["formula"], problems=problems)
+            notes.append("Your previous chat.formula failed the math check: " + "; ".join(problems) + ".")
+        content = user_turn + "\n\n" + " ".join(notes)
+    if message is not None and not found and not leaked:  # only the formula is wrong: send the text
+        message["chat"]["formula"] = None
+        return _accept(message, hint_level, board, evaluation, usage_log, purpose, session_id), evaluation
     fallback = fallback_message(evaluation["status"])
     if hint_level:  # still a hint: it counts on the ladder and shows as one
         fallback["meta"]["hint_level"] = hint_level

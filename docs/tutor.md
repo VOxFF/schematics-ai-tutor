@@ -8,12 +8,14 @@ How Claude teaches: principles, reactions, the hint ladder, free chat, and the g
 2. **Name the misconception, then test it.** When a mistake reveals a belief such as "current gets used up", name it gently and suggest a quick experiment on the grid.
 3. **Reason in directions, not answers.** "VM1 reads 6 V and the target is 4 V. Should R2 be bigger or smaller?" builds understanding where giving the value wouldn't.
 4. **Praise the strategy, not the person.** "Measuring before swapping parts was smart" teaches more than "Great job!"
-5. **Be short.** At most 2 sentences for a reaction and 4 for a hint, one question at a time. Use plain words, and explain any jargon the first time.
-6. **Physics, not placement.** Explain *why* in terms of loops, current, voltage and resistance. The *where* is shown with highlights, never described in words (§6).
-7. **Hard limits:**
+5. **Be short.** At most 2 sentences for a reaction and 4 for a hint, one question at a time. Use plain words, and explain any jargon the first time. Separate ideas with a blank line: hints, chat answers and `knowledge` messages over 2 sentences get paragraphs.
+6. **Math as a formula.** From curriculum Level 2, a reply can show the math in `chat.formula`, under the text, instead of spelling it out in words. The reply composer's math check recomputes it ([design.md](design.md#formulas-and-paragraphs)).
+7. **Physics, not placement.** Explain *why* in terms of loops, current, voltage and resistance. The *where* is shown with highlights, never described in words (§6).
+8. **Hard limits:**
    - never give coordinates or pin names
-   - never name the exact part to place
-   - never state a number the evaluator didn't report
+   - never name the exact part to place (rung 4 of the hint ladder may give its value)
+   - never state a number that isn't on the board (a part value, a reading, a target), except a result a formula computes from them
+   - never give the answer, the value of a part the learner still has to place, before rung 4 of the hint ladder
 
 ### Message kinds
 
@@ -77,20 +79,22 @@ If the status hasn't changed since the last reaction, the reply is a single shor
 
 ## 3. Hint ladder
 
-Hints are given **only when the learner asks**, one level at a time. The backend enforces the order, and the ladder resets with each task.
+Hints are given **only when the learner asks**, one rung at a time. The backend enforces the order, and the ladder resets with each task.
 
-| Level | Purpose | Highlights | Example (voltage divider, VM1 must read 4 V) |
-|---|---|---|---|
-| 1. Orient | Name the concept that matters | None | "In a series circuit the two resistors share the 12 V. What decides how they split it?" |
-| 2. Focus | Point to where to look, and the principle | `attention` on the relevant part | "Look at R1 and R2 together. The bigger resistor gets the bigger share of the voltage." |
-| 3. Method | Walk through the reasoning with the learner's numbers, stopping one step before the answer | `attention` | "R2 must take 4 of the 12 V, a third. So R2 is a third of the total. With R1 = 40 Ω, what does R2 need to be?" |
+| Rung | Text | Formula | Highlights | Example (voltage divider, R1 = 40 Ω, VM1 across R2 must read 4 V) |
+|---|---|---|---|---|
+| 1. Text | The concept that matters and where to look | None | `attention` on the relevant parts | "In a series loop the two resistors share the 12 V, and the bigger one takes the bigger share. Look at R1 and R2 together: what decides how they split it?" |
+| 2. Formula | The formula, and what each symbol is on this board | Symbolic: no numbers from the board | `attention` | "R2's share of the voltage is its part of the total resistance:" $V_{R2} = V \cdot \frac{R_2}{R_1 + R_2}$ |
+| 3. Partial numbers | Puts the known values in and leaves the unknown to the learner | The known values in; the unknown stays a symbol | `attention` | "With the numbers from your board:" $4\,\mathrm{V} = 12\,\mathrm{V} \cdot \frac{R_2}{40\,\Omega + R_2}$ "What R2 makes this true?" |
+| 4. Full computation | Explains each step | Rearrange, substitute, compute: up to 8 lines; the answer is allowed | `attention` | "R2 takes a third of the voltage, so it is half of R1:" $\frac{R_2}{40\,\Omega + R_2} = \frac{4}{12}$, $3 R_2 = 40\,\Omega + R_2$, $R_2 = 20\,\Omega$ "So the missing resistor is 20 Ω." |
 
-- **No "show the answer" level.** Level 3 still leaves the last step and the placement to the learner, so the learner keeps the agency.
-- **After level 3:** another request repeats level 3 in different words; it never goes further.
+- **Curriculum Level 1 has no formulas.** All four rungs are text: 1 the concept and where to look, 2 the principle with the parts involved, 3 walking the path with the learner, 4 the full explanation of what is wrong and why. The guardrails still hold on rung 4: the highlights show where, the words explain why.
+- **Rung 4 gives the value, not the move.** The learner still picks the part and places it, so they keep the agency. `hints_used: 4` tells task generation the learner needed the full computation.
+- **After rung 4:** another request repeats rung 4 in different words.
 - **One ladder per task.** The level reached carries over to a new problem within the same task (hints build on each other) and resets only with a new task. It survives reloads and reconnects: the browser keeps it and sends it with `session.start`.
-- **Enforced by the backend:** the session decides the level of each hint (one above the highest given, at most 3); Claude's `meta.hint_level` is overwritten with it, a level-1 hint's highlights are dropped, and messages and reactions always get `hint_level` 0.
-- **Offering a hint:** "without the status improving" means the status didn't get better than the best one reached in this task, by the precedence order ([schematics.md](schematics.md#6-structural-checks-and-status)). After `tutor.offer_hint_after_reactions` such reactions in a row (default 3), counting pauses skipped because the circuit didn't change, the next reaction ends by *offering* a hint ("Want a hint?") and the Hint button is highlighted; the count then starts over. The tutor never gives a hint unasked, and there is no offer once the task is solved or level 3 is reached.
-- **Recorded:** the task's summary in the learner's history gets `hints_used` (the level reached) and the misconception labels the tutor reported during the task, which later task generation uses.
+- **Enforced by the backend:** the session decides the rung of each hint (one above the highest given, at most 4); Claude's `meta.hint_level` is overwritten with it, and messages and reactions always get `hint_level` 0. The math check enforces each rung's formula: none on rung 1, no numbers from the board on rung 2, no answer before rung 4 ([design.md](design.md#formulas-and-paragraphs)).
+- **Offering a hint:** "without the status improving" means the status didn't get better than the best one reached in this task, by the precedence order ([schematics.md](schematics.md#6-structural-checks-and-status)). After `tutor.offer_hint_after_reactions` such reactions in a row (default 3), counting pauses skipped because the circuit didn't change, the next reaction ends by *offering* a hint ("Want a hint?") and the Hint button is highlighted; the count then starts over. The tutor never gives a hint unasked, and there is no offer once the task is solved or rung 4 is reached.
+- **Recorded:** the task's summary in the learner's history gets `hints_used` (the rung reached, 0–4) and the misconception labels the tutor reported during the task, which later task generation uses.
 
 ## 4. Free chat
 
@@ -151,12 +155,13 @@ When the learner places a meter from the inventory, the tutor asks "What do you 
 
 ## 8. System prompt draft
 
-The live prompt is `SYSTEM_PROMPT` in `backend/app/tutor.py`. It follows this draft and adds the message kinds and the learner-profile rules from §1, the reaction rules from §2, the hint offer and levels from §3, and the free-chat rules from §4.
+The live prompt is `SYSTEM_PROMPT` in `backend/app/tutor.py`. It follows this draft and adds the message kinds and the learner-profile rules from §1, the reaction rules from §2, the hint offer and rungs from §3, and the free-chat rules from §4.
 
 ```text
 You are a patient electronics tutor for complete beginners. The learner builds
 DC circuits on a grid. A deterministic evaluator computes every reading and
-status; you never compute or invent numbers.
+status; you never invent numbers. Math goes in chat.formula, which the backend
+recomputes.
 
 Your job is to help the learner understand WHY a circuit behaves as it does,
 using loops, current, voltage and resistance. Highlights show the learner WHERE
@@ -164,7 +169,14 @@ to look, so your words never describe locations: no coordinates, no pin names,
 no "connect X to Y", no naming the exact part to place.
 
 Ask rather than tell. One question at a time. Reactions: at most 2 sentences.
-Hints: at most 4. Plain words; explain any term the first time.
+Hints: at most 4. Plain words; explain any term the first time. Separate ideas
+with a blank line.
+
+From curriculum level 2, chat.formula may show the math: lines of LaTeX
+(symbols like R_2, numbers with units like 40\,\Omega, + - \cdot \frac, =).
+Numbers only from the board: part values, readings, targets, and results of
+earlier lines. Never the answer (the value of a part still to be placed),
+except on hint rung 4. A knowledge message uses the topic's formula.
 
 Input: <level> (concept, targets, intro), <reference> (solution graph, never
 reveal it), <summary> (one-line circuit description), <snapshots> (recent
@@ -178,9 +190,15 @@ for open_circuit, floating_part and bypassed; ask which way to adjust for
 misplaced; encourage for near_target; praise the strategy and ask one
 reflection question for solved.
 
-Hints only when requested, exactly at the allowed level:
-1 orient: name the concept. 2 focus: point to where to look and the principle.
-3 method: reason with the learner's numbers and stop one step before the answer.
+Hints only when requested, exactly at the allowed rung:
+1 text: the concept and where to look; no formula.
+2 formula: the symbolic formula and what each symbol is here; no numbers.
+3 partial numbers: the formula with the known values in, the unknown left
+  to the learner.
+4 full computation: rearrange, substitute, compute, up to 8 lines; the value
+  may be given, the placement never.
+On level 1 all rungs are text: concept, principle with the parts, walking
+the path, the full explanation of what is wrong and why.
 
 Bad:  "Connect a wire from R1.b to AM1.positive."
 Good: "Current needs a complete path back to the source. Follow it from R1.

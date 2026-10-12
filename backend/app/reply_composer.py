@@ -4,7 +4,8 @@ Claude judges the learner and reports score changes and new topics; the composer
 changes of ±1 per reply, scores within 0-3, `explained` never down, at most one topic taught
 per reply, at most one new topic. It also adds the icon for the message's kind, for a
 `knowledge` message the taught topic's name as a title, and the spans of the learner's topics
-in the text, which the chat shows in bold.
+in the text, which the chat shows in bold. It tidies the paragraphs and passes on the formula,
+which the tutor's math check has already passed (formula.py).
 """
 
 import re
@@ -51,6 +52,12 @@ def term_spans(text: str, profile: dict) -> list[list[int]]:
             seen.add(match.lastgroup)
             spans.append([_utf16(text, match.start()), _utf16(text, match.end())])
     return spans
+
+
+def paragraphs(text: str) -> str:
+    """The text with its paragraphs separated by exactly one blank line and none at the ends."""
+    lines = [line.strip() for line in text.replace("\r\n", "\n").split("\n")]
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
 
 
 def _utf16(text: str, index: int) -> int:
@@ -109,10 +116,10 @@ def compose(message: dict, profile: dict, skill_level: int) -> tuple[dict, list[
             taught = topic
 
     chat = message["chat"]
-    kind = chat["kind"]
+    kind, text = chat["kind"], paragraphs(chat["text"])
     title = taught["name"] if kind == "knowledge" and taught else None
-    return {"kind": kind, "icon": ICONS.get(kind, "💬"), "title": title, "text": chat["text"],
-            "terms": term_spans(chat["text"], profile)}, dropped
+    return {"kind": kind, "icon": ICONS.get(kind, "💬"), "title": title, "text": text,
+            "formula": chat.get("formula") or None, "terms": term_spans(text, profile)}, dropped
 
 
 def welcome(level: dict, profile, skill_level: int) -> dict:
@@ -126,4 +133,5 @@ def welcome(level: dict, profile, skill_level: int) -> dict:
     if not text or location_talk(text):
         text = f"New task: {level.get('title', 'a new circuit')}. Let's see what you make of it!"
     kind = "knowledge" if new_topics else "feedback"
-    return {"kind": kind, "icon": ICONS[kind], "title": None, "text": text, "terms": term_spans(text, profile)}
+    return {"kind": kind, "icon": ICONS[kind], "title": None, "text": text, "formula": None,
+            "terms": term_spans(text, profile)}

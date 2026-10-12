@@ -5,6 +5,8 @@
 #   component  or a component type, the first time one is on the task's board
 # Principles use the tutor's `meta.principle` labels (docs/tutor.md §5).
 # Definitions are quoted: in a { } mapping, an unquoted comma would end the value.
+# formula (optional): the topic's law in LaTeX, single-quoted so backslashes stay as they are;
+# a knowledge message about the topic shows it (docs/design.md §4, Formulas and paragraphs).
 
 topics:
   # Level 1: closed loop
@@ -24,7 +26,8 @@ topics:
 
   # Level 2: Ohm's law
   - { id: ohms_law, name: Ohm's law, type: principle, level: 2,
-      definition: "Current equals voltage divided by resistance: I = V / R." }
+      definition: "Current equals voltage divided by resistance: I = V / R.",
+      formula: 'I = \frac{V}{R}' }
   - { id: resistance, name: Resistance, type: term, level: 2,
       definition: "How strongly a part opposes current; more resistance means less current." }
   - { id: voltage, name: Voltage, type: term, level: 2,
@@ -42,19 +45,25 @@ topics:
 
   # Level 4: series resistors
   - { id: series_voltage_division, name: Voltage division, type: principle, level: 4,
-      definition: "Series resistors share the source voltage in proportion to their resistance, and the shares add up to the source voltage." }
+      definition: "Series resistors share the source voltage in proportion to their resistance, and the shares add up to the source voltage.",
+      formula: 'V = V_{R1} + V_{R2}' }
   - { id: series, name: In series, type: term, level: 4,
-      definition: "Parts one after another on a single path, so the same current flows through each." }
+      definition: "Parts one after another on a single path, so the same current flows through each.",
+      formula: 'R_{\text{total}} = R_1 + R_2' }
   - { id: voltage_drop, name: Voltage drop, type: term, level: 4,
-      definition: "The share of the voltage used up across one part." }
+      definition: "The share of the voltage used up across one part.",
+      formula: 'V_R = I \cdot R' }
   - { id: voltage_divider, name: Voltage divider, type: term, level: 4,
-      definition: "Resistors in series splitting a voltage: each gets V × R ÷ (R1 + R2), so twice the resistance takes twice the share." }
+      definition: "Resistors in series splitting a voltage: each gets V × R ÷ (R1 + R2), so twice the resistance takes twice the share.",
+      formula: 'V_{R2} = V \cdot \frac{R_2}{R_1 + R_2}' }
 
   # Level 5: parallel resistors
   - { id: parallel_branches, name: Parallel branches, type: principle, level: 5,
-      definition: "Each parallel branch gets the full voltage, and the branch currents add up." }
+      definition: "Each parallel branch gets the full voltage, and the branch currents add up.",
+      formula: 'I = I_1 + I_2' }
   - { id: parallel, name: In parallel, type: term, level: 5,
-      definition: "Parts side by side between the same two points, each on its own branch." }
+      definition: "Parts side by side between the same two points, each on its own branch.",
+      formula: '\frac{1}{R_{\text{total}}} = \frac{1}{R_1} + \frac{1}{R_2}' }
   - { id: branch, name: Branch, type: term, level: 5,
       definition: "One of several paths current can take between two junctions." }
   - { id: junction, name: Junction, type: term, level: 5,
@@ -62,7 +71,8 @@ topics:
 
   # Level 6: series–parallel combination
   - { id: equivalent_resistance, name: Equivalent resistance, type: term, level: 6,
-      definition: "The single resistance that would draw the same current as a group of resistors." }
+      definition: "The single resistance that would draw the same current as a group of resistors.",
+      formula: 'R_{\text{eq}} = \frac{V}{I}' }
 
   # Level 7: measuring right
   - { id: meter_usage, name: Using meters, type: principle, level: 7,
@@ -76,7 +86,8 @@ topics:
   - { id: power_safety, name: Power and safety, type: principle, level: 8,
       definition: "Too little resistance lets too much current flow, and parts overheat." }
   - { id: power, name: Power, type: term, level: 8,
-      definition: "How fast a part turns electrical energy into heat; P = V × I." }
+      definition: "How fast a part turns electrical energy into heat; P = V × I.",
+      formula: 'P = V \cdot I' }
   - { id: watt, name: Watt (W), type: term, level: 8,
       definition: "The unit of power." }
 

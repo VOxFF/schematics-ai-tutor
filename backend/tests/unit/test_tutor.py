@@ -109,3 +109,63 @@ def test_location_talk_then_clean_reply(config, usage_log):
     client = FakeClaude([tutor_reply("Connect R1.b to VM1."), tutor_reply("What does a voltmeter need around it?")])
     message, _ = ask(client, config, usage_log)
     assert message["chat"]["text"] == "What does a voltmeter need around it?"
+
+
+GOOD = [r"I = \frac{12\,\mathrm{V}}{40\,\Omega} = 0.3\,\mathrm{A}"]
+WRONG = [r"I = \frac{12\,\mathrm{V}}{40\,\Omega} = 0.4\,\mathrm{A}"]
+ANSWER = [r"R_2 = \frac{40\,\Omega}{2} = 20\,\Omega"]
+
+
+def ask_math(client, config, usage_log, hint_level=0, formulas=True, text="Why?"):
+    level, spec = example_level()
+    return asyncio.run(answer(client, config, usage_log, level=level, board=level["board"],
+                              reference=spec["complete_board"], history=[], hint_level=hint_level,
+                              learner_text=None if hint_level else text, formulas=formulas))[0]
+
+
+def events(usage_log):
+    return [json.loads(line) for line in usage_log.path.read_text().splitlines()]
+
+
+def test_a_checked_formula_is_kept_and_the_request_says_formulas(config, usage_log):
+    client = FakeClaude([tutor_reply("Ohm's law:", formula=GOOD)])
+    assert ask_math(client, config, usage_log)["chat"]["formula"] == GOOD
+    assert '"formulas": true' in client.requests[0]["messages"][0]["content"]
+
+
+def test_a_wrong_formula_is_regenerated_then_dropped(config, usage_log):
+    client = FakeClaude([tutor_reply("Ohm's law:", formula=WRONG), tutor_reply("Still:", formula=WRONG)])
+    message = ask_math(client, config, usage_log)
+    assert message["chat"] == {"kind": "question", "text": "Still:", "formula": None}
+    assert "failed the math check" in client.requests[1]["messages"][0]["content"]
+    assert [e["event"] for e in events(usage_log) if e["event"].startswith("formula")] == ["formula_retry", "formula_dropped"]
+
+
+def test_a_wrong_formula_then_a_good_one(config, usage_log):
+    client = FakeClaude([tutor_reply("A:", formula=WRONG), tutor_reply("B:", formula=GOOD)])
+    assert ask_math(client, config, usage_log)["chat"]["formula"] == GOOD
+
+
+def test_no_formula_before_the_formulas_level_or_on_rung_one(config, usage_log):
+    client = FakeClaude([tutor_reply("Ohm's law:", formula=GOOD)])
+    assert ask_math(client, config, usage_log, formulas=False)["chat"]["formula"] is None
+    assert '"formulas"' not in client.requests[0]["messages"][0]["content"]
+    client = FakeClaude([tutor_reply("Think about it.", formula=GOOD)])
+    assert ask_math(client, config, usage_log, hint_level=1)["chat"]["formula"] is None
+    assert len(client.requests) == 1  # dropped without a retry
+
+
+def test_only_rung_four_gives_the_answer(config, usage_log):
+    client = FakeClaude([tutor_reply("So:", formula=ANSWER)])
+    assert ask_math(client, config, usage_log, hint_level=4)["chat"]["formula"] == ANSWER
+    client = FakeClaude([tutor_reply("So:", formula=ANSWER), tutor_reply("So:", formula=ANSWER)])
+    assert ask_math(client, config, usage_log, hint_level=3)["chat"]["formula"] is None
+
+
+def test_the_answer_in_the_text_falls_back(config, usage_log):
+    client = FakeClaude([tutor_reply("Use the 20 Ω resistor."), tutor_reply("R2 must be 20 ohms.")])
+    message = ask_math(client, config, usage_log)
+    assert "20" not in message["chat"]["text"]
+    assert "gave the answer" in client.requests[1]["messages"][0]["content"]
+    client = FakeClaude([tutor_reply("R2 must be 20 Ω.")])
+    assert ask_math(client, config, usage_log, hint_level=4)["chat"]["text"] == "R2 must be 20 Ω."

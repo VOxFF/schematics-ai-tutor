@@ -16,7 +16,7 @@ def test_catalog_topics_are_well_formed():
         assert topic["type"] in ("principle", "term") and topic["definition"]
         # Whole sentences: an unquoted comma in topics.yaml would cut a definition and add a stray key.
         assert topic["definition"].endswith(".") and set(topic) <= {"id", "name", "type", "level", "component",
-                                                                    "definition"}, topic["id"]
+                                                                    "definition", "formula"}, topic["id"]
         assert ("level" in topic) != ("component" in topic)
 
 

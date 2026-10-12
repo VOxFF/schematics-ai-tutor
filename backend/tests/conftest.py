@@ -75,12 +75,12 @@ def usage_log(tmp_path, config):
 
 
 def tutor_reply(text="Follow the path from the source. Where does it stop?", highlights=None, kind="question",
-                topic_updates=None, new_topic=None):
+                topic_updates=None, new_topic=None, formula=None):
     """A TutorMessage as Claude's structured output would produce it."""
     return text_response({
         "meta": {"principle": "closed_loop", "highlights": highlights or [], "hint_level": 2, "misconception": None,
                  "topic_updates": topic_updates or [], "new_topic": new_topic},
-        "chat": {"kind": kind, "text": text},
+        "chat": {"kind": kind, "text": text, "formula": formula},
     })
 
 

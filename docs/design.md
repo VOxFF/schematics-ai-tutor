@@ -16,7 +16,7 @@ The system separates deterministic code from Claude, with strictly divided respo
 **Why:** LLMs make calculation errors, and a tutor that is confidently wrong does more harm than no tutor. Deterministic evaluation also makes results reproducible and testable.
 
 **Rules:**
-- Claude never produces or overrides a verdict or a computed value. It receives the evaluator's output as input and reasons about the *learner*.
+- Claude never produces or overrides a verdict or a computed value. It receives the evaluator's output as input and reasons about the *learner*. When a formula in a reply computes something, the reply composer recomputes it and drops it if it is wrong (§4).
 - Claude's judgment of the learner (profile scores, new topics) is applied only through the reply composer, which clamps it (§4).
 - Everything Claude produces is untrusted input. Generated tasks pass the same validator as the learner's work, and the system falls back to curated content when they fail (curated levels are planned; today a failed generation shows an error with a retry).
 
@@ -234,9 +234,59 @@ Each new task opens with a tutor message in the chat, so the learner knows what'
 - **Composed when served.** The generate request carries the learner profile. The reply composer makes the welcome a `knowledge` message when the task brings topics new to the learner, else `feedback`, with the icon and the terms in bold. The frontend adds it to the chat when the task arrives, so a reload doesn't repeat it.
 - **Accepted limit:** the welcome is written before the previous task is finished, so it knows the learner's history but not that task's chat. The first reaction after the learner's first edit has the full profile.
 
+### Formulas and paragraphs
+
+**Problem.** From curriculum Level 2 the learner does real math: Ohm's law, voltage division, equivalent resistance. The tutor can only describe that math in words, as one block of text, so a hint like "R2 must take a third of the 12 V…" is hard to follow, and complex circuits (Level 6 and up) get feedback the learner called "not sufficient". A hint also can't go further than "one step before the answer", so a learner who is stuck stays stuck.
+
+**Decision.** Replies can carry a **formula**, shown under the text in proper math notation. A **math check** in the reply composer recomputes every step and drops a formula that is wrong or gives the answer too early. The hint ladder gets four rungs, ending in the full computation. Replies are split into **paragraphs**.
+
+**Formula.**
+- **Where it is:** an optional `chat.formula`, a list of 1 to `tutor.formula_max_lines` lines (default 8), each one line of LaTeX. It is separate from `chat.text`, so the text never has math markup in it, and the chat shows it as a block under the text.
+- **From Level 2.** On curriculum Level 1 (closed loops and shorts, no numbers to compute) the composer drops any formula; `tutor.formulas_from_level` sets the level.
+- **Symbolic or with numbers.** `V_{R2} = V \cdot \frac{R_2}{R_1 + R_2}` states the law; `4\,\mathrm{V} = 12\,\mathrm{V} \cdot \frac{R_2}{40\,\Omega + R_2}` puts the board's numbers in it. Which one a reply may use depends on the reply (below).
+- **Catalog formulas.** A topic in `topics.yaml` can have a `formula`, e.g. `I = \frac{V}{R}` for `ohms_law`. Focus topics carry it to Claude, and a `knowledge` message about the topic uses it, so a law always looks the same.
+- **LaTeX subset.** Symbols with subscripts (`R_2`, `V_{R1}`), numbers with units (`\,\Omega`, `\,\mathrm{k\Omega}`, `\,\mathrm{V}`, `\,\mathrm{mA}`, `\,\mathrm{A}`, `\,\mathrm{W}`), `+ - \cdot \times \frac{}{}`, parentheses, `=` and `\approx`. That is all the circuits here need, and the math check parses it. A line outside the subset fails the check.
+
+**Math check (`formula.py`).** Claude writes the formula; plain code decides whether it is shown, the same split as for readings (§1). The tutor service runs it with the location-talk backstop, before the reply composer, so a failure can still be regenerated.
+
+1. **Parse** each line; a line that doesn't parse fails.
+2. **Numbers come from the board.** Every number is a part value (placed or in the inventory), a meter reading or a target on the current board, or the result of an earlier line of the same formula. Units count: `4 V` is not `4 Ω`. Whole numbers up to 10 without a unit are algebra (`1/R`, `2 R_2`) and always allowed.
+3. **Arithmetic holds.** Wherever both sides of an `=` are numbers only, they agree within 1% (`\approx`: within 5%, for rounded values).
+4. **No answer too early.** The answer is the value of a part the task removed (from the reference board) that the learner hasn't placed with that value yet. Only rung 4 of the hint ladder may show it, in `chat.formula` or in `chat.text`; anywhere else, a number with that value and unit fails the check.
+5. **On failure:** the call is regenerated once with the problem named, as for location talk ([tutor.md](tutor.md#6-guardrails-physics-not-placement)). If it fails again, the formula is dropped (and, for an answer in the text, the safe generic message is sent). Dropped formulas go to the run log as `formula_dropped`.
+
+**Which reply may use which formula:**
+
+| Reply | Formula |
+|---|---|
+| Reaction, free chat | Optional. Symbolic, or with the board's numbers when it helps; no answer |
+| `knowledge` | The topic's catalog formula, symbolic |
+| Hint rung 1, text | None |
+| Hint rung 2, formula | Symbolic only: no numbers from the board |
+| Hint rung 3, partial numbers | The known values put in; the unknown stays a symbol; no answer |
+| Hint rung 4, full computation | Rearrange, substitute, compute, up to 8 lines; the answer is allowed |
+
+**Hint ladder: four rungs.** Text, formula, partial numbers, full computation ([tutor.md](tutor.md#3-hint-ladder)). The old "orient" and "focus" levels merge into the text rung. Rung 4 gives the value, but the learner still picks the part and places it, so the learner keeps the agency (§2). On curriculum Level 1 all four rungs are text: concept and where to look, the principle with the parts involved, walking the path, and the full explanation of what is wrong and why. `hints_used` in the task history becomes 0–4, so task generation sees who needed the full computation.
+
+**Paragraphs.** Claude separates ideas with a blank line (`\n\n`). Hints, chat answers and `knowledge` messages over 2 sentences get paragraphs; reactions stay one paragraph. The composer collapses three or more line breaks into two and trims them at the ends. The chat shows each paragraph as a block with half a line between them; the bold terms' offsets still index the whole text.
+
+**Rendering.** The chat draws `chat.formula` with KaTeX, a line per row, centered under the text; a line too wide for the chat scrolls sideways on its own. If KaTeX can't render a line, the line shows as plain monospace text.
+
+```mermaid
+flowchart LR
+    C[(Claude)] -- "text, formula" --> B["Validate + backstop"]
+    B --> MC{"Math check:<br/>parse, numbers,<br/>arithmetic, answer"}
+    MC -- "pass" --> RC["Reply composer:<br/>paragraphs, icon, terms"]
+    MC -- "fail" --> R["Regenerate once<br/>with the problem named"]
+    R --> MC2{"Math check"}
+    MC2 -- "pass" --> RC
+    MC2 -- "fail: drop formula" --> RC
+    RC --> FE["Chat bubble:<br/>paragraphs + KaTeX"]
+```
+
 ### Status
 
-- **Build status.** Built: the catalog, the profile (`learner_profile.py`), the reply composer (`reply_composer.py`), the prompt rules, the welcome message and the chat bubbles. Interfaces are in [contract.md](contract.md), the prompt rules in [tutor.md](tutor.md#teaching-from-the-learner-profile).
+- **Build status.** Built: the catalog, the profile (`learner_profile.py`), the reply composer (`reply_composer.py`), the prompt rules, the welcome message and the chat bubbles. Built too: formulas (`formula.py`), the four-rung hint ladder and paragraphs ([Formulas and paragraphs](#formulas-and-paragraphs)). Interfaces are in [contract.md](contract.md), the prompt rules in [tutor.md](tutor.md#teaching-from-the-learner-profile).
 - **Later uses.** The profile is ready to feed task generation (target weak topics) and the Learning Path screen ([gui.md](gui.md#9-learning-path-screen-bonus)). Neither is built yet.
 
 ## 5. Learner experience research
@@ -481,6 +531,8 @@ tutor:
   history_turns: 6
   offer_hint_after_reactions: 3
   react_after_unchanged: 4      # pauses with an unchanged circuit before Claude is called anyway
+  formulas_from_level: 2       # curriculum level from which replies may carry a formula
+  formula_max_lines: 8         # a formula's lines at most (rung 4 of the hint ladder needs the most)
 
 task_generation:
   recent_tasks: 10
@@ -516,6 +568,7 @@ The values above are the defaults, as described in [contract.md](contract.md). T
 | Frontend | JavaScript + React, built with Vite | Decided |
 | Frontend ↔ backend transport | REST + WebSocket | Decided |
 | Workspace rendering | three.js | Decided |
+| Formulas in the chat | KaTeX | Decided |
 | Hosting | Fly.io: one Docker image, one always-on machine ([deployment.md](deployment.md)) | Decided |
 
 **Why three.js:** every component and wire is its own scene node, so the learner can select, move and edit any of them individually.
@@ -579,12 +632,13 @@ schematics-ai-tutor/
 │   │   ├── task_cache.py      pre-generated tasks cached by progress; the first-task pool
 │   │   ├── tutor.py           tutor call: context, TutorMessage schema, backstop
 │   │   ├── learner_profile.py learner profile: topic catalog, sanitizing, topics joining per task, focus topics
-│   │   ├── reply_composer.py  bounds Claude's profile changes; icon and title per message kind
+│   │   ├── reply_composer.py  bounds Claude's profile changes; icon and title per message kind; paragraphs
+│   │   ├── formula.py         math check for formulas in replies: LaTeX subset, board numbers, arithmetic, answer
 │   │   ├── session.py         WebSocket learning session
 │   │   └── jsonfmt.py         readable JSON formatting
 │   ├── data/
 │   │   ├── curriculum.yaml    curriculum levels: tasks per level, rules for generation
-│   │   ├── topics.yaml        topic catalog: principles and terms per curriculum level and component type
+│   │   ├── topics.yaml        topic catalog: principles and terms per curriculum level and component type; formulas
 │   │   └── examples/          example TaskSpecs for the generation prompt
 │   ├── tests/
 │   │   ├── conftest.py        examples and a fake Claude client
