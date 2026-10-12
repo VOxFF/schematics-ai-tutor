@@ -141,9 +141,9 @@ Formulas and paragraphs ([design.md](design.md#formulas-and-paragraphs)):
 Fallback when Claude is unavailable ([design.md](design.md#fallback-when-claude-is-unavailable)):
 
 - [x] Design: the fallback pack, when it is served, Claude down, picking, the tutor without Claude
-- [ ] `scripts/generate_fallback.py`: 3 validated specs per skill level into `backend/data/fallback/`
-- [ ] Generate the pack (75 tasks) and commit it
-- [ ] `./check.sh`: every spec in the pack validates; 3 per skill level
+- [ ] `scripts/generate_fallback.py`: `task_generation.fallback_variants` validated specs per skill level, sizes from `curriculum.yaml`, into `backend/data/fallback/`
+- [ ] Generate the pack (75 tasks with today's curriculum) and commit it
+- [ ] `./check.sh`: every spec in the pack validates; every skill level of the curriculum has its entries, no leftovers
 - [ ] `/api/tasks/generate`: cache first, then the pack when Claude is down, refused or fails; `source`; `generation_fallback` log
 - [ ] Claude down for `claude.down_s` after connection errors, timeouts, 429, 529 or an exhausted balance; pre-generation pauses
 - [ ] Tutor without Claude: plain message with a resting note; reactions and the 🔔 prompt skipped

@@ -63,6 +63,7 @@ tutor:
 
 task_generation:
   recent_tasks: 10
+  fallback_variants: 3          # tasks per skill level in the fallback pack (backend/data/fallback/)
 
 pregeneration:                 # tasks generated ahead of time and cached (docs/design.md §3)
   enabled: true

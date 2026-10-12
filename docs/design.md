@@ -477,11 +477,11 @@ grid:                          # learner boards and generated tasks; also bounds
 **Decision.** A **fallback pack** of tasks, generated ahead of time for the whole learning path and committed with the code, is served whenever a generated task isn't available. The tutor falls back to plain messages per status. The learner keeps learning, with a quieter tutor.
 
 **The pack.**
-- **What:** 3 validated `TaskSpec`s for each skill level of the learning path: 25 skill levels (the curriculum's 8 levels: 2+2+3+3+3+4+4+4 tasks), 75 tasks. Past the last skill level, tasks stay at the last curriculum level, so they come from the last skill level's entries. Each spec carries its welcome message and its complete board, the tutor's reference.
+- **What:** `task_generation.fallback_variants` (default 3) validated `TaskSpec`s for each skill level of the learning path, that is, for each task of each curriculum level, with that task's own rules. The sizes come from `curriculum.yaml`, never from code: a level with 4 tasks has 4 skill levels in the pack. Today that's 25 skill levels (2+2+3+3+3+4+4+4 tasks) and 75 tasks. Past the last skill level, tasks stay at the last curriculum level, so they come from the last skill level's entries. Each spec carries its welcome message and its complete board, the tutor's reference.
 - **Where:** `backend/data/fallback/skill-<n>.json`, one file per skill level, a list of specs in readable JSON. It is in git and in the Docker image, so it needs no volume and no network.
-- **Why three per skill level:** a learner who meets the fallback several times, or restarts learning, gets a different board. Stored specs, not built levels: the level is built from the spec when it's served, the same way as a generated one, so a change in the level format reaches the pack without regenerating it.
-- **Made by a script, not at runtime:** `scripts/generate_fallback.py` runs the real generator for each skill level with a plausible history (the earlier skill levels' concepts, no hints, no misconceptions) and writes the files. It is re-run by hand when the curriculum or the `TaskSpec` format changes. One run is about 75 generation calls; `--skill N` regenerates one file.
-- **Checked like code:** `./check.sh` validates every spec in the pack against the current validator, the curriculum level's rules and the grid limits, and checks that every skill level has its 3 entries. A format change that breaks the pack fails the check instead of failing a learner.
+- **Why several per skill level:** a learner who meets the fallback several times, or restarts learning, gets a different board. Stored specs, not built levels: the level is built from the spec when it's served, the same way as a generated one, so a change in the level format reaches the pack without regenerating it.
+- **Made by a script, not at runtime:** `scripts/generate_fallback.py` runs the real generator for each skill level with a plausible history (the earlier skill levels' concepts, no hints, no misconceptions) and writes the files. It is re-run by hand when the curriculum or the `TaskSpec` format changes. One run is a generation call per entry (75 today); `--skill N` regenerates one file.
+- **Checked like code:** `./check.sh` validates every spec in the pack against the current validator, the curriculum level's rules and the grid limits, and checks that every skill level of the curriculum has its `fallback_variants` entries and that no file is left over from an older curriculum. A format change that breaks the pack fails the check instead of failing a learner.
 
 **When the pack is served.** In this order, `POST /api/tasks/generate`:
 
@@ -515,7 +515,7 @@ flowchart TD
 
 **Accepted limits.**
 - Fallback tasks are not tailored to the learner's history and misconceptions; they follow the curriculum, which is what a beginner needs most.
-- 3 tasks per skill level can repeat for a learner who spends a long outage on one skill level. The check prefers the least recently seen.
+- A few tasks per skill level can repeat for a learner who spends a long outage on one skill level. The check prefers the least recently seen.
 - The welcome message was written for a generic history, so it may not link to what the learner just did.
 
 ### Operations
@@ -586,6 +586,7 @@ tutor:
 
 task_generation:
   recent_tasks: 10
+  fallback_variants: 3          # tasks per skill level in the fallback pack (backend/data/fallback/)
 
 pregeneration:                 # tasks generated ahead of time and cached (§3)
   enabled: true
