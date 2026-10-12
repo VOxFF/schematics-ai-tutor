@@ -1,0 +1,224 @@
+[
+  {
+    "concept": "measuring right",
+    "title": "Meters in their places",
+    "intro": "This circuit works, but its meters are missing. Put the ammeter where the current flows through it, and put the voltmeter across R1 so it measures the voltage over that resistor.",
+    "welcome": "You've worked out how current and voltage share across resistor combinations. Now you get to place the meters yourself and find out how each one has to be connected.",
+    "complete_board": {
+      "grid": {"columns": 10, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 9,
+          "fixed": true,
+          "orientation": "E",
+          "pins": {"negative": [4, 7], "positive": [6, 7]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 30,
+          "fixed": true,
+          "orientation": "W",
+          "pins": {"a": [4, 3], "b": [6, 3]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 15,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"a": [2, 4], "b": [2, 6]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": false,
+          "orientation": "S",
+          "pins": {"negative": [9, 4], "positive": [9, 6]}
+        },
+        {
+          "id": "VM1",
+          "type": "voltmeter",
+          "fixed": false,
+          "orientation": "E",
+          "pins": {"negative": [4, 1], "positive": [6, 1]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[6, 7], [7, 7]]]},
+        {"id": "W2", "segments": [[[7, 7], [8, 7]]]},
+        {"id": "W3", "segments": [[[8, 7], [9, 7]]]},
+        {"id": "W4", "segments": [[[9, 7], [9, 6]]]},
+        {"id": "W5", "segments": [[[9, 4], [9, 3]]]},
+        {"id": "W6", "segments": [[[9, 3], [8, 3]]]},
+        {"id": "W7", "segments": [[[8, 3], [7, 3]]]},
+        {"id": "W8", "segments": [[[7, 3], [6, 3]]]},
+        {"id": "W9", "segments": [[[4, 3], [3, 3]]]},
+        {"id": "W10", "segments": [[[3, 3], [2, 3]]]},
+        {"id": "W11", "segments": [[[2, 3], [2, 4]]]},
+        {"id": "W12", "segments": [[[2, 6], [2, 7]]]},
+        {"id": "W13", "segments": [[[2, 7], [3, 7]]]},
+        {"id": "W14", "segments": [[[3, 7], [4, 7]]]},
+        {"id": "W15", "segments": [[[6, 1], [6, 2]]]},
+        {"id": "W16", "segments": [[[6, 2], [6, 3]]]},
+        {"id": "W17", "segments": [[[4, 1], [4, 2]]]},
+        {"id": "W18", "segments": [[[4, 2], [4, 3]]]}
+      ]
+    },
+    "removed_ids": ["AM1", "VM1", "W16", "W18"],
+    "decoys": [],
+    "target_meter_ids": ["AM1", "VM1"],
+    "difficulty": 3,
+    "rationale": "The learner solved series and parallel circuits with no hints, so the next step is placing the meters themselves: the ammeter goes in the loop and the voltmeter goes across a part."
+  },
+  {
+    "concept": "measuring right",
+    "title": "Meters in the right place",
+    "intro": "This circuit works, but its meters are missing. Put the ammeter where it can measure the current flowing around the loop, and the voltmeter where it can measure the voltage across R2. Add any wires you need to connect them.",
+    "welcome": "You've worked out currents and voltage shares in all kinds of circuits. Now you get to place the meters yourself: one goes across a part, the other goes in the loop.",
+    "complete_board": {
+      "grid": {"columns": 10, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 12,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [2, 6], "positive": [2, 4]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 400,
+          "fixed": true,
+          "orientation": "W",
+          "pins": {"a": [4, 2], "b": [6, 2]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 800,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"a": [7, 4], "b": [7, 6]}
+        },
+        {
+          "id": "VM1",
+          "type": "voltmeter",
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"negative": [9, 6], "positive": [9, 4]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": false,
+          "orientation": "E",
+          "pins": {"negative": [4, 7], "positive": [6, 7]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[2, 4], [2, 3]]]},
+        {"id": "W2", "segments": [[[2, 3], [2, 2]]]},
+        {"id": "W3", "segments": [[[2, 2], [3, 2]]]},
+        {"id": "W4", "segments": [[[3, 2], [4, 2]]]},
+        {"id": "W5", "segments": [[[6, 2], [7, 2]]]},
+        {"id": "W6", "segments": [[[7, 2], [7, 3]]]},
+        {"id": "W7", "segments": [[[7, 3], [7, 4]]]},
+        {"id": "W8", "segments": [[[7, 4], [8, 4]]]},
+        {"id": "W9", "segments": [[[8, 4], [9, 4]]]},
+        {"id": "W10", "segments": [[[7, 6], [8, 6]]]},
+        {"id": "W11", "segments": [[[8, 6], [9, 6]]]},
+        {"id": "W12", "segments": [[[7, 6], [7, 7]]]},
+        {"id": "W13", "segments": [[[7, 7], [6, 7]]]},
+        {"id": "W14", "segments": [[[4, 7], [3, 7]]]},
+        {"id": "W15", "segments": [[[3, 7], [2, 7]]]},
+        {"id": "W16", "segments": [[[2, 7], [2, 6]]]}
+      ]
+    },
+    "removed_ids": ["VM1", "AM1", "W9", "W11"],
+    "decoys": [],
+    "target_meter_ids": ["AM1", "VM1"],
+    "difficulty": 3,
+    "rationale": "The learner has solved series, parallel and combined circuits without hints, so now they can place the meters themselves and learn the difference between measuring in series and measuring in parallel."
+  },
+  {
+    "concept": "measuring right",
+    "title": "Meters in the right place",
+    "intro": "This circuit works, but its meters are missing. Place the voltmeter so it measures the voltage across R1, and the ammeter so the loop's current flows through it. Then close the gaps.",
+    "welcome": "You've worked out how series and parallel resistors share voltage and current. Now you get to measure them yourself: a voltmeter and an ammeter each need their own kind of spot.",
+    "complete_board": {
+      "grid": {"columns": 11, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 6,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [2, 6], "positive": [2, 4]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 1000,
+          "fixed": true,
+          "orientation": "W",
+          "pins": {"a": [5, 3], "b": [7, 3]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 500,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"a": [10, 4], "b": [10, 6]}
+        },
+        {
+          "id": "VM1",
+          "type": "voltmeter",
+          "fixed": false,
+          "orientation": "W",
+          "pins": {"negative": [7, 1], "positive": [5, 1]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": false,
+          "orientation": "E",
+          "pins": {"negative": [5, 7], "positive": [7, 7]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[2, 4], [2, 3]]]},
+        {"id": "W2", "segments": [[[2, 3], [3, 3]]]},
+        {"id": "W3", "segments": [[[3, 3], [4, 3]]]},
+        {"id": "W4", "segments": [[[4, 3], [5, 3]]]},
+        {"id": "W5", "segments": [[[7, 3], [8, 3]]]},
+        {"id": "W6", "segments": [[[8, 3], [9, 3]]]},
+        {"id": "W7", "segments": [[[9, 3], [10, 3]]]},
+        {"id": "W8", "segments": [[[10, 3], [10, 4]]]},
+        {"id": "W9", "segments": [[[10, 6], [10, 7]]]},
+        {"id": "W10", "segments": [[[10, 7], [9, 7]]]},
+        {"id": "W11", "segments": [[[9, 7], [8, 7]]]},
+        {"id": "W12", "segments": [[[8, 7], [7, 7]]]},
+        {"id": "W13", "segments": [[[5, 7], [4, 7]]]},
+        {"id": "W14", "segments": [[[4, 7], [3, 7]]]},
+        {"id": "W15", "segments": [[[3, 7], [2, 7]]]},
+        {"id": "W16", "segments": [[[2, 7], [2, 6]]]},
+        {"id": "W17", "segments": [[[5, 1], [5, 2]]]},
+        {"id": "W18", "segments": [[[5, 2], [5, 3]]]},
+        {"id": "W19", "segments": [[[7, 1], [7, 2]]]},
+        {"id": "W20", "segments": [[[7, 2], [7, 3]]]}
+      ]
+    },
+    "removed_ids": ["VM1", "AM1", "W18", "W20"],
+    "decoys": [],
+    "target_meter_ids": ["VM1", "AM1"],
+    "difficulty": 3,
+    "rationale": "The learner has solved series and parallel tasks without hints, so now they learn where each meter goes when measuring a real circuit."
+  }
+]

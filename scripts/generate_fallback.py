@@ -53,8 +53,12 @@ async def generate_skill(claude, config: dict, usage_log: UsageLog, skill: int, 
                 break
             # The repeat check gives each variant its own circuit; the learner's history doesn't
             # include them: a learner meets one of them, not all.
-            result = await generate_task(claude, config, usage_log, skill_level=skill, history=past,
-                                         avoid_signatures=tuple(signature(s) for s in specs))
+            try:
+                result = await generate_task(claude, config, usage_log, skill_level=skill, history=past,
+                                             avoid_signatures=tuple(signature(s) for s in specs))
+            except Exception as e:  # one bad generation doesn't stop the other skill levels
+                print(f"skill {skill}: a generation crashed ({e.__class__.__name__}: {e})", flush=True)
+                continue
             if result.spec is None:
                 print(f"skill {skill}: a generation failed ({'; '.join(result.errors[:2])})", flush=True)
                 continue

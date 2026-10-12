@@ -142,7 +142,7 @@ Fallback when Claude is unavailable ([design.md](design.md#fallback-when-claude-
 
 - [x] Design: the fallback pack, when it is served, Claude down, picking, the tutor without Claude
 - [x] `scripts/generate_fallback.py`: `task_generation.fallback_variants` validated specs per skill level, sizes from `curriculum.yaml`, into `backend/data/fallback/`
-- [ ] Generate the pack (75 tasks with today's curriculum) and commit it
+- [x] Generate the pack (75 tasks with today's curriculum) and commit it
 - [x] `./check.sh`: every spec in the pack validates; every skill level of the curriculum has its entries, no leftovers
 - [x] `/api/tasks/generate`: cache first, then the pack when Claude is down, refused or fails; `source`; `generation_fallback` log
 - [x] Claude down for `claude.down_s` after connection errors, timeouts, 429, 529 or an exhausted balance; pre-generation pauses

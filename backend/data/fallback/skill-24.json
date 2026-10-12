@@ -1,0 +1,181 @@
+[
+  {
+    "concept": "power and safety",
+    "title": "Keep it cool",
+    "intro": "Close the circuit and choose a resistor for the top gap so the ammeter shows the target current. Careful: some of the resistors would let so much current through that they overheat.",
+    "welcome": "You've learned to measure without getting it wrong. Now let's make sure no part overheats: too little resistance can be dangerous.",
+    "complete_board": {
+      "grid": {"columns": 12, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 12,
+          "fixed": true,
+          "orientation": "E",
+          "pins": {"negative": [5, 7], "positive": [7, 7]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 1200,
+          "fixed": false,
+          "orientation": "W",
+          "pins": {"a": [5, 2], "b": [7, 2]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": true,
+          "orientation": "S",
+          "pins": {"negative": [9, 4], "positive": [9, 6]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[7, 7], [8, 7]]]},
+        {"id": "W2", "segments": [[[8, 7], [9, 7]]]},
+        {"id": "W3", "segments": [[[9, 7], [9, 6]]]},
+        {"id": "W4", "segments": [[[9, 4], [9, 3]]]},
+        {"id": "W5", "segments": [[[9, 3], [9, 2]]]},
+        {"id": "W6", "segments": [[[9, 2], [8, 2]]]},
+        {"id": "W7", "segments": [[[8, 2], [7, 2]]]},
+        {"id": "W8", "segments": [[[5, 2], [4, 2]]]},
+        {"id": "W9", "segments": [[[4, 2], [3, 2]]]},
+        {"id": "W10", "segments": [[[3, 2], [3, 3]]]},
+        {"id": "W11", "segments": [[[3, 3], [3, 4]]]},
+        {"id": "W12", "segments": [[[3, 4], [3, 5]]]},
+        {"id": "W13", "segments": [[[3, 5], [3, 6]]]},
+        {"id": "W14", "segments": [[[3, 6], [3, 7]]]},
+        {"id": "W15", "segments": [[[3, 7], [4, 7]]]},
+        {"id": "W16", "segments": [[[4, 7], [5, 7]]]}
+      ]
+    },
+    "removed_ids": ["R1", "W11", "W12", "W4"],
+    "decoys": [
+      {"id": "R2", "type": "resistor", "value": 12},
+      {"id": "R3", "type": "resistor", "value": 24},
+      {"id": "R4", "type": "resistor", "value": 2400}
+    ],
+    "target_meter_ids": ["AM1"],
+    "difficulty": 4,
+    "rationale": "The learner measures confidently; now they must reject low resistors that would overheat and choose the one that gives a safe current."
+  },
+  {
+    "concept": "power and safety",
+    "title": "Keep it cool",
+    "intro": "Close the circuit so the ammeter shows its target current. Some resistors in the box would let so much current through that they overheat, so pick one that stays safe.",
+    "welcome": "Nice work on the last two power tasks! This time you choose the resistor yourself, so watch how much heat it would have to handle.",
+    "complete_board": {
+      "grid": {"columns": 10, "rows": 7},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 12,
+          "fixed": true,
+          "orientation": "E",
+          "pins": {"negative": [4, 6], "positive": [6, 6]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 120,
+          "fixed": false,
+          "orientation": "W",
+          "pins": {"a": [4, 2], "b": [6, 2]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": true,
+          "orientation": "S",
+          "pins": {"negative": [8, 3], "positive": [8, 5]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[6, 6], [7, 6]]]},
+        {"id": "W2", "segments": [[[7, 6], [8, 6]]]},
+        {"id": "W3", "segments": [[[8, 6], [8, 5]]]},
+        {"id": "W4", "segments": [[[8, 3], [8, 2]]]},
+        {"id": "W5", "segments": [[[8, 2], [7, 2]]]},
+        {"id": "W6", "segments": [[[7, 2], [6, 2]]]},
+        {"id": "W7", "segments": [[[4, 2], [3, 2]]]},
+        {"id": "W8", "segments": [[[3, 2], [2, 2]]]},
+        {"id": "W9", "segments": [[[2, 2], [2, 3]]]},
+        {"id": "W10", "segments": [[[2, 3], [2, 4]]]},
+        {"id": "W11", "segments": [[[2, 4], [2, 5]]]},
+        {"id": "W12", "segments": [[[2, 5], [2, 6]]]},
+        {"id": "W13", "segments": [[[2, 6], [3, 6]]]},
+        {"id": "W14", "segments": [[[3, 6], [4, 6]]]}
+      ]
+    },
+    "removed_ids": ["R1", "W5", "W10", "W11"],
+    "decoys": [
+      {"id": "R2", "type": "resistor", "value": 10},
+      {"id": "R3", "type": "resistor", "value": 22},
+      {"id": "R4", "type": "resistor", "value": 60}
+    ],
+    "target_meter_ids": ["AM1"],
+    "difficulty": 4,
+    "rationale": "The learner has done the first two power tasks without any hints, so now they pick the resistor themselves from a set where the low values would overheat, linking too little resistance to too much current and heat."
+  },
+  {
+    "concept": "power and safety",
+    "title": "Cool and steady",
+    "intro": "Rebuild the loop and pick the resistor that makes the ammeter show its target current. Careful: some resistors in the box let so much current through that they would overheat.",
+    "welcome": "You've already seen that power means heat. This time you'll choose a resistor that gives the right current and stays cool at the same time.",
+    "complete_board": {
+      "grid": {"columns": 10, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 9,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [3, 6], "positive": [3, 4]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": true,
+          "orientation": "W",
+          "pins": {"negative": [6, 2], "positive": [4, 2]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 300,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"a": [7, 4], "b": [7, 6]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[3, 4], [3, 3]]]},
+        {"id": "W2", "segments": [[[3, 3], [3, 2]]]},
+        {"id": "W3", "segments": [[[3, 2], [4, 2]]]},
+        {"id": "W4", "segments": [[[6, 2], [7, 2]]]},
+        {"id": "W5", "segments": [[[7, 2], [7, 3]]]},
+        {"id": "W6", "segments": [[[7, 3], [7, 4]]]},
+        {"id": "W7", "segments": [[[7, 6], [7, 7]]]},
+        {"id": "W8", "segments": [[[7, 7], [7, 8]]]},
+        {"id": "W9", "segments": [[[7, 8], [6, 8]]]},
+        {"id": "W10", "segments": [[[6, 8], [5, 8]]]},
+        {"id": "W11", "segments": [[[5, 8], [4, 8]]]},
+        {"id": "W12", "segments": [[[4, 8], [3, 8]]]},
+        {"id": "W13", "segments": [[[3, 8], [3, 7]]]},
+        {"id": "W14", "segments": [[[3, 7], [3, 6]]]}
+      ]
+    },
+    "removed_ids": ["R1", "W6", "W9", "W10", "W13"],
+    "decoys": [
+      {"id": "R2", "type": "resistor", "value": 10},
+      {"id": "R3", "type": "resistor", "value": 15},
+      {"id": "R4", "type": "resistor", "value": 900}
+    ],
+    "target_meter_ids": ["AM1"],
+    "difficulty": 4,
+    "rationale": "The learner has handled measuring and the first power tasks without hints, so now they use Ohm's law together with a heat check, and also work out which gaps need wires and which one needs a resistor."
+  }
+]

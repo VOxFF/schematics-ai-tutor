@@ -172,7 +172,14 @@ def learner_context(skill_level: int, history: list[dict], grid: dict, recent: i
 
 
 def tool_result(draft: dict, grid_limits: dict, settings: dict, recent_signatures=(), level=None) -> str:
-    result = validate(normalize(draft), grid_limits, settings, recent_signatures, level)
+    try:
+        result = validate(normalize(draft), grid_limits, settings, recent_signatures, level)
+    except (ValueError, TypeError, AttributeError, KeyError) as e:
+        # A draft too malformed to validate (e.g. complete_board not an object): an error for Claude
+        # to fix, not a crash of the generation.
+        return json.dumps({"ok": False, "errors": [f"The draft is not a valid TaskSpec ({e.__class__.__name__}): "
+                                                   "complete_board must be an object with grid, components and wires."],
+                           "readings": {}})
     return json.dumps({"ok": not result["errors"], "errors": result["errors"], "readings": result["readings"]})
 
 

@@ -1,0 +1,300 @@
+[
+  {
+    "concept": "series–parallel combination",
+    "title": "Power up the combination",
+    "intro": "The battery and one resistor of the parallel pair are missing, and a few wires too. Put them back so the voltmeter and the ammeter show their target readings. Watch which way round the battery goes.",
+    "welcome": "You've already combined series and parallel rules three times. This time you place the battery yourself too, so plus and minus have to be the right way round.",
+    "complete_board": {
+      "grid": {"columns": 12, "rows": 9},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 6,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"negative": [2, 6], "positive": [2, 4]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 100,
+          "fixed": true,
+          "orientation": "W",
+          "pins": {"a": [4, 2], "b": [6, 2]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 200,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"a": [7, 4], "b": [7, 6]}
+        },
+        {
+          "id": "R3",
+          "type": "resistor",
+          "value": 200,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"a": [9, 4], "b": [9, 6]}
+        },
+        {
+          "id": "VM1",
+          "type": "voltmeter",
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [11, 6], "positive": [11, 4]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": true,
+          "orientation": "E",
+          "pins": {"negative": [4, 8], "positive": [6, 8]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[2, 4], [2, 3]]]},
+        {"id": "W2", "segments": [[[2, 3], [2, 2]]]},
+        {"id": "W3", "segments": [[[2, 2], [3, 2]]]},
+        {"id": "W4", "segments": [[[3, 2], [4, 2]]]},
+        {"id": "W5", "segments": [[[6, 2], [7, 2]]]},
+        {"id": "W6", "segments": [[[7, 2], [8, 2]]]},
+        {"id": "W7", "segments": [[[8, 2], [9, 2]]]},
+        {"id": "W8", "segments": [[[9, 2], [10, 2]]]},
+        {"id": "W9", "segments": [[[10, 2], [11, 2]]]},
+        {"id": "W10", "segments": [[[7, 2], [7, 3]]]},
+        {"id": "W11", "segments": [[[7, 3], [7, 4]]]},
+        {"id": "W12", "segments": [[[9, 2], [9, 3]]]},
+        {"id": "W13", "segments": [[[9, 3], [9, 4]]]},
+        {"id": "W14", "segments": [[[11, 2], [11, 3]]]},
+        {"id": "W15", "segments": [[[11, 3], [11, 4]]]},
+        {"id": "W16", "segments": [[[7, 6], [7, 7]]]},
+        {"id": "W17", "segments": [[[7, 7], [7, 8]]]},
+        {"id": "W18", "segments": [[[9, 6], [9, 7]]]},
+        {"id": "W19", "segments": [[[9, 7], [9, 8]]]},
+        {"id": "W20", "segments": [[[11, 6], [11, 7]]]},
+        {"id": "W21", "segments": [[[11, 7], [11, 8]]]},
+        {"id": "W22", "segments": [[[11, 8], [10, 8]]]},
+        {"id": "W23", "segments": [[[10, 8], [9, 8]]]},
+        {"id": "W24", "segments": [[[9, 8], [8, 8]]]},
+        {"id": "W25", "segments": [[[8, 8], [7, 8]]]},
+        {"id": "W26", "segments": [[[7, 8], [6, 8]]]},
+        {"id": "W27", "segments": [[[4, 8], [3, 8]]]},
+        {"id": "W28", "segments": [[[3, 8], [2, 8]]]},
+        {"id": "W29", "segments": [[[2, 8], [2, 7]]]},
+        {"id": "W30", "segments": [[[2, 7], [2, 6]]]}
+      ]
+    },
+    "removed_ids": [
+      "V1", "R3", "W1", "W3", "W4", "W13",
+      "W24"
+    ],
+    "decoys": [
+      {"id": "R4", "type": "resistor", "value": 100},
+      {"id": "R5", "type": "resistor", "value": 47},
+      {"id": "V2", "type": "voltage_source", "value": 12}
+    ],
+    "target_meter_ids": ["VM1", "AM1"],
+    "difficulty": 4,
+    "rationale": "The learner solved the earlier series–parallel tasks without hints, so this last one adds placing the battery and a gap that might need a wire or a resistor."
+  },
+  {
+    "concept": "series–parallel combination",
+    "title": "Rebuild the tall ladder",
+    "intro": "This tall circuit has lost its battery, one of its two side-by-side resistors and some wire pieces. Put the battery back the right way round, choose the right resistor, and close every gap so the voltmeter and the ammeter show their target values. Look carefully: is a longer gap a wire or a part?",
+    "welcome": "You've already mixed series and parallel rules three times. In this last one you also place the battery yourself, so watch which way round it goes!",
+    "complete_board": {
+      "grid": {"columns": 12, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 12,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"negative": [3, 4], "positive": [3, 2]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": true,
+          "orientation": "S",
+          "pins": {"negative": [3, 5], "positive": [3, 7]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 20,
+          "fixed": true,
+          "orientation": "W",
+          "pins": {"a": [5, 1], "b": [7, 1]}
+        },
+        {
+          "id": "R3",
+          "type": "resistor",
+          "value": 40,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"a": [7, 5], "b": [7, 7]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 40,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"a": [9, 5], "b": [9, 7]}
+        },
+        {
+          "id": "VM1",
+          "type": "voltmeter",
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [5, 7], "positive": [5, 5]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[3, 2], [3, 1]]]},
+        {"id": "W2", "segments": [[[3, 1], [4, 1]]]},
+        {"id": "W3", "segments": [[[4, 1], [5, 1]]]},
+        {"id": "W4", "segments": [[[7, 1], [8, 1]]]},
+        {"id": "W5", "segments": [[[8, 1], [9, 1]]]},
+        {"id": "W6", "segments": [[[9, 1], [9, 2]]]},
+        {"id": "W7", "segments": [[[9, 2], [9, 3]]]},
+        {"id": "W8", "segments": [[[9, 3], [8, 3]]]},
+        {"id": "W9", "segments": [[[8, 3], [7, 3]]]},
+        {"id": "W10", "segments": [[[7, 3], [6, 3]]]},
+        {"id": "W11", "segments": [[[6, 3], [5, 3]]]},
+        {"id": "W12", "segments": [[[9, 3], [9, 4]]]},
+        {"id": "W13", "segments": [[[9, 4], [9, 5]]]},
+        {"id": "W14", "segments": [[[7, 3], [7, 4]]]},
+        {"id": "W15", "segments": [[[7, 4], [7, 5]]]},
+        {"id": "W16", "segments": [[[5, 3], [5, 4]]]},
+        {"id": "W17", "segments": [[[5, 4], [5, 5]]]},
+        {"id": "W18", "segments": [[[9, 7], [9, 8]]]},
+        {"id": "W19", "segments": [[[7, 7], [7, 8]]]},
+        {"id": "W20", "segments": [[[5, 7], [5, 8]]]},
+        {"id": "W21", "segments": [[[9, 8], [8, 8]]]},
+        {"id": "W22", "segments": [[[8, 8], [7, 8]]]},
+        {"id": "W23", "segments": [[[7, 8], [6, 8]]]},
+        {"id": "W24", "segments": [[[6, 8], [5, 8]]]},
+        {"id": "W25", "segments": [[[5, 8], [4, 8]]]},
+        {"id": "W26", "segments": [[[4, 8], [3, 8]]]},
+        {"id": "W27", "segments": [[[3, 8], [3, 7]]]},
+        {"id": "W28", "segments": [[[3, 5], [3, 4]]]}
+      ]
+    },
+    "removed_ids": [
+      "V1", "R2", "W2", "W4", "W5", "W9",
+      "W23", "W26"
+    ],
+    "decoys": [{"id": "R4", "type": "resistor", "value": 20}, {"id": "R5", "type": "resistor", "value": 10}],
+    "target_meter_ids": ["VM1", "AM1"],
+    "difficulty": 4,
+    "rationale": "After three hint-free series–parallel tasks, the learner now combines both rules while also placing the battery the right way round and judging a two-step gap, which makes a good last task for this level."
+  },
+  {
+    "concept": "series–parallel combination",
+    "title": "Two branches, one partner",
+    "intro": "Bring back the two missing resistors and close the gaps in the wiring. One resistor sits in series with the source, and the other forms a parallel pair with R2. Choose the parts so the voltmeter and the ammeter both show their target readings. Watch out: not every gap needs a resistor.",
+    "welcome": "You've already combined series and parallel parts three times, nicely done! This last one uses kilo-ohm resistors and asks you to pick two parts at once.",
+    "complete_board": {
+      "grid": {"columns": 14, "rows": 9},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 6,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [3, 6], "positive": [3, 4]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 1000,
+          "fixed": false,
+          "orientation": "W",
+          "pins": {"a": [5, 2], "b": [7, 2]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": true,
+          "orientation": "E",
+          "pins": {"negative": [5, 8], "positive": [7, 8]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 3000,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"a": [9, 4], "b": [9, 6]}
+        },
+        {
+          "id": "R3",
+          "type": "resistor",
+          "value": 6000,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"a": [11, 4], "b": [11, 6]}
+        },
+        {
+          "id": "VM1",
+          "type": "voltmeter",
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [13, 6], "positive": [13, 4]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[3, 4], [3, 3]]]},
+        {"id": "W2", "segments": [[[3, 3], [3, 2]]]},
+        {"id": "W3", "segments": [[[3, 2], [4, 2]]]},
+        {"id": "W4", "segments": [[[4, 2], [5, 2]]]},
+        {"id": "W5", "segments": [[[7, 2], [8, 2]]]},
+        {"id": "W6", "segments": [[[8, 2], [9, 2]]]},
+        {"id": "W7", "segments": [[[9, 2], [10, 2]]]},
+        {"id": "W8", "segments": [[[10, 2], [11, 2]]]},
+        {"id": "W9", "segments": [[[11, 2], [12, 2]]]},
+        {"id": "W10", "segments": [[[12, 2], [13, 2]]]},
+        {"id": "W11", "segments": [[[9, 2], [9, 3]]]},
+        {"id": "W12", "segments": [[[9, 3], [9, 4]]]},
+        {"id": "W13", "segments": [[[11, 2], [11, 3]]]},
+        {"id": "W14", "segments": [[[11, 3], [11, 4]]]},
+        {"id": "W15", "segments": [[[13, 2], [13, 3]]]},
+        {"id": "W16", "segments": [[[13, 3], [13, 4]]]},
+        {"id": "W17", "segments": [[[9, 6], [9, 7]]]},
+        {"id": "W18", "segments": [[[9, 7], [9, 8]]]},
+        {"id": "W19", "segments": [[[11, 6], [11, 7]]]},
+        {"id": "W20", "segments": [[[11, 7], [11, 8]]]},
+        {"id": "W21", "segments": [[[13, 6], [13, 7]]]},
+        {"id": "W22", "segments": [[[13, 7], [13, 8]]]},
+        {"id": "W23", "segments": [[[13, 8], [12, 8]]]},
+        {"id": "W24", "segments": [[[12, 8], [11, 8]]]},
+        {"id": "W25", "segments": [[[11, 8], [10, 8]]]},
+        {"id": "W26", "segments": [[[10, 8], [9, 8]]]},
+        {"id": "W27", "segments": [[[9, 8], [8, 8]]]},
+        {"id": "W28", "segments": [[[8, 8], [7, 8]]]},
+        {"id": "W29", "segments": [[[5, 8], [4, 8]]]},
+        {"id": "W30", "segments": [[[4, 8], [3, 8]]]},
+        {"id": "W31", "segments": [[[3, 8], [3, 7]]]},
+        {"id": "W32", "segments": [[[3, 7], [3, 6]]]}
+      ]
+    },
+    "removed_ids": [
+      "R1", "R3", "W2", "W6", "W16", "W19",
+      "W25", "W26"
+    ],
+    "decoys": [
+      {"id": "R4", "type": "resistor", "value": 2000},
+      {"id": "R5", "type": "resistor", "value": 3000}
+    ],
+    "target_meter_ids": ["VM1", "AM1"],
+    "difficulty": 4,
+    "rationale": "The learner has solved three series–parallel tasks with no hints, so this final task has them choose two resistors that must give a voltage and a current at once, with a two-step wire gap as a distractor."
+  }
+]

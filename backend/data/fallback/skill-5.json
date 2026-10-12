@@ -1,0 +1,179 @@
+[
+  {
+    "concept": "Ohm's law with more choices",
+    "title": "Pick the right resistor",
+    "intro": "The ammeter should show the target current. A resistor and two wire pieces are missing. Choose the resistor that gives exactly that current from this battery, and close the loop.",
+    "welcome": "You've already picked a resistor using Ohm's law. This time there are more options in the tray, even a second battery, so think before you place anything!",
+    "complete_board": {
+      "grid": {"columns": 12, "rows": 7},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 12,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [9, 5], "positive": [9, 3]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 1200,
+          "fixed": false,
+          "orientation": "W",
+          "pins": {"a": [5, 2], "b": [7, 2]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": true,
+          "orientation": "W",
+          "pins": {"negative": [7, 6], "positive": [5, 6]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[9, 3], [9, 2]]]},
+        {"id": "W2", "segments": [[[9, 2], [8, 2]]]},
+        {"id": "W3", "segments": [[[8, 2], [7, 2]]]},
+        {"id": "W4", "segments": [[[5, 2], [4, 2]]]},
+        {"id": "W5", "segments": [[[4, 2], [3, 2]]]},
+        {"id": "W6", "segments": [[[3, 2], [3, 3]]]},
+        {"id": "W7", "segments": [[[3, 3], [3, 4]]]},
+        {"id": "W8", "segments": [[[3, 4], [3, 5]]]},
+        {"id": "W9", "segments": [[[3, 5], [3, 6]]]},
+        {"id": "W10", "segments": [[[3, 6], [4, 6]]]},
+        {"id": "W11", "segments": [[[4, 6], [5, 6]]]},
+        {"id": "W12", "segments": [[[7, 6], [8, 6]]]},
+        {"id": "W13", "segments": [[[8, 6], [9, 6]]]},
+        {"id": "W14", "segments": [[[9, 6], [9, 5]]]}
+      ]
+    },
+    "removed_ids": ["R1", "W8", "W12"],
+    "decoys": [
+      {"id": "R2", "type": "resistor", "value": 2400},
+      {"id": "R3", "type": "resistor", "value": 3000},
+      {"id": "V2", "type": "voltage_source", "value": 9}
+    ],
+    "target_meter_ids": ["AM1"],
+    "difficulty": 2,
+    "rationale": "The learner picked single resistors easily, so now they must compare several kilo-ohm options and ignore a distracting battery while also closing the loop."
+  },
+  {
+    "concept": "Ohm's law with more choices",
+    "title": "Find the right resistor",
+    "intro": "The ammeter should show the target current. Choose the right resistor from the four options, put it in the gap, and add the missing wires to close the loop.",
+    "welcome": "You've already picked a resistor to get the right current. This time there are more choices, so you'll need to work out which one fits.",
+    "complete_board": {
+      "grid": {"columns": 11, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 12,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [3, 5], "positive": [3, 3]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 400,
+          "fixed": false,
+          "orientation": "W",
+          "pins": {"a": [5, 2], "b": [7, 2]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [9, 5], "positive": [9, 3]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[3, 3], [3, 2]]]},
+        {"id": "W2", "segments": [[[3, 2], [4, 2]]]},
+        {"id": "W3", "segments": [[[4, 2], [5, 2]]]},
+        {"id": "W4", "segments": [[[7, 2], [8, 2]]]},
+        {"id": "W5", "segments": [[[8, 2], [9, 2]]]},
+        {"id": "W6", "segments": [[[9, 2], [9, 3]]]},
+        {"id": "W7", "segments": [[[9, 5], [9, 6]]]},
+        {"id": "W8", "segments": [[[9, 6], [8, 6]]]},
+        {"id": "W9", "segments": [[[8, 6], [7, 6]]]},
+        {"id": "W10", "segments": [[[7, 6], [6, 6]]]},
+        {"id": "W11", "segments": [[[6, 6], [5, 6]]]},
+        {"id": "W12", "segments": [[[5, 6], [4, 6]]]},
+        {"id": "W13", "segments": [[[4, 6], [3, 6]]]},
+        {"id": "W14", "segments": [[[3, 6], [3, 5]]]}
+      ]
+    },
+    "removed_ids": ["R1", "W4", "W10"],
+    "decoys": [
+      {"id": "R2", "type": "resistor", "value": 240},
+      {"id": "R3", "type": "resistor", "value": 300},
+      {"id": "R4", "type": "resistor", "value": 600}
+    ],
+    "target_meter_ids": ["AM1"],
+    "difficulty": 3,
+    "rationale": "The learner easily picked resistors with Ohm's law before, so more similar choices now push them to calculate instead of guessing."
+  },
+  {
+    "concept": "Ohm's law with more choices",
+    "title": "Pick the right resistance",
+    "intro": "The loop is broken in a few places and the resistor is missing. Close the gaps and choose the resistor that makes the ammeter show the target current.",
+    "welcome": "You've already picked a resistor using Ohm's law. This time there are more options to choose from, so think about how each one would change the current before you pick.",
+    "complete_board": {
+      "grid": {"columns": 10, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 6,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [4, 4], "positive": [4, 2]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": true,
+          "orientation": "S",
+          "pins": {"negative": [4, 5], "positive": [4, 7]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 300,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"a": [7, 4], "b": [7, 6]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[4, 2], [4, 1]]]},
+        {"id": "W2", "segments": [[[4, 1], [5, 1]]]},
+        {"id": "W3", "segments": [[[5, 1], [6, 1]]]},
+        {"id": "W4", "segments": [[[6, 1], [7, 1]]]},
+        {"id": "W5", "segments": [[[7, 1], [7, 2]]]},
+        {"id": "W6", "segments": [[[7, 2], [7, 3]]]},
+        {"id": "W7", "segments": [[[7, 3], [7, 4]]]},
+        {"id": "W8", "segments": [[[7, 6], [7, 7]]]},
+        {"id": "W9", "segments": [[[7, 7], [7, 8]]]},
+        {"id": "W10", "segments": [[[7, 8], [6, 8]]]},
+        {"id": "W11", "segments": [[[6, 8], [5, 8]]]},
+        {"id": "W12", "segments": [[[5, 8], [4, 8]]]},
+        {"id": "W13", "segments": [[[4, 8], [4, 7]]]},
+        {"id": "W14", "segments": [[[4, 4], [4, 5]]]}
+      ]
+    },
+    "removed_ids": ["R1", "W3", "W11"],
+    "decoys": [
+      {"id": "R2", "type": "resistor", "value": 600},
+      {"id": "R3", "type": "resistor", "value": 1000},
+      {"id": "R4", "type": "resistor", "value": 500}
+    ],
+    "target_meter_ids": ["AM1"],
+    "difficulty": 2,
+    "rationale": "The learner solved the simple resistor-picking tasks without hints, so now they choose among four resistors and also repair the loop."
+  }
+]

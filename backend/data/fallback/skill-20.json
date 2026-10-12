@@ -1,0 +1,230 @@
+[
+  {
+    "concept": "measuring right",
+    "title": "Two meters, two jobs",
+    "intro": "The circuit works, but nothing is being measured. Place the ammeter so it shows the current flowing around the loop, and connect the voltmeter so it shows the voltage across R1.",
+    "welcome": "You've placed meters in the last two tasks. This time you place both kinds yourself, so think about which one goes in the loop and which one goes across a part.",
+    "complete_board": {
+      "grid": {"columns": 11, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 12,
+          "fixed": true,
+          "orientation": "W",
+          "pins": {"negative": [7, 2], "positive": [5, 2]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 1000,
+          "fixed": true,
+          "orientation": "W",
+          "pins": {"a": [3, 7], "b": [5, 7]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 2000,
+          "fixed": true,
+          "orientation": "W",
+          "pins": {"a": [7, 7], "b": [9, 7]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": false,
+          "orientation": "S",
+          "pins": {"negative": [10, 4], "positive": [10, 6]}
+        },
+        {
+          "id": "VM1",
+          "type": "voltmeter",
+          "fixed": false,
+          "orientation": "W",
+          "pins": {"negative": [5, 5], "positive": [3, 5]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[5, 2], [4, 2]]]},
+        {"id": "W2", "segments": [[[4, 2], [3, 2]]]},
+        {"id": "W3", "segments": [[[3, 2], [2, 2]]]},
+        {"id": "W4", "segments": [[[2, 2], [2, 3]]]},
+        {"id": "W5", "segments": [[[2, 3], [2, 4]]]},
+        {"id": "W6", "segments": [[[2, 4], [2, 5]]]},
+        {"id": "W7", "segments": [[[2, 5], [2, 6]]]},
+        {"id": "W8", "segments": [[[2, 6], [2, 7]]]},
+        {"id": "W9", "segments": [[[2, 7], [3, 7]]]},
+        {"id": "W10", "segments": [[[5, 7], [6, 7]]]},
+        {"id": "W11", "segments": [[[6, 7], [7, 7]]]},
+        {"id": "W12", "segments": [[[9, 7], [10, 7]]]},
+        {"id": "W13", "segments": [[[10, 7], [10, 6]]]},
+        {"id": "W14", "segments": [[[10, 4], [10, 3]]]},
+        {"id": "W15", "segments": [[[10, 3], [10, 2]]]},
+        {"id": "W16", "segments": [[[10, 2], [9, 2]]]},
+        {"id": "W17", "segments": [[[9, 2], [8, 2]]]},
+        {"id": "W18", "segments": [[[8, 2], [7, 2]]]},
+        {"id": "W19", "segments": [[[3, 5], [3, 6]]]},
+        {"id": "W20", "segments": [[[3, 6], [3, 7]]]},
+        {"id": "W21", "segments": [[[5, 5], [5, 6]]]},
+        {"id": "W22", "segments": [[[5, 6], [5, 7]]]}
+      ]
+    },
+    "removed_ids": ["AM1", "VM1", "W19", "W20", "W21", "W22"],
+    "decoys": [],
+    "target_meter_ids": ["AM1", "VM1"],
+    "difficulty": 4,
+    "rationale": "The learner has already placed meters with no hints, so now they place an ammeter and a voltmeter together and have to tell the two jobs apart."
+  },
+  {
+    "concept": "measuring right",
+    "title": "Meter placement check",
+    "intro": "Two resistors share the battery's push, but nobody is watching. Put the voltmeter across R1 to measure its voltage, and put the ammeter into the loop to measure the current. Some connecting wires are missing too.",
+    "welcome": "You've already placed meters in two tasks, nicely done. This time you place both a voltmeter and an ammeter yourself, and each one needs its own kind of spot.",
+    "complete_board": {
+      "grid": {"columns": 10, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 12,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [9, 6], "positive": [9, 4]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 400,
+          "fixed": true,
+          "orientation": "E",
+          "pins": {"a": [7, 2], "b": [5, 2]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 800,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"a": [2, 4], "b": [2, 6]}
+        },
+        {
+          "id": "VM1",
+          "type": "voltmeter",
+          "fixed": false,
+          "orientation": "E",
+          "pins": {"negative": [5, 4], "positive": [7, 4]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": false,
+          "orientation": "W",
+          "pins": {"negative": [7, 7], "positive": [5, 7]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[9, 4], [9, 3]]]},
+        {"id": "W2", "segments": [[[9, 3], [9, 2]]]},
+        {"id": "W3", "segments": [[[9, 2], [8, 2]]]},
+        {"id": "W4", "segments": [[[8, 2], [7, 2]]]},
+        {"id": "W5", "segments": [[[7, 2], [7, 3]]]},
+        {"id": "W6", "segments": [[[7, 3], [7, 4]]]},
+        {"id": "W7", "segments": [[[5, 2], [4, 2]]]},
+        {"id": "W8", "segments": [[[4, 2], [3, 2]]]},
+        {"id": "W9", "segments": [[[3, 2], [2, 2]]]},
+        {"id": "W10", "segments": [[[2, 2], [2, 3]]]},
+        {"id": "W11", "segments": [[[2, 3], [2, 4]]]},
+        {"id": "W12", "segments": [[[5, 2], [5, 3]]]},
+        {"id": "W13", "segments": [[[5, 3], [5, 4]]]},
+        {"id": "W14", "segments": [[[2, 6], [2, 7]]]},
+        {"id": "W15", "segments": [[[2, 7], [3, 7]]]},
+        {"id": "W16", "segments": [[[3, 7], [4, 7]]]},
+        {"id": "W17", "segments": [[[4, 7], [5, 7]]]},
+        {"id": "W18", "segments": [[[7, 7], [8, 7]]]},
+        {"id": "W19", "segments": [[[8, 7], [9, 7]]]},
+        {"id": "W20", "segments": [[[9, 7], [9, 6]]]}
+      ]
+    },
+    "removed_ids": ["VM1", "AM1", "W6", "W13", "W18"],
+    "decoys": [],
+    "target_meter_ids": ["VM1", "AM1"],
+    "difficulty": 4,
+    "rationale": "The learner has placed single meters without hints, so now placing both a voltmeter across a part and an ammeter in the loop on one board makes them compare the two ways of connecting a meter."
+  },
+  {
+    "concept": "measuring right",
+    "title": "Meters in their places",
+    "intro": "This tall circuit works, but its meters are missing. Put the ammeter into the loop to measure the current, and connect the voltmeter across R2 to measure its voltage.",
+    "welcome": "You've already placed meters in two circuits. This time you need to place both an ammeter and a voltmeter, each in its own way.",
+    "complete_board": {
+      "grid": {"columns": 10, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 6,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [3, 6], "positive": [3, 4]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 10,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"a": [7, 2], "b": [7, 4]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 20,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"a": [7, 5], "b": [7, 7]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": false,
+          "orientation": "W",
+          "pins": {"negative": [6, 1], "positive": [4, 1]}
+        },
+        {
+          "id": "VM1",
+          "type": "voltmeter",
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"negative": [9, 7], "positive": [9, 5]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[3, 4], [3, 3]]]},
+        {"id": "W2", "segments": [[[3, 3], [3, 2]]]},
+        {"id": "W3", "segments": [[[3, 2], [3, 1]]]},
+        {"id": "W4", "segments": [[[3, 1], [4, 1]]]},
+        {"id": "W5", "segments": [[[6, 1], [7, 1]]]},
+        {"id": "W6", "segments": [[[7, 1], [7, 2]]]},
+        {"id": "W7", "segments": [[[7, 4], [7, 5]]]},
+        {"id": "W8", "segments": [[[7, 5], [8, 5]]]},
+        {"id": "W9", "segments": [[[8, 5], [9, 5]]]},
+        {"id": "W10", "segments": [[[7, 7], [8, 7]]]},
+        {"id": "W11", "segments": [[[8, 7], [9, 7]]]},
+        {"id": "W12", "segments": [[[7, 7], [7, 8]]]},
+        {"id": "W13", "segments": [[[7, 8], [6, 8]]]},
+        {"id": "W14", "segments": [[[6, 8], [5, 8]]]},
+        {"id": "W15", "segments": [[[5, 8], [4, 8]]]},
+        {"id": "W16", "segments": [[[4, 8], [3, 8]]]},
+        {"id": "W17", "segments": [[[3, 8], [3, 7]]]},
+        {"id": "W18", "segments": [[[3, 7], [3, 6]]]}
+      ]
+    },
+    "removed_ids": ["AM1", "VM1", "W9", "W11"],
+    "decoys": [],
+    "target_meter_ids": ["AM1", "VM1"],
+    "difficulty": 4,
+    "rationale": "The learner has placed meters correctly twice, so now they place both an ammeter and a voltmeter in one circuit, which makes them tell the two ways of connecting apart."
+  }
+]

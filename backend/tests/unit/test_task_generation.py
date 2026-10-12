@@ -119,3 +119,9 @@ def test_prompt_carries_variation_and_level_has_shape(config, usage_log):
     prompt = client.requests[0]["messages"][0]["content"]
     assert '"variation"' in prompt and '"layout"' in prompt
     assert result.level["shape"] == "V + 2R + VM" and result.level["difficulty"] == 3
+
+
+def test_a_malformed_tool_draft_is_an_error_for_claude_not_a_crash():
+    from app.task_generation import tool_result
+    result = json.loads(tool_result({"complete_board": "V1, R1 and a gap"}, {}, {}))
+    assert result["ok"] is False and "complete_board must be an object" in result["errors"][0]

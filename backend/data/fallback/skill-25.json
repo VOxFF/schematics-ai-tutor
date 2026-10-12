@@ -1,0 +1,189 @@
+[
+  {
+    "concept": "power and safety",
+    "title": "Cool and correct",
+    "intro": "Close the loop and choose the resistor that makes the ammeter show the target current. Careful: a resistor that is too small lets so much current flow that it overheats.",
+    "welcome": "You've already seen how too little resistance turns into heat. This last power task puts it all together: fix the wiring and pick a resistor that stays safe.",
+    "complete_board": {
+      "grid": {"columns": 11, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 5,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [2, 5], "positive": [2, 3]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 25,
+          "fixed": false,
+          "orientation": "W",
+          "pins": {"a": [5, 2], "b": [7, 2]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [10, 5], "positive": [10, 3]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[2, 3], [2, 2]]]},
+        {"id": "W2", "segments": [[[2, 2], [3, 2]]]},
+        {"id": "W3", "segments": [[[3, 2], [4, 2]]]},
+        {"id": "W4", "segments": [[[4, 2], [5, 2]]]},
+        {"id": "W5", "segments": [[[7, 2], [8, 2]]]},
+        {"id": "W6", "segments": [[[8, 2], [9, 2]]]},
+        {"id": "W7", "segments": [[[9, 2], [10, 2]]]},
+        {"id": "W8", "segments": [[[10, 2], [10, 3]]]},
+        {"id": "W9", "segments": [[[10, 5], [10, 6]]]},
+        {"id": "W10", "segments": [[[10, 6], [9, 6]]]},
+        {"id": "W11", "segments": [[[9, 6], [8, 6]]]},
+        {"id": "W12", "segments": [[[8, 6], [7, 6]]]},
+        {"id": "W13", "segments": [[[7, 6], [6, 6]]]},
+        {"id": "W14", "segments": [[[6, 6], [5, 6]]]},
+        {"id": "W15", "segments": [[[5, 6], [4, 6]]]},
+        {"id": "W16", "segments": [[[4, 6], [3, 6]]]},
+        {"id": "W17", "segments": [[[3, 6], [2, 6]]]},
+        {"id": "W18", "segments": [[[2, 6], [2, 5]]]}
+      ]
+    },
+    "removed_ids": ["R1", "W3", "W8", "W12", "W13"],
+    "decoys": [
+      {"id": "R2", "type": "resistor", "value": 2},
+      {"id": "R3", "type": "resistor", "value": 4},
+      {"id": "R4", "type": "resistor", "value": 10}
+    ],
+    "target_meter_ids": ["AM1"],
+    "difficulty": 5,
+    "rationale": "The learner got through the earlier power tasks without hints, so this last one combines fixing wires, a part-sized gap and choosing a resistor, with decoys that would overheat."
+  },
+  {
+    "concept": "power and safety",
+    "title": "Keep it cool",
+    "intro": "Close the loop so the ammeter shows the target current. Some parts in the box would get far too hot in this circuit, so pick the resistor that stays safe and only fill gaps that really need a part.",
+    "welcome": "You've checked how much heat a resistor makes. Now you're the safety inspector: some of these parts would burn up, so choose wisely.",
+    "complete_board": {
+      "grid": {"columns": 10, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 12,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [2, 5], "positive": [2, 3]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 1200,
+          "fixed": false,
+          "orientation": "W",
+          "pins": {"a": [5, 2], "b": [7, 2]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [9, 5], "positive": [9, 3]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[2, 3], [2, 2]]]},
+        {"id": "W2", "segments": [[[2, 2], [3, 2]]]},
+        {"id": "W3", "segments": [[[3, 2], [4, 2]]]},
+        {"id": "W4", "segments": [[[4, 2], [5, 2]]]},
+        {"id": "W5", "segments": [[[7, 2], [8, 2]]]},
+        {"id": "W6", "segments": [[[8, 2], [9, 2]]]},
+        {"id": "W7", "segments": [[[9, 2], [9, 3]]]},
+        {"id": "W8", "segments": [[[9, 5], [9, 6]]]},
+        {"id": "W9", "segments": [[[9, 6], [8, 6]]]},
+        {"id": "W10", "segments": [[[8, 6], [7, 6]]]},
+        {"id": "W11", "segments": [[[7, 6], [6, 6]]]},
+        {"id": "W12", "segments": [[[6, 6], [5, 6]]]},
+        {"id": "W13", "segments": [[[5, 6], [4, 6]]]},
+        {"id": "W14", "segments": [[[4, 6], [3, 6]]]},
+        {"id": "W15", "segments": [[[3, 6], [2, 6]]]},
+        {"id": "W16", "segments": [[[2, 6], [2, 5]]]}
+      ]
+    },
+    "removed_ids": ["R1", "W3", "W11", "W12"],
+    "decoys": [
+      {"id": "R2", "type": "resistor", "value": 20},
+      {"id": "R3", "type": "resistor", "value": 10},
+      {"id": "V2", "type": "voltage_source", "value": 9}
+    ],
+    "target_meter_ids": ["AM1"],
+    "difficulty": 5,
+    "rationale": "As the last power-and-safety task, it mixes choosing a safe resistor, ignoring a wrong battery and deciding whether a two-step gap needs a wire or a part."
+  },
+  {
+    "concept": "power and safety",
+    "title": "Keep it cool",
+    "intro": "Rebuild the loop and choose a resistor so the ammeter shows the target current. Careful: some resistors in the box would get far too hot with this source.",
+    "welcome": "You've already seen how too little resistance makes a resistor overheat. In this last power challenge, you rebuild the loop yourself and pick a resistor that stays safe.",
+    "complete_board": {
+      "grid": {"columns": 11, "rows": 7},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 6,
+          "fixed": true,
+          "orientation": "W",
+          "pins": {"negative": [7, 6], "positive": [5, 6]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 30,
+          "fixed": false,
+          "orientation": "W",
+          "pins": {"a": [5, 2], "b": [7, 2]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [10, 5], "positive": [10, 3]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[5, 6], [4, 6]]]},
+        {"id": "W2", "segments": [[[4, 6], [3, 6]]]},
+        {"id": "W3", "segments": [[[3, 6], [2, 6]]]},
+        {"id": "W4", "segments": [[[2, 6], [2, 5]]]},
+        {"id": "W5", "segments": [[[2, 5], [2, 4]]]},
+        {"id": "W6", "segments": [[[2, 4], [2, 3]]]},
+        {"id": "W7", "segments": [[[2, 3], [2, 2]]]},
+        {"id": "W8", "segments": [[[2, 2], [3, 2]]]},
+        {"id": "W9", "segments": [[[3, 2], [4, 2]]]},
+        {"id": "W10", "segments": [[[4, 2], [5, 2]]]},
+        {"id": "W11", "segments": [[[7, 2], [8, 2]]]},
+        {"id": "W12", "segments": [[[8, 2], [9, 2]]]},
+        {"id": "W13", "segments": [[[9, 2], [10, 2]]]},
+        {"id": "W14", "segments": [[[10, 2], [10, 3]]]},
+        {"id": "W15", "segments": [[[10, 5], [10, 6]]]},
+        {"id": "W16", "segments": [[[10, 6], [9, 6]]]},
+        {"id": "W17", "segments": [[[9, 6], [8, 6]]]},
+        {"id": "W18", "segments": [[[8, 6], [7, 6]]]}
+      ]
+    },
+    "removed_ids": ["R1", "W5", "W6", "W16"],
+    "decoys": [
+      {"id": "R2", "type": "resistor", "value": 4},
+      {"id": "R3", "type": "resistor", "value": 6},
+      {"id": "R4", "type": "resistor", "value": 20}
+    ],
+    "target_meter_ids": ["AM1"],
+    "difficulty": 5,
+    "rationale": "The learner has solved every task without hints, so this level finale mixes rebuilding the wiring, including a part-sized gap, with spotting the low resistances that would overheat."
+  }
+]
