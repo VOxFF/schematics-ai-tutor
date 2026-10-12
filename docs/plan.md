@@ -125,7 +125,7 @@ Tutoring accuracy (from testing):
 - [x] Design: open ends, `unused_wire` and `floating_part` refined, out-of-date reactions dropped, no reaction for an unchanged circuit, no repetition
 - [x] Evaluator: `open_ends` in the `open_circuit` issue; prompt: highlight them
 - [x] Evaluator: `unused_wire` only when current flows; `floating_part` only for a pin no wire touches
-- [x] Session: drop a reaction whose board is out of date
+- [x] Session: drop a reaction whose board is out of date, unless it still holds (a lesson, or praise while still solved)
 - [x] Session: no reaction for an unchanged graph; Claude after `tutor.react_after_unchanged` such pauses, with `unchanged_moves`; skipped pauses count toward the hint offer
 - [x] Prompt: one short line at `understanding` ≥ 2, no repeated openers, evidence for terms too
 

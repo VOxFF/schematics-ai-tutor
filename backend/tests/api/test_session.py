@@ -5,10 +5,13 @@ import asyncio
 import json
 import time
 
+import pytest
+
 from fastapi.testclient import TestClient
 
 from app.main import (References, app, get_claude, get_config, get_limits, get_references, get_research_log,
                       get_task_cache, get_usage_log)
+from app.evaluate import evaluate
 from app.rate_limits import RateLimiter
 from app.research import ResearchLog
 from app.task_cache import progress_key, solved
@@ -339,6 +342,36 @@ def test_sessions_per_ip_are_limited(config):
         third.send_json({"type": "session.start", "level": level})
         assert third.receive_json()["type"] == "evaluation"
 
+
+@pytest.mark.parametrize("kind, newer, kept", [
+    ("question", "solved", False),   # about the old board
+    ("knowledge", "open", True),     # a lesson stays true
+    ("praise", "solved", True),      # still solved: the success stands
+    ("praise", "open", False),       # broken since: "Solved" would contradict the board
+])
+def test_an_out_of_date_reaction_is_kept_only_while_it_still_holds(config, kind, newer, kept):
+    fake = SlowClaude([tutor_reply("About the earlier board.", kind=kind), tutor_reply("About the newer board.")])
+    client, level = connect(fast_reactions(config), fake)
+    _, spec = example_level()
+    complete = spec["complete_board"]  # the task built back: every target met
+    solved = {**level["board"], "components": complete["components"], "wires": complete["wires"], "inventory": []}
+    assert evaluate(solved)["status"] == "solved"
+    open_board = {**solved, "wires": solved["wires"][:-1]}
+    first, second = (open_board, solved) if newer == "solved" else (solved, open_board)
+    with client.websocket_connect("/ws/session") as ws:
+        ws.send_json({"type": "session.start", "level": level})
+        ws.receive_json()
+        ws.send_json({"type": "board.update", "seq": 1, "board": first})
+        ws.receive_json()
+        started = ws.receive_json()
+        ws.send_json({"type": "board.update", "seq": 2, "board": second})  # while Claude thinks
+        ws.receive_json()
+        late = ws.receive_json()
+        if kept:
+            assert late["type"] == "tutor.message" and late["seq"] == 1  # text only: the client drops its highlights
+            assert late["message"]["chat"]["text"] == "About the earlier board."
+        else:
+            assert late == {"type": "tutor.dropped", "request_id": started["request_id"]}
 
 def test_with_consent_the_session_is_recorded_and_the_feedback_prompt_comes_at_a_quiet_pause(config, tmp_path):
     learner = "0b7e3c1a-5f2d-4c8e-9a1b-2c3d4e5f6a7b"

@@ -275,7 +275,8 @@ class Session:
                       offer_hint: bool = False, unchanged_moves: int = 0) -> None:
         """A tutor call for a learner request (`asked`: a message, or a hint of level `hint`) or
         a reaction, which may end by offering a hint. A reaction that comes back after a newer edit
-        is dropped: the reaction to the newer board follows (docs/design.md §3)."""
+        is dropped unless it still holds (a lesson, or praise while still solved); the reaction to
+        the newer board follows (docs/design.md §3)."""
         # Earlier boards since the last call; the current board is added by the tutor context.
         snapshots, self.snapshots = self.snapshots[:-1], []
         board, seq = self.board, self.seq  # edits may arrive during the call; the reply is about this board
@@ -287,7 +288,7 @@ class Session:
                 session_id=self.id, hint_level=hint, offer_hint=offer_hint, unchanged_moves=unchanged_moves,
                 profile={"skill_level": self.skill_level, "focus": focus(self.profile, self.skill_level)},
             )
-            if not asked and self.seq != seq:
+            if not asked and self.seq != seq and not self._still_true(reply):
                 # Out of date: its text would answer a board that's gone. Nothing of it is kept.
                 self.usage_log.event("reaction_dropped", session_id=self.id, seq=seq, current_seq=self.seq)
                 self.research.chat("tutor", reply, seq=seq, trigger="reaction", dropped=True)
@@ -306,6 +307,14 @@ class Session:
             self.busy = False
         if self.snapshots and self.idle is None:
             self._restart_idle_timer()  # edits arrived during the call: react to them after a pause
+
+    def _still_true(self, reply: dict) -> bool:
+        """Whether an out-of-date reaction still holds for the current board (docs/design.md §3): a
+        lesson always does; praise while the board is still solved. Questions, nudges and feedback
+        describe the old board. A kept one is shown as text only: its `seq` makes the client drop
+        its highlights and evaluation."""
+        kind = reply["chat"]["kind"]
+        return kind == "knowledge" or (kind == "praise" and self._evaluate()["status"] == "solved")
 
     async def _deliver(self, request_id: str, reply: dict, evaluation: dict, board: dict, seq: int,
                        text: str | None, hint: int, asked: bool, offer_hint: bool) -> None:
