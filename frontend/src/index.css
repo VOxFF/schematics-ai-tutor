@@ -41,6 +41,8 @@
   --hint-edge: #a475f9;
   --experience-tint: #e6f7f5;
   --experience-edge: #2fb5a5;
+  --guide-tint: #f1f3f5;
+  --guide-edge: #8a96a3;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   color: var(--text);
   background: var(--bg);
@@ -472,11 +474,13 @@ button.danger {
   margin: 0;
 }
 
-.chat input {
+.chat textarea {
   font: inherit;
   padding: 6px 8px;
   border: 1px solid var(--border);
   border-radius: 6px;
+  resize: none; /* two lines, wrapping; longer text scrolls inside */
+  line-height: 1.35;
 }
 
 .chat .messages {
@@ -515,7 +519,7 @@ button.danger {
   display: flex;
 }
 
-.chat form input {
+.chat form textarea {
   flex: 1;
 }
 
@@ -587,6 +591,7 @@ button.danger {
 .chat .kind-knowledge { --tint: var(--knowledge-tint); --edge: var(--knowledge-edge); }
 .chat .kind-hint { --tint: var(--hint-tint); --edge: var(--hint-edge); }
 .chat .kind-experience { --tint: var(--experience-tint); --edge: var(--experience-edge); }
+.chat .kind-guide { --tint: var(--guide-tint); --edge: var(--guide-edge); }
 
 @keyframes message-in {
   from {
@@ -601,7 +606,7 @@ button.danger {
   background: var(--bg);
 }
 
-.chat input:focus,
+.chat textarea:focus,
 button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
@@ -773,6 +778,7 @@ body.dragging-item * {
 /* Hint button beside the chat input (docs/gui.md §7); amber while the tutor offers a hint. */
 .chat form {
   gap: 6px;
+  align-items: flex-end; /* the Hint button sits by the field's last line */
 }
 
 .chat .hint.offered {

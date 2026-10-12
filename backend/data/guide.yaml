@@ -1,0 +1,11 @@
+# The how-to in the chat on the learner's first visit to the learning screen (docs/gui.md §7, Guide).
+# One short paragraph per action, each starting with an emoji. Markdown-style ** is not rendered:
+# the reply composer bolds the learner's topics, nothing else.
+title: How it works
+paragraphs:
+  - "🖱️ Drag a part or a wire from the inventory onto the grid. The points it will connect to light up as you go."
+  - "🔄 Press R while you drag a part or a wire from the inventory to rotate it before you drop it. A part or wire selected on the grid turns with R too; if the turned piece won't fit, it stays as it is."
+  - "👆 Click a part or a wire on the grid to select it. Del removes it, Esc lets go."
+  - "✋ Drag a part you placed to move it. Parts outlined in grey belong to the task and stay put."
+  - "📟 Meters read live as you build, so try things and watch the numbers."
+  - "💬 Ask me anything here, or press Hint when you're stuck: hints come one step at a time."

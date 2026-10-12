@@ -66,7 +66,9 @@ export function useTutorSession(level, chat, onChat, board, progress,
     seq.current = 0; // a new server session numbers boards from 0 (its session.start board)
     ws.send(JSON.stringify({ type: "session.start", level: levelRef.current, board: boardRef.current, history,
                              progress: progressRef.current, hint_level: hintRef.current,
-                             profile: profileRef.current, research: researchRef.current }));
+                             profile: profileRef.current, research: researchRef.current,
+                             // The how-to, until the chat has it (docs/gui.md §7, Guide).
+                             guide: !chatRef.current.some((m) => m.kind === "guide") }));
   }, []);
 
   // A message (`text`) or a hint request (`text` undefined).

@@ -20,7 +20,7 @@ def scores(p, topic_id):
 
 
 def test_every_kind_has_an_icon():
-    assert set(ICONS) == set(KINDS)
+    assert set(ICONS) == set(KINDS) | {"guide"}  # the guide is canned, never Claude's kind
 
 
 def test_changes_are_clamped_and_explained_never_goes_down():
@@ -103,3 +103,13 @@ def test_paragraphs_are_tidied_and_the_formula_passes_through():
     assert chat["text"] == "Current is the flow.\n\nIt needs a loop."
     assert chat["formula"] == [r"I = \frac{V}{R}"]
     assert chat["terms"] == [[0, 7]]
+
+
+def test_the_guide_is_canned_and_bolds_the_learners_topics():
+    from app.reply_composer import guide
+    p = profile("hint")
+    chat = guide(p)
+    assert chat["kind"] == "guide" and chat["title"] == "How it works" and chat["formula"] is None
+    start, end = chat["terms"][0]  # UTF-16 offsets, as JavaScript counts: the emojis take two
+    assert chat["text"].encode("utf-16-le")[2 * start:2 * end].decode("utf-16-le") == "Hint"
+    assert p == profile("hint")  # no profile changes

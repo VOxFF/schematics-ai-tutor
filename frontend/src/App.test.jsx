@@ -187,6 +187,42 @@ test("the start screen shows eight learning path steps, the first current and th
   expect(steps.slice(1).every((li) => li.querySelector(".lock"))).toBe(true);
 });
 
+test("the browser asks for the guide until its chat has one, and shows it in grey", async () => {
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [] }));
+  render(<App />);
+  await screen.findByPlaceholderText("Ask the tutor…");
+  const ws = FakeSocket.last;
+  expect(ws.sent[0]).toMatchObject({ type: "session.start", guide: true });
+  ws.serverSends({
+    type: "tutor.message", request_id: "guide-1", seq: 0,
+    evaluation: { status: "open_circuit", readings: {}, issues: [] },
+    message: { meta: { principle: null, highlights: [], hint_level: 0, misconception: null },
+               chat: { kind: "guide", icon: "🧭", title: "How it works", text: "🖱️ Drag a part.\n\n💬 Ask me.", terms: [] } },
+  });
+  const bubble = document.querySelector(".tutor-message.kind-guide");
+  expect(bubble.querySelector(".title").textContent).toBe("How it works");
+  expect(bubble.querySelectorAll(".paragraph").length).toBe(2);
+  expect(JSON.parse(localStorage.getItem(SESSION_KEY)).chat.some((m) => m.kind === "guide")).toBe(true);
+  cleanup();
+  render(<App />); // a reload: the chat has the guide, so it isn't asked for again
+  await screen.findByPlaceholderText("Ask the tutor…");
+  expect(FakeSocket.last.sent[0]).toMatchObject({ type: "session.start", guide: false });
+});
+
+test("the chat field has two wrapping lines: Enter sends, Shift+Enter starts a new line", async () => {
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [] }));
+  render(<App />);
+  const field = await screen.findByPlaceholderText("Ask the tutor…");
+  const ws = FakeSocket.last;
+  expect(field.tagName).toBe("TEXTAREA");
+  expect(field.rows).toBe(2);
+  fireEvent.change(field, { target: { value: "Why is it zero" } });
+  fireEvent.keyDown(field, { key: "Enter", shiftKey: true });
+  expect(ws.sent.length).toBe(1); // only session.start: Shift+Enter is a new line
+  fireEvent.keyDown(field, { key: "Enter" });
+  expect(ws.sent[1]).toMatchObject({ type: "tutor.request", action: "message", learner_text: "Why is it zero" });
+});
+
 test("the learner chats with the tutor through the session socket", async () => {
   localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [] }));
   render(<App />);

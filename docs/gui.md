@@ -194,6 +194,7 @@ The inventory is drawn **inside the editor's three.js scene**, in a column right
 **Layout rules**
 - **Two columns**, as bare symbols, not buttons; a grab cursor over the symbol itself (not its whole slot) shows it can be picked up.
 - **Fixed width:** two elements (pin dot to pin dot) plus a small gap between the columns and a margin each side.
+- **Wires first, then parts:** under the Inventory heading the wire palette comes first, then the parts, without a heading of their own. The palette is never empty, so the column always starts with pieces to take. The parts keep the starting inventory's rows for the whole task, so nothing moves while the learner works; once every part is placed, those rows are just free space at the bottom.
 - **Fixed scale per task:** the scene's bounds (grid plus inventory) are computed **once from the task's starting board**, with the inventory column reserving the starting inventory's rows. Placing or removing parts never changes the scale; only a window resize refits the camera.
 - **One scale across tasks:** every task is fitted as if it were at least a 12 × 8 grid with 4 parts in the inventory (`config.yaml` `editor`), the usual size from curriculum level 2 on. A smaller task (Level 1's 8–10 × 6 grids) keeps that scale, centered with more air around it, so parts and wires don't shrink from one task to the next. Only a larger task (e.g. Level 6's 14 × 10) zooms out to fit.
 - **Placement in the field:** the inventory column sits flush right; the grid is centered in the field left of it, and both columns share a vertical midline.
@@ -212,13 +213,33 @@ The inventory is drawn **inside the editor's three.js scene**, in a column right
   | `knowledge` | gold | 📘 |
   | `hint` | purple | 🔑 |
   | `experience` | teal | 🔔 |
+  | `guide` | grey | 🧭 |
 
   The icon and the title come from the backend's reply composer; the tints are CSS variables in `frontend/src/index.css`.
 - **Paragraphs:** a tutor message's paragraphs (separated by a blank line in `chat.text`) show as blocks with half a line between them, so the line spacing inside a paragraph doesn't change.
 - **Formula:** `chat.formula` shows under the text, drawn with KaTeX, a line per row, centered, in the ink color. A line too wide for the chat scrolls sideways on its own; a line KaTeX can't render shows as plain monospace text ([design.md](design.md#formulas-and-paragraphs)).
 - **Welcome:** each new task opens with a tutor message, added to the chat when the task arrives ([design.md](design.md#welcome-message)). It is gold (`knowledge`) when the task brings new topics, else blue (`feedback`).
+- **Guide:** on the learner's first visit to the learning screen, a short how-to arrives in the chat 1 s after the task's welcome: the learner has glanced at the screen, and the new message draws their eyes to the chat, where the tutor will talk to them. It is a `guide` message titled "How it works", one short paragraph per action, each starting with an emoji:
+
+  > 🖱️ Drag a part or a wire from the inventory onto the grid. The points it will connect to light up as you go.
+  >
+  > 🔄 Press R while you drag a part or a wire from the inventory to rotate it before you drop it. A part or wire selected on the grid turns with R too; if the turned piece won't fit, it stays as it is.
+  >
+  > 👆 Click a part or a wire on the grid to select it. Del removes it, Esc lets go.
+  >
+  > ✋ Drag a part you placed to move it. Parts outlined in grey belong to the task and stay put.
+  >
+  > 📟 Meters read live as you build, so try things and watch the numbers.
+  >
+  > 💬 Ask me anything here, or press Hint when you're stuck: hints come one step at a time.
+
+  The text is `backend/data/guide.yaml`; as in any tutor message, the learner's topics in it are bold.
+
+  - **Once, from the chat itself:** the browser asks for it with `session.start` (`guide: true`) while its chat has no `guide` message, so a reload or the next task doesn't repeat it and no extra flag is stored. **Restart Learning** clears the chat, so a fresh start shows it again.
+  - **Built like the welcome:** the text is in `backend/data/guide.yaml`, next to `topics.yaml`, and the reply composer prepares it beside the welcome (icon, title, bold terms; no profile changes).
+  - **Sent like the 🔔 prompt:** a `tutor.message` without `tutor.started`, from a session task that waits 1 s, and longer while a tutor call is running, so it never interrupts a reply. It is recorded in the research records, and like every chat message it is part of the recent turns the tutor sees.
 - While a call is running, it shows "tutor is thinking".
-- The learner can type at any time. Sending creates a `tutor.request` with `action: "message"`.
+- The learner can type at any time, in a two-line field that wraps, like a chat app: **Enter** sends, **Shift+Enter** starts a new line, and longer text scrolls inside the field. Sending creates a `tutor.request` with `action: "message"`.
 - **Hint button** beside the chat input, labelled with the next rung: "Hint 1/4" to "Hint 4/4". It sends a `tutor.request` with `action: "hint"`, and the chat shows the request as the learner's line ("Hint 1/4, please"). After rung 4 it stays "Hint 4/4" and repeats that rung in other words. It is disabled while the tutor is thinking or disconnected.
 - **Offered hint:** when the tutor offers a hint (`hint_offered`), the Hint button turns amber until it is used or the next task starts.
 - There is no separate Check button. The status updates live, and the tutor reacts when the learner pauses.
@@ -298,7 +319,7 @@ A bonus feature, built after everything else ([plan.md](plan.md#7-bonus)). It gi
 - **Never color alone.** Meaning colors are paired with a shape or motion (pulse, icon, outline), so red/green colorblind learners lose nothing.
 - **Contrast:** text meets WCAG AA; muted grey is only for secondary text.
 - The colors are CSS variables in `frontend/src/index.css`, so the scheme can be tuned in one place.
-- **Headings** share one style, the Targets label's: 1rem, semibold, ink, uppercase, letter-spaced (header, task, Targets, Tutor, the start page's sections; Inventory and Wires in the editor).
+- **Headings** share one style, the Targets label's: 1rem, semibold, ink, uppercase, letter-spaced (header, task, Targets, Tutor, the start page's sections; Inventory in the editor). The parts below the wire palette have no heading of their own.
 
 ## 11. Open points
 

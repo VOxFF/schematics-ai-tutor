@@ -235,9 +235,14 @@ export function layoutInventory(board, capacity = 0, palette = WIRE_PALETTE) {
   let y = 0; // laid out from 0 downward, then centered on the grid's midline
 
   // Two columns; each row is as tall as its tallest entry. `reservedRows` keeps empty rows.
+  // A section without a title (the parts, under the wires) keeps a small gap.
   const section = (title, entries, reservedRows = 0, rowHeight = 0) => {
-    titles.push({ text: title, x: left, y: y - TITLE_H / 2 });
-    y -= TITLE_H;
+    if (title) {
+      titles.push({ text: title, x: left, y: y - TITLE_H / 2 });
+      y -= TITLE_H;
+    } else {
+      y -= TITLE_H / 2;
+    }
     for (let i = 0; i < entries.length; i += 2) {
       const pair = entries.slice(i, i + 2);
       const height = Math.max(...pair.map((e) => e.height));
@@ -251,13 +256,15 @@ export function layoutInventory(board, capacity = 0, palette = WIRE_PALETTE) {
     if (missing > 0) y -= missing * (rowHeight + SLOT_GAP);
     y -= SLOT_GAP;
   };
-  section("Inventory", (board.inventory ?? []).map((part) => ({
-    key: `part:${part.id}`, item: { kind: "part", ...part }, label: partCaption(part), height: PART_SLOT_H,
-  })), Math.ceil(capacity / 2), PART_SLOT_H);
-  section("Wires", palette.map((w) => ({
+  // Wires first: the palette is never empty, so the column always starts with something to take,
+  // and the parts' reserved rows, empty once everything is placed, end the column (docs/gui.md §6).
+  section("Inventory", palette.map((w) => ({
     key: `wire:${w.key}`, item: { kind: "wire", shape: w.shape, rotation: w.rotation }, label: null,
     height: wireSlotHeight(w),
   })));
+  section(null, (board.inventory ?? []).map((part) => ({
+    key: `part:${part.id}`, item: { kind: "part", ...part }, label: partCaption(part), height: PART_SLOT_H,
+  })), Math.ceil(capacity / 2), PART_SLOT_H);
 
   // Center the column on the grid's vertical midline.
   const height = -y;

@@ -20,13 +20,14 @@ from .graph import circuit_key, to_graph
 from .grid import validate_grid
 from .learner_profile import focus, join, sanitize
 from .rate_limits import RateLimiter
-from .reply_composer import compose
+from .reply_composer import compose, guide
 from .research import Research, ResearchLog
 from .task_cache import solved
 from .tutor import MAX_HINT, answer, fallback_message
 
 
 RESTING = "The tutor is taking a short break; your circuit is still checked live."
+GUIDE_DELAY_S = 1.0  # the how-to follows the welcome after the learner has glanced at the screen
 
 
 class Session:
@@ -110,6 +111,8 @@ class Session:
         self.research.start(message.get("research"), level, self.profile, progress)
         await self.send({"type": "evaluation", "seq": 0, "evaluation": self._evaluate(), "profile": self.profile,
                          **self._research_state()})
+        if message.get("guide") is True:  # the browser's chat has no how-to yet (docs/gui.md §7)
+            self._start_task(self._send_guide())
         # A resumed task (e.g. after a server restart, which empties the cache) gets its next
         # task generated in the background too, so Next doesn't wait.
         if self.task_cache and isinstance(progress, dict) and isinstance(progress.get("history"), list):
@@ -195,7 +198,7 @@ class Session:
         evaluation = self._evaluate()
         prompt = self.research.prompt_due((self.level.get("curriculum") or {}).get("level") or 1, evaluation["status"])
         if prompt:
-            await self._send_experience(f"research-{uuid.uuid4().hex[:8]}", prompt, evaluation)
+            await self._send_plain(f"research-{uuid.uuid4().hex[:8]}", prompt, evaluation)
 
     async def _react_after_pause(self) -> None:
         await asyncio.sleep(self.config.get("tutor", {}).get("idle_threshold_ms", 1500) / 1000)
@@ -370,8 +373,22 @@ class Session:
         state = self.research.state()
         return {"research": state} if state else {}
 
-    async def _send_experience(self, request_id: str, chat: dict, evaluation: dict) -> None:
-        """A feedback-conversation message, sent like a tutor reply about the current board."""
+    async def _send_guide(self) -> None:
+        """The how-to, 1 s after the session starts, and later while a tutor call is running, so it
+        never cuts into a reply (docs/gui.md §7, Guide)."""
+        await asyncio.sleep(GUIDE_DELAY_S)
+        for _ in range(60):
+            if not self.busy:
+                break
+            await asyncio.sleep(0.5)
+        chat = guide(self.profile)
+        self.research.chat("tutor", {"chat": chat}, seq=self.seq, trigger="guide")
+        self.usage_log.event("guide_sent", session_id=self.id)
+        await self._send_plain(f"guide-{uuid.uuid4().hex[:8]}", chat, self._evaluate())
+
+    async def _send_plain(self, request_id: str, chat: dict, evaluation: dict) -> None:
+        """A message that isn't a tutor reply (the 🔔 conversation, the guide), sent like one about
+        the current board, with empty `meta`."""
         meta = {"principle": None, "highlights": [], "hint_level": 0, "misconception": None,
                 "topic_updates": [], "new_topic": None}
         await self.send({"type": "tutor.message", "request_id": request_id, "seq": self.seq, "evaluation": evaluation,
@@ -392,6 +409,6 @@ class Session:
             await self._answer(request_id, text, asked=True)  # releases `busy` when done
             return
         try:
-            await self._send_experience(request_id, chat, self._evaluate())
+            await self._send_plain(request_id, chat, self._evaluate())
         finally:
             self.busy = False
