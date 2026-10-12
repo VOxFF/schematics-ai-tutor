@@ -474,11 +474,13 @@ button.danger {
   margin: 0;
 }
 
-.chat input {
+.chat textarea {
   font: inherit;
   padding: 6px 8px;
   border: 1px solid var(--border);
   border-radius: 6px;
+  resize: none; /* two lines, wrapping; longer text scrolls inside */
+  line-height: 1.35;
 }
 
 .chat .messages {
@@ -517,7 +519,7 @@ button.danger {
   display: flex;
 }
 
-.chat form input {
+.chat form textarea {
   flex: 1;
 }
 
@@ -604,7 +606,7 @@ button.danger {
   background: var(--bg);
 }
 
-.chat input:focus,
+.chat textarea:focus,
 button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
@@ -776,6 +778,7 @@ body.dragging-item * {
 /* Hint button beside the chat input (docs/gui.md §7); amber while the tutor offers a hint. */
 .chat form {
   gap: 6px;
+  align-items: flex-end; /* the Hint button sits by the field's last line */
 }
 
 .chat .hint.offered {

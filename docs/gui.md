@@ -239,7 +239,7 @@ The inventory is drawn **inside the editor's three.js scene**, in a column right
   - **Built like the welcome:** the text is in `backend/data/guide.yaml`, next to `topics.yaml`, and the reply composer prepares it beside the welcome (icon, title, bold terms; no profile changes).
   - **Sent like the 🔔 prompt:** a `tutor.message` without `tutor.started`, from a session task that waits 1 s, and longer while a tutor call is running, so it never interrupts a reply. It is recorded in the research records, and like every chat message it is part of the recent turns the tutor sees.
 - While a call is running, it shows "tutor is thinking".
-- The learner can type at any time. Sending creates a `tutor.request` with `action: "message"`.
+- The learner can type at any time, in a two-line field that wraps, like a chat app: **Enter** sends, **Shift+Enter** starts a new line, and longer text scrolls inside the field. Sending creates a `tutor.request` with `action: "message"`.
 - **Hint button** beside the chat input, labelled with the next rung: "Hint 1/4" to "Hint 4/4". It sends a `tutor.request` with `action: "hint"`, and the chat shows the request as the learner's line ("Hint 1/4, please"). After rung 4 it stays "Hint 4/4" and repeats that rung in other words. It is disabled while the tutor is thinking or disconnected.
 - **Offered hint:** when the tutor offers a hint (`hint_offered`), the Hint button turns amber until it is used or the next task starts.
 - There is no separate Check button. The status updates live, and the tutor reacts when the learner pauses.

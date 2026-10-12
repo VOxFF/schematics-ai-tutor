@@ -209,6 +209,20 @@ test("the browser asks for the guide until its chat has one, and shows it in gre
   expect(FakeSocket.last.sent[0]).toMatchObject({ type: "session.start", guide: false });
 });
 
+test("the chat field has two wrapping lines: Enter sends, Shift+Enter starts a new line", async () => {
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [] }));
+  render(<App />);
+  const field = await screen.findByPlaceholderText("Ask the tutor…");
+  const ws = FakeSocket.last;
+  expect(field.tagName).toBe("TEXTAREA");
+  expect(field.rows).toBe(2);
+  fireEvent.change(field, { target: { value: "Why is it zero" } });
+  fireEvent.keyDown(field, { key: "Enter", shiftKey: true });
+  expect(ws.sent.length).toBe(1); // only session.start: Shift+Enter is a new line
+  fireEvent.keyDown(field, { key: "Enter" });
+  expect(ws.sent[1]).toMatchObject({ type: "tutor.request", action: "message", learner_text: "Why is it zero" });
+});
+
 test("the learner chats with the tutor through the session socket", async () => {
   localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [] }));
   render(<App />);

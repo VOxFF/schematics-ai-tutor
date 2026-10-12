@@ -252,11 +252,19 @@ function Chat({ chat, connected, thinking, onSend, hintLevel, hintOffered, onHin
         <div ref={end} />
       </div>
       <form onSubmit={submit}>
-        <input
+        {/* Two lines that wrap, like a chat app: Enter sends, Shift+Enter starts a new line. */}
+        <textarea
           aria-label="Message to the tutor"
           placeholder={connected ? "Ask the tutor…" : "Connecting…"}
+          rows={2}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              e.currentTarget.form.requestSubmit();
+            }
+          }}
           disabled={!connected || thinking}
         />
         <button type="button" className={hintOffered ? "hint offered" : "hint"} onClick={onHint}
