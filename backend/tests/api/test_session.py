@@ -1,6 +1,7 @@
 """WebSocket session: session.start → evaluation; tutor.request → tutor.started → tutor.message;
 board.update → evaluation, then a reaction after an editing pause."""
 
+import asyncio
 import json
 import time
 
@@ -220,7 +221,8 @@ def test_a_resumed_session_continues_the_ladder(config):
 
 def test_reactions_without_progress_offer_a_hint(config):
     config = fast_reactions(config)
-    config = {**config, "tutor": {**config["tutor"], "offer_hint_after_reactions": 2}}
+    # react_after_unchanged 1: every pause gets a reaction, even with the same circuit.
+    config = {**config, "tutor": {**config["tutor"], "offer_hint_after_reactions": 2, "react_after_unchanged": 1}}
     fake = FakeClaude([tutor_reply(f"Reaction {n}") for n in range(3)])
     client, level = connect(config, fake)
     offered = []
@@ -235,6 +237,55 @@ def test_reactions_without_progress_offer_a_hint(config):
     assert offered == [False, False, True]  # the first sets the best status; then two without progress
     assert '"offer_hint": true' in fake.requests[2]["messages"][0]["content"]
 
+
+
+def test_no_reaction_while_the_circuit_is_unchanged_then_guidance(config):
+    config = fast_reactions(config)
+    config = {**config, "tutor": {**config["tutor"], "react_after_unchanged": 3}}
+    fake = FakeClaude([tutor_reply("Where does the current stop?"), tutor_reply("Look at the highlighted gap.")])
+    client, level = connect(config, fake)
+    with client.websocket_connect("/ws/session") as ws:
+        ws.send_json({"type": "session.start", "level": level})
+        ws.receive_json()
+        for seq in (1, 2, 3, 4):  # the same circuit each time, one pause per move
+            ws.send_json({"type": "board.update", "seq": seq, "board": level["board"]})
+            assert ws.receive_json()["type"] == "evaluation"
+            if seq in (1, 4):  # the first move, and the third unchanged one
+                assert ws.receive_json()["type"] == "tutor.started"
+                assert ws.receive_json()["type"] == "tutor.message"
+            else:
+                time.sleep(0.2)  # a pause: skipped, nothing is sent
+    assert len(fake.requests) == 2
+    assert '"unchanged_moves": 3' in fake.requests[1]["messages"][0]["content"]
+    assert '"seq": 2' in fake.requests[1]["messages"][0]["content"]  # the skipped moves are in the snapshots
+
+
+class SlowClaude(FakeClaude):
+    """A Claude call that takes a moment, so the learner can edit while it runs."""
+
+    async def create(self, **kwargs):
+        await asyncio.sleep(0.3)
+        return await super().create(**kwargs)
+
+
+def test_a_reaction_that_comes_back_after_a_newer_edit_is_dropped(config):
+    fake = SlowClaude([tutor_reply("Where is the gap?"), tutor_reply("Nice, now it's closed.")])
+    client, level = connect(fast_reactions(config), fake)
+    board = level["board"]
+    changed = {**board, "wires": board["wires"][:-1]}  # a different circuit
+    with client.websocket_connect("/ws/session") as ws:
+        ws.send_json({"type": "session.start", "level": level})
+        ws.receive_json()
+        ws.send_json({"type": "board.update", "seq": 1, "board": changed})
+        assert ws.receive_json()["type"] == "evaluation"
+        started = ws.receive_json()
+        assert started["type"] == "tutor.started"
+        ws.send_json({"type": "board.update", "seq": 2, "board": board})  # while Claude thinks
+        assert ws.receive_json()["type"] == "evaluation"
+        assert ws.receive_json() == {"type": "tutor.dropped", "request_id": started["request_id"]}
+        assert ws.receive_json()["type"] == "tutor.started"  # the reaction to the newer board
+        reply = ws.receive_json()
+        assert reply["seq"] == 2 and reply["message"]["chat"]["text"] == "Nice, now it's closed."
 
 def test_over_the_claude_budget_the_tutor_rests_but_evaluation_works(config):
     limits = RateLimiter(config["rate_limits"])

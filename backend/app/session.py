@@ -15,7 +15,7 @@ import uuid
 import anthropic
 
 from .evaluate import STATUS_RANK, evaluate
-from .graph import to_graph
+from .graph import circuit_key, to_graph
 from .grid import validate_grid
 from .learner_profile import focus, join, sanitize
 from .rate_limits import RateLimiter
@@ -51,6 +51,8 @@ class Session:
         self.hint_level = 0  # highest hint given in this task (0-3)
         self.best_rank = -1  # best status reached in this task, by STATUS_RANK
         self.stalled = 0  # reactions in a row without beating best_rank
+        self.replied_key = None  # circuit_key of the board Claude last replied about
+        self.unchanged = 0  # pauses in a row skipped because the circuit hadn't changed since that reply
         self.profile = {"topics": []}  # the learner profile, kept by the browser between sessions
         self.research = Research(research_log, config, claude, usage_log, self.id)
         self.skill_level = 1
@@ -199,13 +201,23 @@ class Session:
         if not self.limits.claude_allowed():
             self.usage_log.event("reaction_skipped", session_id=self.id, reason="claude_budget")
             return
+        # The same circuit as Claude's last reply: same evaluation, nothing new to say. After
+        # `tutor.react_after_unchanged` such pauses Claude is called anyway, to guide (docs/design.md §3).
+        unchanged = circuit_key(to_graph(self.board)[0]) == self.replied_key
+        if unchanged and self.unchanged + 1 < self.config.get("tutor", {}).get("react_after_unchanged", 4):
+            self.unchanged += 1
+            self.stalled += 1  # no progress: counts toward the hint offer like a reaction
+            self.usage_log.event("reaction_skipped", session_id=self.id, reason="unchanged")
+            return
+        unchanged_moves = self.unchanged + 1 if unchanged else 0
         if not self.limits.tutor.allow(self.id):
             self.usage_log.event("reaction_skipped", session_id=self.id, reason="rate_limited")
             return
+        self.unchanged = 0
         self.busy = True
         request_id = f"react-{uuid.uuid4().hex[:8]}"
         await self.send({"type": "tutor.started", "request_id": request_id, "trigger": "reaction"})
-        await self._answer(request_id, None, offer_hint=self._offer_hint())
+        await self._answer(request_id, None, offer_hint=self._offer_hint(), unchanged_moves=unchanged_moves)
 
     def _offer_hint(self) -> bool:
         """Whether this reaction offers a hint: after `tutor.offer_hint_after_reactions` reactions in
@@ -256,9 +268,10 @@ class Session:
             self._start_task(self._answer(request_id, text or None, hint=hint, asked=True))
 
     async def _answer(self, request_id: str, text: str | None, *, hint: int = 0, asked: bool = False,
-                      offer_hint: bool = False) -> None:
+                      offer_hint: bool = False, unchanged_moves: int = 0) -> None:
         """A tutor call for a learner request (`asked`: a message, or a hint of level `hint`) or
-        a reaction, which may end by offering a hint."""
+        a reaction, which may end by offering a hint. A reaction that comes back after a newer edit
+        is dropped: the reaction to the newer board follows (docs/design.md §3)."""
         # Earlier boards since the last call; the current board is added by the tutor context.
         snapshots, self.snapshots = self.snapshots[:-1], []
         board, seq = self.board, self.seq  # edits may arrive during the call; the reply is about this board
@@ -267,29 +280,18 @@ class Session:
             reply, evaluation = await answer(
                 self.claude, self.config, self.usage_log, level=self.level, board=board,
                 reference=reference, history=self.history, learner_text=text, snapshots=snapshots,
-                session_id=self.id, hint_level=hint, offer_hint=offer_hint,
+                session_id=self.id, hint_level=hint, offer_hint=offer_hint, unchanged_moves=unchanged_moves,
                 profile={"skill_level": self.skill_level, "focus": focus(self.profile, self.skill_level)},
             )
-            reply["chat"], dropped = compose(reply, self.profile, self.skill_level)
-            if dropped:
-                self.usage_log.event("profile_dropped", session_id=self.id, dropped=dropped)
-            if hint:
-                self.hint_level = max(self.hint_level, hint)
-                self.stalled = 0
-                self.history.append({"role": "learner", "text": f"(asked for hint {hint}/3) {text or ''}".strip()})
-            elif text is not None:
-                self.history.append({"role": "learner", "text": text})
-            self.history.append({"role": "tutor", "text": reply["chat"]["text"]})
-            if hint:
-                self.research.chat("learner", {"action": "hint", "hint_level": hint, "text": text})
-            elif text is not None:
-                self.research.chat("learner", {"text": text})
-            self.research.chat("tutor", reply, seq=seq, trigger="request" if asked else "reaction")
-            # `seq` names the board the reply is about: the client drops its highlights and
-            # evaluation when the learner has edited since.
-            await self.send({"type": "tutor.message", "request_id": request_id, "seq": seq,
-                             "evaluation": evaluation, "message": reply, "hint_offered": offer_hint,
-                             "profile": self.profile})
+            if not asked and self.seq != seq:
+                # Out of date: its text would answer a board that's gone. Nothing of it is kept.
+                self.usage_log.event("reaction_dropped", session_id=self.id, seq=seq, current_seq=self.seq)
+                self.research.chat("tutor", reply, seq=seq, trigger="reaction", dropped=True)
+                if offer_hint:  # the offer it carried moves to the next reaction
+                    self.stalled = max(self.stalled, self.config.get("tutor", {}).get("offer_hint_after_reactions", 3) - 1)
+                await self.send({"type": "tutor.dropped", "request_id": request_id})
+            else:
+                await self._deliver(request_id, reply, evaluation, board, seq, text, hint, asked, offer_hint)
         except anthropic.APIError as e:
             purpose = "tutor_request" if asked else "tutor_reaction"
             self.usage_log.event("claude_error", purpose=purpose, session_id=self.id, error=str(e)[:300])
@@ -300,6 +302,31 @@ class Session:
             self.busy = False
         if self.snapshots and self.idle is None:
             self._restart_idle_timer()  # edits arrived during the call: react to them after a pause
+
+    async def _deliver(self, request_id: str, reply: dict, evaluation: dict, board: dict, seq: int,
+                       text: str | None, hint: int, asked: bool, offer_hint: bool) -> None:
+        """Compose a reply that's still current, record it, and send it."""
+        self.replied_key = circuit_key(to_graph(board)[0])
+        reply["chat"], dropped = compose(reply, self.profile, self.skill_level)
+        if dropped:
+            self.usage_log.event("profile_dropped", session_id=self.id, dropped=dropped)
+        if hint:
+            self.hint_level = max(self.hint_level, hint)
+            self.stalled = 0
+            self.history.append({"role": "learner", "text": f"(asked for hint {hint}/3) {text or ''}".strip()})
+        elif text is not None:
+            self.history.append({"role": "learner", "text": text})
+        self.history.append({"role": "tutor", "text": reply["chat"]["text"]})
+        if hint:
+            self.research.chat("learner", {"action": "hint", "hint_level": hint, "text": text})
+        elif text is not None:
+            self.research.chat("learner", {"text": text})
+        self.research.chat("tutor", reply, seq=seq, trigger="request" if asked else "reaction")
+        # `seq` names the board the reply is about: for a message or hint answered after a newer
+        # edit, the client shows the text but drops the highlights and the evaluation.
+        await self.send({"type": "tutor.message", "request_id": request_id, "seq": seq,
+                         "evaluation": evaluation, "message": reply, "hint_offered": offer_hint,
+                         "profile": self.profile})
 
     def _research_state(self) -> dict:
         """`research` for an outgoing message, when recording is on: the browser keeps it (docs/design.md §5)."""

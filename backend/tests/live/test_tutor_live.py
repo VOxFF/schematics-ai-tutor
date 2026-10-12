@@ -138,3 +138,56 @@ def test_feedback_conversation_hands_off_only_circuit_questions(config, tmp_path
     reply = asyncio.run(research.reply(text))
     print(text, "→", "handoff" if reply is None else reply["text"])
     assert (reply is None) == handoff
+
+
+def _open_loop():
+    """The closed_loop example with one wire piece taken out: open ends at [10, 5] and [10, 6]."""
+    from app.task_spec import build_level, complete_grid, validate
+    from tests.conftest import load_example
+
+    spec = load_example("closed_loop")
+    level = build_level(spec, 1, validate(spec)["board"])
+    board = complete_grid(spec)
+    board["wires"] = [w for w in board["wires"] if w["segments"] != [[[10, 5], [10, 6]]]]
+    return level, board, spec
+
+
+def test_tutor_highlights_the_open_ends_of_a_broken_loop(config):
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        pytest.skip("ANTHROPIC_API_KEY is not set (./test.sh live loads backend/keys/apikey.txt)")
+    usage_log = UsageLog.from_config(config, REPO_ROOT, "live-test")
+    level, board, spec = _open_loop()
+    message, evaluation = asyncio.run(answer(
+        anthropic.AsyncAnthropic(), config, usage_log, level=level, board=board,
+        reference=spec["complete_board"], history=[], learner_text=None, session_id="live",
+    ))
+    print(json.dumps({"issues": evaluation["issues"], "highlights": message["meta"]["highlights"],
+                      "text": message["chat"]["text"]}, indent=1))
+    points = [h["target"]["point"] for h in message["meta"]["highlights"] if "point" in h["target"]]
+    assert sorted(points) == [[10, 5], [10, 6]]
+    assert not [h for h in message["meta"]["highlights"] if h["target"].get("component") == "V1"]
+
+
+def test_a_problem_the_learner_knows_gets_one_short_line(config):
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        pytest.skip("ANTHROPIC_API_KEY is not set (./test.sh live loads backend/keys/apikey.txt)")
+    from app.learner_profile import focus, join
+
+    usage_log = UsageLog.from_config(config, REPO_ROOT, "live-test")
+    level, board, spec = _open_loop()
+    profile = {"topics": []}
+    join(profile, {"curriculum": {"level": 3}}, board, 6)
+    for t in profile["topics"]:
+        if t["id"] in ("closed_loop", "open_circuit", "current"):
+            t["understanding"], t["explained"] = 2, 2
+    history = [{"role": "tutor", "text": "The ammeter reads zero because the loop still has a gap. Where does it stop?"}]
+    message, _ = asyncio.run(answer(
+        anthropic.AsyncAnthropic(), config, usage_log, level=level, board=board,
+        reference=spec["complete_board"], history=history, learner_text=None, session_id="live",
+        profile={"skill_level": 6, "focus": focus(profile, 6)},
+    ))
+    text = message["chat"]["text"]
+    print(text)
+    print(f"cost: ${usage_log.totals['cost_usd']:.4f}")
+    assert len([s for s in text.replace("?", ".").split(".") if s.strip()]) <= 2
+    assert not text.startswith("The ammeter reads zero")

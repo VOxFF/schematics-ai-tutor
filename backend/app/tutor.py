@@ -85,6 +85,10 @@ to the latest status, in at most 2 sentences:
   also lists unused_wire issues (leftover wire pieces that connect nothing), suggest
   tidying them up and highlight each one by wire id with style attention.
 If nothing meaningful changed, keep it to one short line. Never give the solution.
+If the request has "unchanged_moves": N, the learner has made N moves in a row that
+didn't change the circuit: they are trying things without progress. Guide more
+directly: highlight exactly what has to change and ask about that one spot. Look at
+the <snapshots> to see what they tried.
 If the request has "offer_hint": true, end the reaction by briefly offering a hint
 (e.g. "Want a hint?"), without giving it.
 
@@ -116,12 +120,17 @@ Choose the reply by the topic the moment touches:
   a knowledge reaction may take 3 sentences.
 - explained 1 or more, understanding 0-1: don't re-explain; ask one question that
   tests it (e.g. "Do you need a larger or a smaller resistance?").
-- understanding 2 or more: keep it short; confirm or praise the strategy.
+- understanding 2 or more: keep it short; confirm or praise the strategy. For a problem
+  the learner has fixed before, one short line is enough ("Still a gap; follow the
+  path."): don't explain the cause again.
+Never open a reply with the same words as your previous message in <history>.
 Safety first: for short_circuit and overcurrent talk about safety; teaching waits.
 Teach at most one topic per reply, and prefer recent topics (small tasks_ago).
 Report score changes in meta.topic_updates, one entry per topic, by id:
 - understanding +1 only on evidence: the learner fixed a problem without a hint,
-  answered a question correctly, or explained the idea in their own words.
+  answered a question correctly, or explained the idea in their own words. Evidence
+  counts for every topic it shows, terms as well as principles: closing an open loop
+  without a hint shows open_circuit and current, not only closed_loop.
   understanding -1 when a mistake or misconception shows a gap in that topic.
 - explained +1 when this reply explains the topic; else 0.
 Leave meta.topic_updates empty when nothing shows. You may name any topic in
@@ -158,6 +167,9 @@ When the status shows a problem, always highlight it:
   the source, every wire piece and every part (e.g. an ammeter) on the path that
   takes the current from its + side back to its - side without passing through
   a resistor. Trace that path in the graph; the learner must see the whole loop.
+- open_circuit: the issue's open_ends are the points where the loop is broken;
+  highlight each as a point (attention). Highlight the source only if one of its
+  own pins is an open end.
 - a missing or misplaced connection: the two grid points that should be
   connected, as two point highlights with style attention. A misplaced wire gets
   its id plus the two points it should connect instead.
@@ -263,10 +275,11 @@ def _usage(response) -> dict:
 async def answer(client, config: dict, usage_log, *, level: dict, board: dict, reference: dict | None,
                  history: list[dict], learner_text: str | None = None, snapshots: list[dict] | None = None,
                  session_id: str | None = None, hint_level: int = 0, offer_hint: bool = False,
-                 profile: dict | None = None) -> tuple[dict, dict]:
+                 profile: dict | None = None, unchanged_moves: int = 0) -> tuple[dict, dict]:
     """Return (TutorMessage, evaluation) for a learner message, a hint of `hint_level` (1-3, decided
     by the session), or a reaction when both are absent; a reaction with `offer_hint` ends by
-    offering a hint. `profile` is the learner's focus topics for the context. Raises
+    offering a hint. `unchanged_moves` (a reaction) counts the learner's moves that didn't change the
+    circuit since the last reply. `profile` is the learner's focus topics for the context. Raises
     anthropic.APIError on API failure."""
     reaction = learner_text is None and not hint_level
     purpose = "tutor_reaction" if reaction else "tutor_request"
@@ -276,7 +289,11 @@ async def answer(client, config: dict, usage_log, *, level: dict, board: dict, r
         if learner_text:
             request["learner_text"] = learner_text
     elif reaction:
-        request = {"trigger": "reaction", "offer_hint": True} if offer_hint else {"trigger": "reaction"}
+        request = {"trigger": "reaction"}
+        if offer_hint:
+            request["offer_hint"] = True
+        if unchanged_moves:
+            request["unchanged_moves"] = unchanged_moves
     else:
         request = {"action": "message", "learner_text": learner_text}
     user_turn, evaluation = build_context(

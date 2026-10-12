@@ -42,6 +42,37 @@ def test_open_loop_is_open_circuit():
     assert result["readings"]["VM1"] == 0.0
 
 
+def test_an_open_loop_says_where_it_is_broken_and_nothing_else():
+    g = grid("closed_loop")
+    drop_wire(g, [[10, 5], [10, 6]])
+    issues = evaluate(g)["issues"]
+    # Only the open loop: no "unused" wires and no "floating" source, although no current flows anywhere.
+    assert [i["code"] for i in issues] == ["open_circuit"]
+    assert issues[0]["open_ends"] == [[10, 5], [10, 6]]
+    assert issues[0]["points"] == [[3, 4], [3, 6]]  # still the source's pins
+
+
+def test_open_ends_ignore_pieces_away_from_the_circuit():
+    g = grid("closed_loop")
+    drop_wire(g, [[10, 5], [10, 6]])
+    g["wires"].append({"id": "W99", "segments": [[[1, 1], [2, 1]]]})  # a stray piece in a corner
+    g["components"].append({"id": "R9", "type": "resistor", "orientation": "W", "pins": {"a": [4, 8], "b": [6, 8]},
+                            "value": 20})  # a part dropped on its own
+    assert validate_grid(g) == []
+    issues = evaluate(g)["issues"]
+    assert next(i for i in issues if i["code"] == "open_circuit")["open_ends"] == [[10, 5], [10, 6]]
+    assert [i["component_ids"] for i in issues if i["code"] == "floating_part"] == [["R9"]]  # no wire touches it
+    assert not [i for i in issues if i["code"] == "unused_wire"]  # reported once current flows
+
+
+def test_a_leftover_piece_is_reported_once_current_flows():
+    g = grid("closed_loop")
+    g["wires"].append({"id": "W99", "segments": [[[1, 1], [2, 1]]]})
+    result = evaluate(g)
+    assert result["status"] == "solved"
+    assert [(i["code"], i["wire_ids"]) for i in result["issues"]] == [("unused_wire", ["W99"])]
+
+
 def test_wire_across_the_source_is_short_circuit():
     g = grid("closed_loop")
     g["wires"].append({"id": "W99", "segments": [[[3, 4], [2, 4]]]})

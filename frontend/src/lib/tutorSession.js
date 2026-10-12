@@ -94,6 +94,8 @@ export function useTutorSession(level, chat, onChat, board, progress,
         if (message.research) onResearchRef.current?.(message.research);
         if (message.type === "evaluation") setEvaluation(message.evaluation);
         else if (message.type === "tutor.started") setThinking(true);
+        // An out-of-date reaction isn't sent; the reaction to the newer board follows.
+        else if (message.type === "tutor.dropped") setThinking(false);
         else if (message.type === "tutor.message") {
           pending.current = null;
           setThinking(false);
