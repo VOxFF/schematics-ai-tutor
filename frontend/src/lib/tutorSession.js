@@ -11,10 +11,13 @@ function socketUrl() {
   return `${scheme}://${window.location.host}/ws/session`;
 }
 
+// The hint ladder's top rung (docs/tutor.md §3).
+export const MAX_HINT = 4;
+
 // level: the current Level (or null); chat: [{role, text, kind?}]; onChat: (nextChat) => void;
 // board: the learner's current board, sent on every change so the evaluation stays live;
 // progress: sent with session.start, so the server can pre-generate the task after this one;
-// hintLevel: the hint level reached in this task, sent with session.start so the ladder continues;
+// hintLevel: the hint rung reached in this task, sent with session.start so the ladder continues;
 // onReply(meta, hintOffered): each tutor reply's metadata, for the task's hint and misconception record;
 // profile / onProfile: the learner profile, sent with session.start and saved from each server update;
 // research / onResearch: the learner's research consent and active time, sent with session.start and
@@ -99,8 +102,8 @@ export function useTutorSession(level, chat, onChat, board, progress,
         else if (message.type === "tutor.message") {
           pending.current = null;
           setThinking(false);
-          const { kind, icon, title, text, terms } = message.message.chat;
-          append({ role: "tutor", kind, icon, title, text, terms });
+          const { kind, icon, title, text, formula, terms } = message.message.chat;
+          append({ role: "tutor", kind, icon, title, text, formula, terms });
           onReplyRef.current?.(message.message.meta ?? {}, Boolean(message.hint_offered));
           // The reply is about board `seq`. After a newer edit, the fast evaluation already shows
           // the current readings, and the highlights would point at a board that's gone.
@@ -170,7 +173,7 @@ export function useTutorSession(level, chat, onChat, board, progress,
   const askHint = useCallback(() => {
     const ws = socket.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) return false;
-    append({ role: "learner", kind: "hint", text: `Hint ${Math.min(hintRef.current + 1, 3)}/3, please` });
+    append({ role: "learner", kind: "hint", text: `Hint ${Math.min(hintRef.current + 1, MAX_HINT)}/${MAX_HINT}, please` });
     pending.current = null;
     sendRequest(ws, "hint");
     return true;

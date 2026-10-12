@@ -373,7 +373,7 @@ The order runs from most stable to least stable, so the cached prefix stays vali
   - On a match, regenerate once with the problem named.
   - If it fails again, send a safe generic message for the status.
 - Enforce `meta.hint_level` server-side: the session tracks the highest hint given and decides each hint's rung (one higher, at most 4). Claude's value is overwritten with it; replies that aren't hints get 0.
-- **Math check** ([design.md](design.md#formulas-and-paragraphs)): parse `chat.formula`; every number from the board or an earlier line, the arithmetic within 1%, the rung's limits (none on rung 1, no numbers on rung 2), and no answer before rung 4, in the formula or in `chat.text`. Before curriculum level 2 the formula is dropped.
+- **Math check** ([design.md](design.md#formulas-and-paragraphs)): parse `chat.formula`; every number from the board or an earlier line, the arithmetic within 1%, the rung's limits (none on rung 1, no numbers from the board on rung 2), and no answer before rung 4, in the formula or in `chat.text`. Before curriculum level 2 the formula is dropped.
   - On a failure, regenerate once with the problem named.
   - If it fails again, drop the formula (an answer in the text: send the safe generic message). Log `formula_dropped`.
 - **Highlight wire format.** In Claude's structured output, each highlight has `component`, `wire` and `point` fields, with the unused ones `null`, plus `style`. The backend converts each into a `Highlight` (`{ target, style }`).

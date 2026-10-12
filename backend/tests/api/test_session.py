@@ -78,7 +78,7 @@ def test_the_profile_joins_task_topics_and_learns_from_replies(config):
         reply = ws.receive_json()
         assert reply["message"]["chat"] == {"kind": "knowledge", "icon": "📘", "title": "Voltmeter",
                                             "text": "A voltmeter has a huge resistance, so it goes across a part.",
-                                            "terms": [[2, 11]]}
+                                            "formula": None, "terms": [[2, 11]]}
         topics = {t["id"]: t for t in reply["profile"]["topics"]}
         assert topics["voltmeter"]["explained"] == 1 and topics["current"]["understanding"] == 2
     context = fake.requests[0]["messages"][0]["content"]
@@ -197,20 +197,20 @@ def ask_hint(ws, request_id):
     return ws.receive_json()
 
 
-def test_hints_climb_the_ladder_one_level_at_a_time_up_to_three(config):
+def test_hints_climb_the_ladder_one_rung_at_a_time_up_to_four(config):
     highlight = [{"component": "VM1", "wire": None, "point": None, "style": "attention"}]
-    fake = FakeClaude([tutor_reply(f"Hint {n}", highlights=highlight) for n in range(4)])
+    fake = FakeClaude([tutor_reply(f"Hint {n}", highlights=highlight) for n in range(5)])
     client, level = connect(config, fake)
     with client.websocket_connect("/ws/session") as ws:
         ws.send_json({"type": "session.start", "level": level})
         ws.receive_json()
-        replies = [ask_hint(ws, f"h{n}")["message"] for n in range(4)]
-    assert [r["meta"]["hint_level"] for r in replies] == [1, 2, 3, 3]  # Claude said 2 every time
+        replies = [ask_hint(ws, f"h{n}")["message"] for n in range(5)]
+    assert [r["meta"]["hint_level"] for r in replies] == [1, 2, 3, 4, 4]  # Claude said 2 every time
     assert {r["chat"]["kind"] for r in replies} == {"hint"}
-    assert replies[0]["meta"]["highlights"] == []  # level 1 names the concept only
-    assert replies[1]["meta"]["highlights"] == [{"target": {"component": "VM1"}, "style": "attention"}]
+    # Every rung points at where to look, rung 1 too.
+    assert replies[0]["meta"]["highlights"] == [{"target": {"component": "VM1"}, "style": "attention"}]
     requests = [r["messages"][0]["content"].split("<request>")[1] for r in fake.requests]
-    assert ['"hint_level": 1' in requests[0], '"hint_level": 3' in requests[3]] == [True, True]
+    assert ['"hint_level": 1' in requests[0], '"hint_level": 4' in requests[4]] == [True, True]
 
 
 def test_a_resumed_session_continues_the_ladder(config):
@@ -446,3 +446,15 @@ def test_without_consent_nothing_is_recorded(config, tmp_path):
         ws.send_json({"type": "board.update", "seq": 1, "board": level["board"]})
         ws.receive_json()
     assert not any(tmp_path.iterdir())
+
+
+def test_formulas_from_the_configured_curriculum_level(config):
+    fake = FakeClaude([tutor_reply("One"), tutor_reply("Two")])
+    client, level = connect(config, fake)
+    for curriculum in ({"level": 1}, {"level": 2}):
+        with client.websocket_connect("/ws/session") as ws:
+            ws.send_json({"type": "session.start", "level": {**level, "curriculum": curriculum}})
+            ws.receive_json()
+            ask_hint(ws, "h1")
+    requests = [r["messages"][0]["content"].split("<request>")[1] for r in fake.requests]
+    assert ['"formulas": true' in r for r in requests] == [False, True]

@@ -114,12 +114,20 @@ def join(profile: dict, level: dict, board: dict, skill_level: int) -> list[str]
 
 def focus(profile: dict, skill_level: int) -> list[dict]:
     """The topics Claude sees: the most recent first, then older weak ones (understanding 0-1),
-    then the rest, up to FOCUS_TOPICS."""
+    then the rest, up to FOCUS_TOPICS. Catalog topics carry their formula, if they have one."""
     by_recency = sorted(profile["topics"], key=lambda t: -t["introduced"])
     recent, older = by_recency[:RECENT_TOPICS], by_recency[RECENT_TOPICS:]
     weak = sorted((t for t in older if t["understanding"] <= 1), key=lambda t: t["understanding"])
     rest = [t for t in older if t["understanding"] > 1]
     picked = (recent + weak + rest)[:FOCUS_TOPICS]
-    return [{"id": t["id"], "name": t["name"], "type": t["type"], "definition": t["definition"],
-             "understanding": t["understanding"], "explained": t["explained"],
-             "tasks_ago": max(skill_level - t["introduced"], 0)} for t in picked]
+    catalog = load_catalog()
+    topics = []
+    for t in picked:
+        topic = {"id": t["id"], "name": t["name"], "type": t["type"], "definition": t["definition"],
+                 "understanding": t["understanding"], "explained": t["explained"],
+                 "tasks_ago": max(skill_level - t["introduced"], 0)}
+        # A catalog topic's formula, for a knowledge message (docs/design.md §4).
+        if t["source"] == "catalog" and (formula := catalog.get(t["id"], {}).get("formula")):
+            topic["formula"] = formula
+        topics.append(topic)
+    return topics

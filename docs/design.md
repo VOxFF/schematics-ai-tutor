@@ -247,10 +247,10 @@ Each new task opens with a tutor message in the chat, so the learner knows what'
 - **Catalog formulas.** A topic in `topics.yaml` can have a `formula`, e.g. `I = \frac{V}{R}` for `ohms_law`. Focus topics carry it to Claude, and a `knowledge` message about the topic uses it, so a law always looks the same.
 - **LaTeX subset.** Symbols with subscripts (`R_2`, `V_{R1}`), numbers with units (`\,\Omega`, `\,\mathrm{k\Omega}`, `\,\mathrm{V}`, `\,\mathrm{mA}`, `\,\mathrm{A}`, `\,\mathrm{W}`), `+ - \cdot \times \frac{}{}`, parentheses, `=` and `\approx`. That is all the circuits here need, and the math check parses it. A line outside the subset fails the check.
 
-**Math check (`formula.py`, run by the reply composer).** Claude writes the formula; plain code decides whether it is shown, the same split as for readings (§1).
+**Math check (`formula.py`).** Claude writes the formula; plain code decides whether it is shown, the same split as for readings (§1). The tutor service runs it with the location-talk backstop, before the reply composer, so a failure can still be regenerated.
 
 1. **Parse** each line; a line that doesn't parse fails.
-2. **Numbers come from the board.** Every number is a part value, a meter reading or a target on the current board, or the result of an earlier line of the same formula. Units count: `4 V` is not `4 Ω`.
+2. **Numbers come from the board.** Every number is a part value (placed or in the inventory), a meter reading or a target on the current board, or the result of an earlier line of the same formula. Units count: `4 V` is not `4 Ω`. Whole numbers up to 10 without a unit are algebra (`1/R`, `2 R_2`) and always allowed.
 3. **Arithmetic holds.** Wherever both sides of an `=` are numbers only, they agree within 1% (`\approx`: within 5%, for rounded values).
 4. **No answer too early.** The answer is the value of a part the task removed (from the reference board) that the learner hasn't placed with that value yet. Only rung 4 of the hint ladder may show it, in `chat.formula` or in `chat.text`; anywhere else, a number with that value and unit fails the check.
 5. **On failure:** the call is regenerated once with the problem named, as for location talk ([tutor.md](tutor.md#6-guardrails-physics-not-placement)). If it fails again, the formula is dropped (and, for an answer in the text, the safe generic message is sent). Dropped formulas go to the run log as `formula_dropped`.
@@ -262,7 +262,7 @@ Each new task opens with a tutor message in the chat, so the learner knows what'
 | Reaction, free chat | Optional. Symbolic, or with the board's numbers when it helps; no answer |
 | `knowledge` | The topic's catalog formula, symbolic |
 | Hint rung 1, text | None |
-| Hint rung 2, formula | Symbolic only: no numbers at all |
+| Hint rung 2, formula | Symbolic only: no numbers from the board |
 | Hint rung 3, partial numbers | The known values put in; the unknown stays a symbol; no answer |
 | Hint rung 4, full computation | Rearrange, substitute, compute, up to 8 lines; the answer is allowed |
 
@@ -286,7 +286,7 @@ flowchart LR
 
 ### Status
 
-- **Build status.** Built: the catalog, the profile (`learner_profile.py`), the reply composer (`reply_composer.py`), the prompt rules, the welcome message and the chat bubbles. Designed, not built yet: formulas, the math check, the four-rung hint ladder and paragraphs. Interfaces are in [contract.md](contract.md), the prompt rules in [tutor.md](tutor.md#teaching-from-the-learner-profile).
+- **Build status.** Built: the catalog, the profile (`learner_profile.py`), the reply composer (`reply_composer.py`), the prompt rules, the welcome message and the chat bubbles. Built too: formulas (`formula.py`), the four-rung hint ladder and paragraphs ([Formulas and paragraphs](#formulas-and-paragraphs)). Interfaces are in [contract.md](contract.md), the prompt rules in [tutor.md](tutor.md#teaching-from-the-learner-profile).
 - **Later uses.** The profile is ready to feed task generation (target weak topics) and the Learning Path screen ([gui.md](gui.md#9-learning-path-screen-bonus)). Neither is built yet.
 
 ## 5. Learner experience research
@@ -633,6 +633,7 @@ schematics-ai-tutor/
 │   │   ├── tutor.py           tutor call: context, TutorMessage schema, backstop
 │   │   ├── learner_profile.py learner profile: topic catalog, sanitizing, topics joining per task, focus topics
 │   │   ├── reply_composer.py  bounds Claude's profile changes; icon and title per message kind; paragraphs
+│   │   ├── formula.py         math check for formulas in replies: LaTeX subset, board numbers, arithmetic, answer
 │   │   ├── session.py         WebSocket learning session
 │   │   └── jsonfmt.py         readable JSON formatting
 │   ├── data/

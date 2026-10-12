@@ -29,7 +29,7 @@ def test_changes_are_clamped_and_explained_never_goes_down():
                                            {"topic": "voltage", "understanding": -9, "explained": 0}]), p, 2)
     assert scores(p, "current") == (2, 0) and scores(p, "voltage") == (0, 0) and dropped == []
     assert chat == {"kind": "question", "icon": ICONS["question"], "title": None,
-                    "text": "An ammeter has almost no resistance.", "terms": []}
+                    "text": "An ammeter has almost no resistance.", "formula": None, "terms": []}
 
 
 def test_scores_stay_within_zero_to_three():
@@ -92,3 +92,14 @@ def test_a_welcome_without_text_or_with_location_talk_falls_back_to_a_plain_line
     assert message["text"] == "New task: Close the loop. Let's see what you make of it!"
     assert message["kind"] == "knowledge"  # a new learner meets the level-1 topics
     assert welcome({**level, "welcome": ""}, None, 1)["text"].startswith("New task: Close the loop.")
+
+
+def test_paragraphs_are_tidied_and_the_formula_passes_through():
+    p = profile("current")
+    message = reply()
+    message["chat"]["text"] = "\n  Current is the flow.  \n\n\n\nIt needs a loop.\n"
+    message["chat"]["formula"] = [r"I = \frac{V}{R}"]
+    chat, _ = compose(message, p, 2)
+    assert chat["text"] == "Current is the flow.\n\nIt needs a loop."
+    assert chat["formula"] == [r"I = \frac{V}{R}"]
+    assert chat["terms"] == [[0, 7]]

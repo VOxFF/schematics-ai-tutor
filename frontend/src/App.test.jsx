@@ -251,6 +251,27 @@ test("tutor messages are tinted by kind, and the learner profile is saved and se
   expect(JSON.parse(localStorage.getItem(SESSION_KEY)).chat[0]).toMatchObject({ kind: "knowledge", icon: "📘", title: "Voltmeter" });
 });
 
+test("a tutor message shows its paragraphs, its terms in bold and its formula", async () => {
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [] }));
+  render(<App />);
+  await screen.findByPlaceholderText("Ask the tutor…");
+  const ws = FakeSocket.last;
+  ws.serverSends({ type: "tutor.started", request_id: "h1", trigger: "request" });
+  ws.serverSends({
+    type: "tutor.message", request_id: "h1", seq: 0,
+    evaluation: { status: "open_circuit", readings: {}, issues: [] },
+    message: { meta: { principle: "ohms_law", highlights: [], hint_level: 2, misconception: null },
+               chat: { kind: "hint", icon: "🔑", title: null, text: "Current follows Ohm's law.\n\nUse the source voltage.",
+                       formula: ["I = \\frac{V}{R}", "\\unknowncommand{x}"], terms: [[0, 7], [43, 50]] } },
+  });
+  const paragraphs = document.querySelectorAll(".tutor-message .paragraph");
+  expect([...paragraphs].map((p) => p.textContent)).toEqual(["Current follows Ohm's law.", "Use the source voltage."]);
+  expect(paragraphs[1].querySelector("strong").textContent).toBe("voltage");
+  const lines = document.querySelectorAll(".tutor-message .formula-line");
+  expect(lines[0].querySelector(".katex")).not.toBeNull();
+  expect(lines[1].textContent).toBe("\\unknowncommand{x}"); // KaTeX can't: shown as plain text
+});
+
 test("a tutor reaction arrives unprompted, and a failed one ends quietly", async () => {
   localStorage.setItem(SESSION_KEY, JSON.stringify({ progress: { skill_level: 1, history: [] }, level: LEVEL, chat: [] }));
   render(<App />);
@@ -312,21 +333,21 @@ test("the Hint button climbs the ladder, lights up when a hint is offered, and N
   });
 
   reply({ hint_offered: true }, {});
-  const hint = screen.getByRole("button", { name: "Hint 1/3" });
+  const hint = screen.getByRole("button", { name: "Hint 1/4" });
   expect(hint.className).toContain("offered");
   fireEvent.click(hint);
   expect(ws.sent.at(-1)).toMatchObject({ type: "tutor.request", action: "hint" });
-  expect(screen.getByText("Hint 1/3, please")).toBeDefined();
-  expect(screen.getByRole("button", { name: "Hint 1/3" }).className).not.toContain("offered");
+  expect(screen.getByText("Hint 1/4, please")).toBeDefined();
+  expect(screen.getByRole("button", { name: "Hint 1/4" }).className).not.toContain("offered");
   reply({}, { hint_level: 1, misconception: "current_used_up" });
-  expect(screen.getByRole("button", { name: "Hint 2/3" })).toBeDefined();
+  expect(screen.getByRole("button", { name: "Hint 2/4" })).toBeDefined();
 
   solve();
   fireEvent.click(screen.getByRole("button", { name: "Next" }));
   await screen.findByRole("heading", { name: "Parallel paths" });
   const summary = JSON.parse(fetch.mock.calls.at(-1)[1].body).history.at(-1);
   expect(summary).toMatchObject({ hints_used: 1, misconceptions: ["current_used_up"] });
-  expect(screen.getByRole("button", { name: "Hint 1/3" })).toBeDefined(); // a fresh ladder
+  expect(screen.getByRole("button", { name: "Hint 1/4" })).toBeDefined(); // a fresh ladder
 });
 
 test("a tutor error shows in the chat", async () => {
