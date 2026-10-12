@@ -94,9 +94,9 @@ class TaskCache:
     def fill_first_task_pool(self) -> None:
         self.pregenerate(FIRST_PROGRESS, self.first_task_pool)
 
-    async def get(self, progress: dict):
-        """A task for `progress`: cached if one is ready or under way, else generated now.
-        Then the task after it is generated in the background."""
+    async def get(self, progress: dict, produce: bool = True):
+        """A task for `progress`: cached if one is ready or under way, else generated now (with
+        `produce`; else None). Then the task after it is generated in the background."""
         self._prune()
         queue = self.entries.get(progress_key(progress), [])
         # Prefer a finished generation, then the oldest one still running.
@@ -116,6 +116,8 @@ class TaskCache:
             # A failed background generation is retried once now, below.
         if result is None:
             self._event("task_cache_miss", skill_level=progress["skill_level"])
+            if not produce:
+                return None
             result = await self.produce(progress)
         if result.level is not None:
             self.pregenerate(solved(progress, result.level))

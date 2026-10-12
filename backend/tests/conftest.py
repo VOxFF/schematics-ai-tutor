@@ -104,3 +104,17 @@ def any_level(monkeypatch):
     monkeypatch.setattr(generation, "position", lambda skill_level: (ANY_LEVEL, 1))
     monkeypatch.setattr(generation, "pick_grid", lambda rules: {"columns": 12, "rows": 8})
     return ANY_LEVEL
+
+
+@pytest.fixture
+def pack(tmp_path, monkeypatch):
+    """A fallback pack of the example task, under ANY_LEVEL: every skill level maps to skill-1.json."""
+    import app.fallback as fallback
+    from app.jsonfmt import dumps
+    (tmp_path / "skill-1.json").write_text(dumps([load_example()]))
+    monkeypatch.setattr(fallback, "FALLBACK_DIR", tmp_path)
+    monkeypatch.setattr(fallback, "position", lambda skill_level, levels=None: (ANY_LEVEL, 1))
+    monkeypatch.setattr(fallback, "first_skill_level", lambda level, levels=None: 1)
+    fallback.load.cache_clear()
+    yield tmp_path
+    fallback.load.cache_clear()

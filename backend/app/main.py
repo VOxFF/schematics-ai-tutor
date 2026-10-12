@@ -13,13 +13,15 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from . import fallback
+from .claude_status import ClaudeStatus, GuardedClaude, available
 from .config import REPO_ROOT, config_path, load_config
 from .log_archive import LogArchive
 from .rate_limits import RateLimiter, client_ip
 from .reply_composer import welcome
 from .research import ResearchLog
 from .session import Session
-from .task_cache import TaskCache
+from .task_cache import TaskCache, solved
 from .task_generation import generate_task
 from .usage_log import UsageLog
 
@@ -60,7 +62,10 @@ async def lifespan(app: FastAPI):
     # Learner experience research, with consent (docs/design.md §5); None when it's off.
     app.state.research_log = ResearchLog.from_config(config, REPO_ROOT, usage_log)
     # The SDK reads ANTHROPIC_API_KEY from the environment; without it, Claude features are off.
-    app.state.claude = anthropic.AsyncAnthropic() if os.environ.get("ANTHROPIC_API_KEY") else None
+    # Wrapped, so an outage marks Claude down for `claude.down_s` (docs/design.md §6).
+    status = ClaudeStatus(config.get("claude", {}).get("down_s", 300), usage_log)
+    app.state.claude = (GuardedClaude(anthropic.AsyncAnthropic(), status)
+                        if os.environ.get("ANTHROPIC_API_KEY") else None)
     app.state.task_cache = task_cache(app.state.claude, config, usage_log, limits)
     usage_log.event("server_started", run_id=run_id, pid=os.getpid(), config=str(config_path()),
                     claude=app.state.claude is not None, pregeneration=app.state.task_cache is not None)
@@ -87,7 +92,8 @@ def task_cache(claude, config: dict, usage_log: UsageLog, limits: RateLimiter) -
 
     return TaskCache(produce, first_task_pool=settings.get("first_task_pool", 2),
                      max_entries=settings.get("max_entries", 50), ttl_s=settings.get("ttl_s", 3600),
-                     usage_log=usage_log, allow_background=lambda: limits.claude_allowed(background=True))
+                     usage_log=usage_log,
+                     allow_background=lambda: limits.claude_allowed(background=True) and available(claude))
 
 
 app = FastAPI(title="Schematics AI Tutor", lifespan=lifespan)
@@ -162,27 +168,41 @@ async def generate(
     limits: RateLimiter = Depends(get_limits),
 ) -> dict:
     """The task for this progress as a Level: pre-generated when the cache has one, else generated
-    now. The task after it is then generated in the background (docs/design.md §3)."""
-    if claude is None:
-        raise HTTPException(503, "Claude is not configured: set ANTHROPIC_API_KEY or backend/keys/apikey.txt")
-    # Curated levels will be served here once they exist (docs/design.md §6); until then, a 429.
-    if not limits.claude_allowed():
-        usage_log.event("generation_refused", reason="claude_budget")
-        raise HTTPException(429, "Task generation has reached today's limit; please try again tomorrow.")
-    ip = client_ip(request)
-    if not limits.generations.allow(ip):
-        minutes = int(limits.generations.retry_after(ip) // 60) + 1
-        usage_log.event("generation_refused", reason="rate_limited")
-        raise HTTPException(429, f"Task generation is paused; please try again in {minutes} min.",
-                            headers={"Retry-After": str(minutes * 60)})
+    now. The task after it is then generated in the background (docs/design.md §3). When Claude
+    is down, refused or fails, a task from the fallback pack (docs/design.md §6)."""
     progress = {"skill_level": body.skill_level, "history": body.history}
-    if cache is not None:
-        result = await cache.get(progress)
+    # Why Claude can't generate now, if it can't: the pack is served instead of waiting or failing.
+    if claude is None:
+        reason = "no_claude"
+    elif not available(claude):
+        reason = "claude_down"
+    elif not limits.claude_allowed():
+        reason = "claude_budget"
+    elif not limits.generations.allow(client_ip(request)):
+        reason = "rate_limited"
     else:
+        reason = None
+    # A pre-generated task is served even when Claude can't generate: it is already paid for.
+    if cache is not None:
+        result = await cache.get(progress, produce=reason is None)
+    elif reason is None:
         result = await generate_task(claude, config, usage_log, skill_level=body.skill_level, history=body.history)
-    if result.level is None:
-        message = f"Sorry, I couldn't create a valid task after {result.attempts} attempts. Please try again."
-        raise HTTPException(502, {"message": message, "attempts": result.attempts, "errors": result.errors})
+    else:
+        result = None
+    source = "generated"
+    if result is None or result.level is None:
+        failed = result
+        result = fallback.pick(body.skill_level, body.history, config, usage_log)
+        usage_log.event("generation_fallback", skill_level=body.skill_level, reason=reason or "generation_failed",
+                        served=result is not None)
+        if result is None:  # no pack for this skill level: the learner can retry
+            message = "Sorry, I couldn't create a task right now. Please try again."
+            raise HTTPException(502, {"message": message, "attempts": getattr(failed, "attempts", 0),
+                                      "errors": getattr(failed, "errors", [])})
+        source = "fallback"
+        if cache is not None:  # the next task is generated ahead if Claude allows it by then
+            cache.pregenerate(solved(progress, result.level))
+    result.level["source"] = source  # kept with the level, so the research records show it
     references[result.level["id"]] = result.spec["complete_board"]
     return {
         "level": result.level,
@@ -190,6 +210,7 @@ async def generate(
         "difficulty": result.spec["difficulty"],
         "rationale": result.spec["rationale"],
         "attempts": result.attempts,
+        "source": source,
     }
 
 

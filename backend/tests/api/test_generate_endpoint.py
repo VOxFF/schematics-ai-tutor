@@ -57,8 +57,8 @@ def test_generate_serves_from_the_cache(config):
         def __init__(self):
             self.requested = []
 
-        async def get(self, progress):
-            self.requested.append(progress)
+        async def get(self, progress, produce=True):
+            self.requested.append((progress, produce))
             spec = load_example()
             level = {"id": "gen-cached", "order": progress["skill_level"], "title": "t", "board": {}}
             return GenerationResult(spec=spec, level=level, attempts=1)
@@ -66,55 +66,84 @@ def test_generate_serves_from_the_cache(config):
     cache = Cache()
     response = client_with(FakeClaude([]), config, cache).post("/api/tasks/generate", json={"skill_level": 2})
     assert response.status_code == 200 and response.json()["level"]["id"] == "gen-cached"
-    assert cache.requested == [{"skill_level": 2, "history": []}]
+    assert response.json()["source"] == "generated"
+    assert cache.requested == [({"skill_level": 2, "history": []}, True)]
     assert "gen-cached" in REFERENCES
 
 
-def test_generate_without_claude_is_503(config):
-    response = client_with(None, config).post("/api/tasks/generate", json={})
-    assert response.status_code == 503
+def test_a_cached_task_is_served_even_when_claude_is_down(config):
+    class Cache:
+        async def get(self, progress, produce=True):
+            assert not produce  # nothing new is generated while Claude is down
+            return GenerationResult(spec=load_example(), level={"id": "gen-cached-2", "title": "t"}, attempts=1)
+
+    down = FakeClaude([])
+    down.down = True
+    response = client_with(down, config, Cache()).post("/api/tasks/generate", json={"skill_level": 2})
+    assert response.json()["level"]["id"] == "gen-cached-2" and response.json()["source"] == "generated"
 
 
-def test_generate_failure_is_502_with_errors(config):
+def served_from_the_pack(response):
+    body = response.json()
+    assert response.status_code == 200 and body["source"] == "fallback" and body["level"]["source"] == "fallback"
+    assert body["level"]["title"] == load_example()["title"] and body["level"]["id"] in REFERENCES
+    assert body["welcome"]["text"] == load_example()["welcome"]
+    return body
+
+
+def test_without_claude_the_pack_is_served(config, pack):
+    body = served_from_the_pack(client_with(None, config).post("/api/tasks/generate", json={"skill_level": 3}))
+    assert body["level"]["order"] == 3 and body["attempts"] == 0
+
+
+def test_while_claude_is_down_the_pack_is_served_without_a_call(config, pack):
+    down = FakeClaude([])
+    down.down = True
+    served_from_the_pack(client_with(down, config).post("/api/tasks/generate", json={"skill_level": 3}))
+    assert down.requests == []
+
+
+def test_a_failed_generation_falls_back_to_the_pack(config, pack):
     bad = as_claude_output(load_example())
     bad["removed_ids"] = []
     fake = FakeClaude([text_response(bad), text_response(bad)])
-    response = client_with(fake, config).post("/api/tasks/generate", json={})
+    served_from_the_pack(client_with(fake, config).post("/api/tasks/generate", json={}))
+    assert len(fake.requests) == 2
+
+
+def test_without_a_pack_a_failure_is_502(config, pack):
+    (pack / "skill-1.json").unlink()
+    response = client_with(None, config).post("/api/tasks/generate", json={})
     assert response.status_code == 502
-    detail = response.json()["detail"]
-    assert detail["attempts"] == 2
-    assert detail["message"] == "Sorry, I couldn't create a valid task after 2 attempts. Please try again."
+    assert response.json()["detail"]["message"] == "Sorry, I couldn't create a task right now. Please try again."
 
 
 def teardown_function():
     app.dependency_overrides = {}
 
 
-def test_generate_is_limited_per_ip(config):
+def test_over_the_ip_limit_the_pack_is_served(config, pack):
     limits = RateLimiter({**config["rate_limits"], "task_generation": {"per_ip_per_hour": 1}})
     fake = FakeClaude([text_response(as_claude_output(load_example()))])
     client = client_with(fake, config, limits=limits)
-    assert client.post("/api/tasks/generate", json={"skill_level": 3}).status_code == 200
-    refused = client.post("/api/tasks/generate", json={"skill_level": 3})
-    assert refused.status_code == 429
-    assert "try again in 60 min" in refused.json()["detail"]
-    assert refused.headers["retry-after"] == "3600"
+    assert client.post("/api/tasks/generate", json={"skill_level": 3}).json()["source"] == "generated"
+    served_from_the_pack(client.post("/api/tasks/generate", json={"skill_level": 3}))
+    assert len(fake.requests) == 1
 
 
-def test_generate_stops_at_the_claude_budget(config):
+def test_at_the_claude_budget_the_pack_is_served(config, pack):
     limits = RateLimiter(config["rate_limits"])
     limits.budget.spend(limits.budget.usd_per_day)
     fake = FakeClaude([])
-    response = client_with(fake, config, limits=limits).post("/api/tasks/generate", json={"skill_level": 3})
-    assert response.status_code == 429 and "today's limit" in response.json()["detail"]
+    served_from_the_pack(client_with(fake, config, limits=limits).post("/api/tasks/generate", json={"skill_level": 3}))
     assert fake.requests == []
 
 
-def test_rest_requests_are_limited_per_ip_but_not_health(config):
+def test_rest_requests_are_limited_per_ip_but_not_health(config, pack):
     app.state.limits = RateLimiter({**config["rate_limits"], "rest": {"requests_per_ip_per_min": 1}})
     try:
         client = client_with(None, config)
-        assert client.post("/api/tasks/generate", json={"skill_level": 1}).status_code == 503  # no Claude
+        assert client.post("/api/tasks/generate", json={"skill_level": 1}).status_code == 200  # from the pack
         assert client.post("/api/tasks/generate", json={"skill_level": 1}).status_code == 429
         assert client.get("/api/health").status_code == 200
     finally:

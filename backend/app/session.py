@@ -14,6 +14,7 @@ import uuid
 
 import anthropic
 
+from .claude_status import available
 from .evaluate import STATUS_RANK, evaluate
 from .graph import circuit_key, to_graph
 from .grid import validate_grid
@@ -22,7 +23,10 @@ from .rate_limits import RateLimiter
 from .reply_composer import compose
 from .research import Research, ResearchLog
 from .task_cache import solved
-from .tutor import MAX_HINT, answer
+from .tutor import MAX_HINT, answer, fallback_message
+
+
+RESTING = "The tutor is taking a short break; your circuit is still checked live."
 
 
 class Session:
@@ -186,7 +190,7 @@ class Session:
         else:
             return
         self.quiet = None
-        if not self.limits.claude_allowed():
+        if not self.limits.claude_allowed() or not available(self.claude):
             return  # its replies need Claude
         evaluation = self._evaluate()
         prompt = self.research.prompt_due((self.level.get("curriculum") or {}).get("level") or 1, evaluation["status"])
@@ -200,6 +204,9 @@ class Session:
             return  # a call is running; the next pause reacts to these snapshots too
         if not self.limits.claude_allowed():
             self.usage_log.event("reaction_skipped", session_id=self.id, reason="claude_budget")
+            return
+        if not available(self.claude):
+            self.usage_log.event("reaction_skipped", session_id=self.id, reason="claude_down")
             return
         # The 🔔 question waits for the learner's answer: reactions would bury it (docs/design.md §5).
         if self.research.awaiting:
@@ -249,11 +256,9 @@ class Session:
         elif action not in ("message", "hint") or (action == "message" and not text):
             await self.error("bad_message", "tutor.request needs action 'hint', or 'message' with learner_text",
                              request_id)
-        elif self.claude is None:
-            await self.error("tutor_unavailable", "The tutor is not configured.", request_id)
-        elif not self.limits.claude_allowed():
-            await self.error("tutor_unavailable", "The tutor has reached today's limit; please try again tomorrow.",
-                             request_id)
+        elif not available(self.claude) or not self.limits.claude_allowed():
+            # No Claude, Claude down or the budget spent: a plain message, not an error (docs/design.md §6).
+            await self._resting(request_id, text or None)
         elif self.busy or not self.limits.tutor.allow(self.id):
             await self.error("rate_limited", "The tutor needs a moment; try again shortly.", request_id)
         else:
@@ -301,13 +306,26 @@ class Session:
         except anthropic.APIError as e:
             purpose = "tutor_request" if asked else "tutor_reaction"
             self.usage_log.event("claude_error", purpose=purpose, session_id=self.id, error=str(e)[:300])
-            # A failed reaction carries no request_id: the client stops "thinking" without a chat error.
-            await self.error("tutor_unavailable", "The tutor is unavailable right now; try again shortly.",
-                             request_id if asked else None)
+            if asked and not available(self.claude):  # the failure marked Claude down
+                await self._resting(request_id, text)
+            else:
+                # A failed reaction carries no request_id: the client stops "thinking" without a chat error.
+                await self.error("tutor_unavailable", "The tutor is unavailable right now; try again shortly.",
+                                 request_id if asked else None)
         finally:
             self.busy = False
         if self.snapshots and self.idle is None:
             self._restart_idle_timer()  # edits arrived during the call: react to them after a pause
+
+    async def _resting(self, request_id: str, text: str | None) -> None:
+        """The tutor without Claude (docs/design.md §6): the plain message for the board's status,
+        with a note that the tutor is resting. A hint asked now doesn't count on the ladder."""
+        self.usage_log.event("tutor_resting", session_id=self.id, claude=self.claude is not None)
+        evaluation = self._evaluate()
+        reply = fallback_message(evaluation["status"])
+        reply["chat"]["kind"] = "feedback"
+        reply["chat"]["text"] = RESTING + "\n\n" + reply["chat"]["text"]
+        await self._deliver(request_id, reply, evaluation, self.board, self.seq, text, 0, True, False)
 
     def _formulas(self) -> bool:
         """Whether replies may carry a formula: from curriculum level `tutor.formulas_from_level`."""

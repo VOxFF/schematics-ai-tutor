@@ -1,6 +1,6 @@
 # Schematics
 
-The domain-specific design: the grid and graph formats, the task flow, the evaluation pipeline, the solver, the structural checks, rendering, and the curated levels. Everything here is specific to electronics. The domain-independent architecture is in [design.md](design.md), and the data shapes are in [contract.md](contract.md).
+The domain-specific design: the grid and graph formats, the task flow, the evaluation pipeline, the solver, the structural checks, rendering, and the fallback pack. Everything here is specific to electronics. The domain-independent architecture is in [design.md](design.md), and the data shapes are in [contract.md](contract.md).
 
 ## 1. Board format: the `grid` document
 
@@ -181,7 +181,7 @@ flowchart TD
     P["Skill level + task history"] --> G["Claude: generate TaskSpec<br/>(self-checks with validate_grid)"]
     G --> V{"Backend validation<br/>1. format<br/>2. solvable<br/>3. not already solved<br/>4. not a repeat"}
     V -- "fails, 1st time" --> G
-    V -- "fails again" --> F["Curated level<br/>for the skill level"]
+    V -- "fails again" --> F["Fallback pack:<br/>a pre-generated task<br/>for the skill level"]
     V -- passes --> D["Derive task grid<br/>+ compute targets"]
     D --> L[Level sent to frontend]
     F --> L
@@ -214,7 +214,7 @@ flowchart TD
 - **The backend checks the fit** (validation stage 1): grid size, number of removed wires, parts and meters, decoys and targets. A task that doesn't fit its level is regenerated like any other failure.
 - **Centered, balanced layout.** The circuit must be centered on the grid: free columns left and right differ by at most one, and so do free rows above and below. The backend checks this. Claude is also asked to prefer symmetric arrangements and to center parts on their wire runs where it can.
 - **Room for labels.** Two parts side by side and parallel (e.g. a voltmeter across a resistor) are at least 2 grid steps apart, so their labels don't overlap. This is a prompt rule only; the backend doesn't check it.
-- **Curated levels.** These hand-made levels are the very first task and the fallback when generation fails. Each is tagged with the skill level it suits.
+- **Fallback pack.** Pre-generated, validated tasks for every skill level of the curriculum, served when generation fails or Claude is unavailable (§8).
 
 ### Generation: Claude proposes, the backend decides
 
@@ -256,7 +256,7 @@ Every generated task passes the same validator that checks learner boards. All o
 
 - Generation takes seconds to tens of seconds.
 - The backend generates the next task in the background as soon as the current one is delivered.
-- The very first task is a curated level, so the learner never waits at the start.
+- The very first task comes from a pool of pre-generated first tasks, so the learner rarely waits at the start; the fallback pack covers an empty pool when Claude is unavailable.
 
 ## 4. Evaluation pipeline
 
@@ -356,19 +356,9 @@ A reversed meter gives a negative reading, so it counts as `misplaced`; the tuto
 
 The grid's rendering, symbols, interaction and highlights are defined in [gui.md](gui.md#4-grid).
 
-## 8. Curated levels (draft)
+## 8. Fallback pack
 
-Curated levels are the very first task and the fallback when generation fails (§3). Each is tagged with the skill level it suits, teaches one concept, and lists the beginner misconceptions the tutor should watch for. All use a 12 V source.
-
-| Skill level | Title | Setup (task grid) | Inventory | Target | Concept | Misconceptions to watch for |
-|---|---|---|---|---|---|---|
-| 1 | Close the loop | V1, R1 and VM1 across R1, all fixed; one wire piece missing | Wires only | VM1 = 12.00 V | Current needs a closed loop | "One wire from the source is enough"; "current is used up along the way" |
-| 2 | Ohm's law | V1 and AM1 in series, with a gap for a resistor | R 30 Ω, 60 Ω, 120 Ω | AM1 = 0.200 A (60 Ω) | I = V / R | "A bigger resistor means more current" |
-| 3 | Voltage divider | V1, R1 = 40 Ω, VM1 across a gap for R2 | R 20 Ω, 40 Ω, 60 Ω | VM1 = 4.00 V (R2 = 20 Ω) | Series resistors share the voltage | "Each resistor gets the full source voltage" |
-| 4 | Measure the current | V1 and R1 = 60 Ω, with a gap in the loop | AM1, wires | AM1 = 0.200 A | An ammeter goes in series | "A meter goes across a part, like a voltmeter" (`ammeter_parallel`) |
-| 5 | Parallel paths | V1, AM1 in series, R1 = 60 Ω; room for a branch | R 30 Ω, 60 Ω, 120 Ω | AM1 = 0.400 A (R2 = 60 Ω in parallel) | Parallel branches each get the full voltage | "Adding a resistor always reduces current" |
-
-The values in parentheses show the intended solution. Each target is reached only by that choice from the inventory.
+Tasks for the whole learning path, made ahead of time by the real generator (`scripts/generate_fallback.py`) and committed in `backend/data/fallback/`: `task_generation.fallback_variants` validated `TaskSpec`s per skill level, with the sizes from `curriculum.yaml`. They are served when generation fails or Claude is unavailable (§3), and the tests validate every one against the current validator and curriculum. The design is in [design.md](design.md#fallback-when-claude-is-unavailable).
 
 ## Open points
 

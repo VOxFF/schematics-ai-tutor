@@ -198,12 +198,16 @@ async def generate_task(
     skill_level: int,
     history: list[dict],
     session_id: str | None = None,
+    avoid_signatures: tuple[str, ...] = (),
 ) -> GenerationResult:
+    """A validated task for this skill level and history. `avoid_signatures` are circuits the repeat
+    check also rejects, without being the learner's history (scripts/generate_fallback.py)."""
     settings = config["claude"]["task_generation"]
     generation = config.get("task_generation", {})
     limits = config.get("rate_limits", {}).get("grid", {})  # ratelimiting.yaml
     evaluator = config.get("evaluator", {})
     recent = [t["signature"] for t in history[-generation.get("recent_tasks", 10):] if t.get("signature")]
+    recent += list(avoid_signatures)
     # Curriculum: the level and task for this skill level, and a grid size within its range.
     rules, task = position(skill_level)
     grid = pick_grid(rules)
