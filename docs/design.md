@@ -533,6 +533,10 @@ public: false                  # true for a public deployment: hides debug featu
                                # (read by the frontend build; restart the dev server after a change;
                                # SCHEMATICS_PUBLIC overrides it, and the Dockerfile sets true)
 
+editor:                        # the grid editor; read by the frontend build (restart the dev server after a change)
+  reference_grid: { columns: 12, rows: 8 }  # every task is fitted as if at least this big, so the scale
+  reference_inventory: 4       # stays the same across tasks; parts in the inventory (docs/gui.md §6)
+
 logs:                          # archived at startup, by size and nightly (deployment.md §5)
   enabled: true                # usage and cost log per backend run
   dir: logs                    # SCHEMATICS_LOGS_DIR overrides it (Fly: /data/logs)

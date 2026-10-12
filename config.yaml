@@ -6,6 +6,10 @@
 # SCHEMATICS_PUBLIC=true|false overrides it; the Dockerfile sets true for the deployed build.
 public: false
 
+editor:                        # the grid editor; read by the frontend build (restart the dev server after a change)
+  reference_grid: { columns: 12, rows: 8 }  # every task is fitted as if at least this big, so the scale
+  reference_inventory: 4       # stays the same across tasks; parts in the inventory (docs/gui.md §6)
+
 logs:                          # archived at startup, by size and nightly (docs/deployment.md §5)
   enabled: true                # write a usage and cost log per backend run
   dir: logs                    # relative to the repo root; gitignored. SCHEMATICS_LOGS_DIR overrides it (Fly: /data/logs)

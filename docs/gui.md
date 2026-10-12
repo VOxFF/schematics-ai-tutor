@@ -195,6 +195,7 @@ The inventory is drawn **inside the editor's three.js scene**, in a column right
 - **Two columns**, as bare symbols, not buttons; a grab cursor over the symbol itself (not its whole slot) shows it can be picked up.
 - **Fixed width:** two elements (pin dot to pin dot) plus a small gap between the columns and a margin each side.
 - **Fixed scale per task:** the scene's bounds (grid plus inventory) are computed **once from the task's starting board**, with the inventory column reserving the starting inventory's rows. Placing or removing parts never changes the scale; only a window resize refits the camera.
+- **One scale across tasks:** every task is fitted as if it were at least a 12 × 8 grid with 4 parts in the inventory (`config.yaml` `editor`), the usual size from curriculum level 2 on. A smaller task (Level 1's 8–10 × 6 grids) keeps that scale, centered with more air around it, so parts and wires don't shrink from one task to the next. Only a larger task (e.g. Level 6's 14 × 10) zooms out to fit.
 - **Placement in the field:** the inventory column sits flush right; the grid is centered in the field left of it, and both columns share a vertical midline.
 - **Accessibility:** a visually hidden list mirrors the inventory for screen readers.
 
