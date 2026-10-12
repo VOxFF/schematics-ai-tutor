@@ -197,6 +197,8 @@ interface Level extends LevelSummary {
   difficulty?: number;           // generated levels: 1–5, from the TaskSpec
   shape?: string;                // generated levels: parts summary, e.g. "V + 2R + VM"
   source?: "generated" | "fallback";  // where the task came from; kept for the research records
+  wire_shapes?: ("straight" | "corner" | "T" | "plus")[];  // the wire palette: straight, plus the removed
+                                 // pieces' shapes (schematics.md §3); absent: the full palette
   signature?: string;            // generated levels: circuit fingerprint, kept in TaskSummary
 }
 

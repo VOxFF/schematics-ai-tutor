@@ -189,7 +189,7 @@ The inventory is drawn **inside the editor's three.js scene**, in a column right
 | Section | Items | Behavior |
 |---|---|---|
 | Parts | The level's `inventory`: resistors, meters, sources, drawn as their symbols with the nominal value underneath (`20 Ω`, `4.7 kΩ`, `9 V`) or, for meters, the ID | **Depleting.** A placed part leaves the inventory, and a removed part returns. |
-| Wire palette | Straight horizontal, straight vertical, corner, T, +, each drawn as its shape | **Never depletes.** Corner, T and + rotate with **R**. |
+| Wire palette | Straight horizontal and vertical always; corner, T and + only when the task removed a piece of that shape (`Level.wire_shapes`, [schematics.md](schematics.md#generation-claude-proposes-the-backend-decides)). Each is drawn as its shape | **Never depletes.** Corner, T and + rotate with **R**. |
 
 **Layout rules**
 - **Two columns**, as bare symbols, not buttons; a grab cursor over the symbol itself (not its whole slot) shows it can be picked up.
