@@ -129,10 +129,19 @@ Tutoring accuracy (from testing):
 - [x] Session: no reaction for an unchanged graph; Claude after `tutor.react_after_unchanged` such pauses, with `unchanged_moves`; skipped pauses count toward the hint offer
 - [x] Prompt: one short line at `understanding` ≥ 2, no repeated openers, evidence for terms too
 
+Formulas and paragraphs ([design.md](design.md#formulas-and-paragraphs)):
+
+- [x] Design: `chat.formula`, the math check, the four-rung hint ladder, paragraphs, KaTeX
+- [ ] `formula.py`: LaTeX subset parser; board numbers, arithmetic, rung limits, no answer before rung 4
+- [ ] Reply composer and tutor: math check with one regeneration, paragraphs normalized, `formula_dropped` in the run log
+- [ ] Catalog formulas in `topics.yaml`, carried by the focus topics
+- [ ] Prompt and session: formulas from `tutor.formulas_from_level`, four rungs (text only on Level 1), `hints_used` 0–4
+- [ ] Chat: paragraphs, KaTeX formula block, "Hint n/4"
+
 Other polishing:
 
 - [ ] Improve tutoring for complex circuits (Level 6 and up): learner feedback from testing said "the feedback is not sufficient for complex schematics like level 6"
-  - [ ] Formulas with the board's numbers: an optional `chat.formula`, shown as its own monospace line; every number must be a part value or a reading on the board, else the composer drops it
+  - [ ] Formulas with the board's numbers (see Formulas and paragraphs above)
 - [ ] Solved checkmark fades out after ~2 s and leaves a small green check in the Task / Targets panel
 - [x] If the learner breaks a solved circuit, the checkmark disappears and Next is disabled again
 - [ ] Tutor highlights: glow and pulsing (`attention` pulses)

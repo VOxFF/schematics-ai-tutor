@@ -213,10 +213,12 @@ The inventory is drawn **inside the editor's three.js scene**, in a column right
   | `experience` | teal | 🔔 |
 
   The icon and the title come from the backend's reply composer; the tints are CSS variables in `frontend/src/index.css`.
+- **Paragraphs:** a tutor message's paragraphs (separated by a blank line in `chat.text`) show as blocks with half a line between them, so the line spacing inside a paragraph doesn't change.
+- **Formula:** `chat.formula` shows under the text, drawn with KaTeX, a line per row, centered, in the ink color. A line too wide for the chat scrolls sideways on its own; a line KaTeX can't render shows as plain monospace text ([design.md](design.md#formulas-and-paragraphs)).
 - **Welcome:** each new task opens with a tutor message, added to the chat when the task arrives ([design.md](design.md#welcome-message)). It is gold (`knowledge`) when the task brings new topics, else blue (`feedback`).
 - While a call is running, it shows "tutor is thinking".
 - The learner can type at any time. Sending creates a `tutor.request` with `action: "message"`.
-- **Hint button** beside the chat input, labelled with the next level: "Hint 1/3", "Hint 2/3", "Hint 3/3". It sends a `tutor.request` with `action: "hint"`, and the chat shows the request as the learner's line ("Hint 1/3, please"). After level 3 it stays "Hint 3/3" and repeats that level in other words. It is disabled while the tutor is thinking or disconnected.
+- **Hint button** beside the chat input, labelled with the next rung: "Hint 1/4" to "Hint 4/4". It sends a `tutor.request` with `action: "hint"`, and the chat shows the request as the learner's line ("Hint 1/4, please"). After rung 4 it stays "Hint 4/4" and repeats that rung in other words. It is disabled while the tutor is thinking or disconnected.
 - **Offered hint:** when the tutor offers a hint (`hint_offered`), the Hint button turns amber until it is used or the next task starts.
 - There is no separate Check button. The status updates live, and the tutor reacts when the learner pauses.
 
