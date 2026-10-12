@@ -3,7 +3,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import App from "./App.jsx";
 
-vi.mock("./lib/build.js", () => ({ PUBLIC: true }));
+vi.mock("./lib/build.js", async (importOriginal) => ({ ...(await importOriginal()), PUBLIC: true }));
 
 class QuietSocket {
   static OPEN = 1;

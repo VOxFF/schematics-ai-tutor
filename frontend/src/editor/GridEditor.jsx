@@ -10,9 +10,16 @@ import { CSS2DRenderer } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 import { lift, plan } from "./placement.js";
 import { boardBounds, buildBoard, disposeTree, floatingNode, drawHighlight, inventoryNode, layoutInventory, outline, pickAt,
          previewNode, sceneBounds, slotAnchor, toWorld } from "./scene.js";
+import { EDITOR } from "../lib/build.js";
 import { CELL, STYLE } from "./style.js";
 
 const MARGIN = 1.04; // a little air around the grid
+// Every task is fitted as if it were at least this big (config.yaml `editor`: by default a 12 x 8
+// grid and 4 parts in the inventory, the usual size from curriculum level 2 on). Smaller tasks keep
+// that scale, with more air around them, so parts don't shrink from one task to the next; only
+// larger ones zoom out (docs/gui.md §6).
+const REFERENCE_BOARD = { grid: EDITOR.reference_grid, inventory: [] };
+const REFERENCE_CAPACITY = EDITOR.reference_inventory;
 const PICK_TOLERANCE_PX = 2; // shapes are hit-tested grown by this many screen pixels
 const DRAG_THRESHOLD_PX = 4; // a press on the board that moves less than this is a click
 
@@ -55,8 +62,10 @@ export default function GridEditor({ board, startBoard, readings, drag, onStartD
 
     const scene = new THREE.Scene();
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -10, 10);
+    const reference = sceneBounds(REFERENCE_BOARD, layoutInventory(REFERENCE_BOARD, REFERENCE_CAPACITY));
     const state = { renderer, labels, scene, camera, root: null, inventory: null, layout: null, bounds: null,
-                    gridBounds: null, inventoryOffset: 0 };
+                    gridBounds: null, inventoryOffset: 0,
+                    reference: { width: reference.right - reference.left, height: reference.top - reference.bottom } };
 
     state.render = () => {
       renderer.render(scene, camera);
@@ -71,7 +80,9 @@ export default function GridEditor({ board, startBoard, readings, drag, onStartD
       const b = state.bounds;
       const g = state.gridBounds;
       const cy = (b.top + b.bottom) / 2;
-      const scale = Math.max(((b.right - b.left) * MARGIN) / width, ((b.top - b.bottom) * MARGIN) / height);
+      const r = state.reference;
+      const scale = Math.max((Math.max(b.right - b.left, r.width) * MARGIN) / width,
+                             (Math.max(b.top - b.bottom, r.height) * MARGIN) / height);
       // The inventory sits flush right; the grid is centered in the field left of it.
       const viewWidth = width * scale;
       const inventoryWidth = b.right - g.right;
