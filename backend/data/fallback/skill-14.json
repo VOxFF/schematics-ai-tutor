@@ -1,0 +1,295 @@
+[
+  {
+    "concept": "series–parallel combination",
+    "title": "Series meets parallel",
+    "intro": "Two resistors are missing, along with a few wires. One resistor sits in the main line and the other shares the voltage with R2 side by side. Choose the right resistors and close the gaps so that both meters show their target values.",
+    "welcome": "You've worked out series sharing and parallel branches separately. Now they meet in one circuit, so you'll need both rules together!",
+    "complete_board": {
+      "grid": {"columns": 14, "rows": 9},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 5,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [13, 6], "positive": [13, 4]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": true,
+          "orientation": "E",
+          "pins": {"negative": [10, 2], "positive": [12, 2]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 150,
+          "fixed": false,
+          "orientation": "E",
+          "pins": {"a": [9, 2], "b": [7, 2]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 200,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"a": [2, 4], "b": [2, 6]}
+        },
+        {
+          "id": "R3",
+          "type": "resistor",
+          "value": 200,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"a": [4, 4], "b": [4, 6]}
+        },
+        {
+          "id": "VM1",
+          "type": "voltmeter",
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [6, 6], "positive": [6, 4]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[13, 4], [13, 3]]]},
+        {"id": "W2", "segments": [[[13, 3], [13, 2]], [[13, 2], [12, 2]]]},
+        {"id": "W3", "segments": [[[10, 2], [9, 2]]]},
+        {"id": "W4", "segments": [[[7, 2], [6, 2]]]},
+        {"id": "W5", "segments": [[[6, 2], [5, 2]]]},
+        {"id": "W6", "segments": [[[6, 2], [6, 3]]]},
+        {"id": "W7", "segments": [[[6, 3], [6, 4]]]},
+        {"id": "W8", "segments": [[[5, 2], [4, 2]]]},
+        {"id": "W9", "segments": [[[4, 2], [4, 3]]]},
+        {"id": "W10", "segments": [[[4, 3], [4, 4]]]},
+        {"id": "W11", "segments": [[[4, 2], [3, 2]]]},
+        {"id": "W12", "segments": [[[3, 2], [2, 2]]]},
+        {"id": "W13", "segments": [[[2, 2], [2, 3]]]},
+        {"id": "W14", "segments": [[[2, 3], [2, 4]]]},
+        {"id": "W15", "segments": [[[2, 6], [2, 7]]]},
+        {"id": "W16", "segments": [[[2, 7], [2, 8]]]},
+        {"id": "W17", "segments": [[[2, 8], [3, 8]]]},
+        {"id": "W18", "segments": [[[3, 8], [4, 8]]]},
+        {"id": "W19", "segments": [[[4, 6], [4, 7]]]},
+        {"id": "W20", "segments": [[[4, 7], [4, 8]]]},
+        {"id": "W21", "segments": [[[4, 8], [5, 8]]]},
+        {"id": "W22", "segments": [[[5, 8], [6, 8]]]},
+        {"id": "W23", "segments": [[[6, 6], [6, 7]]]},
+        {"id": "W24", "segments": [[[6, 7], [6, 8]]]},
+        {"id": "W25", "segments": [[[6, 8], [7, 8]]]},
+        {"id": "W26", "segments": [[[7, 8], [8, 8]]]},
+        {"id": "W27", "segments": [[[8, 8], [9, 8]]]},
+        {"id": "W28", "segments": [[[9, 8], [10, 8]]]},
+        {"id": "W29", "segments": [[[10, 8], [11, 8]]]},
+        {"id": "W30", "segments": [[[11, 8], [12, 8]]]},
+        {"id": "W31", "segments": [[[12, 8], [13, 8]]]},
+        {"id": "W32", "segments": [[[13, 8], [13, 7]]]},
+        {"id": "W33", "segments": [[[13, 7], [13, 6]]]}
+      ]
+    },
+    "removed_ids": [
+      "R1", "R3", "W3", "W10", "W13", "W14",
+      "W28", "W29"
+    ],
+    "decoys": [
+      {"id": "R4", "type": "resistor", "value": 100},
+      {"id": "R5", "type": "resistor", "value": 220},
+      {"id": "R6", "type": "resistor", "value": 47}
+    ],
+    "target_meter_ids": ["VM1", "AM1"],
+    "difficulty": 4,
+    "rationale": "The learner solved series and parallel tasks without hints, so now they can combine both rules in one series–parallel circuit."
+  },
+  {
+    "concept": "series–parallel combination",
+    "title": "One in line, two side by side",
+    "intro": "Rebuild the circuit: one resistor carries all the current, then the current splits between two resistors side by side. Fill the gaps with wires or resistors so the voltmeter and the ammeter show their target readings.",
+    "welcome": "You've mastered series sharing and parallel splitting on their own. Now both rules team up in one circuit, so let's see how they work together!",
+    "complete_board": {
+      "grid": {"columns": 14, "rows": 9},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 5,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [4, 7], "positive": [4, 5]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": true,
+          "orientation": "S",
+          "pins": {"negative": [4, 2], "positive": [4, 4]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 300,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"a": [8, 2], "b": [8, 4]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 400,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"a": [6, 6], "b": [6, 8]}
+        },
+        {
+          "id": "R3",
+          "type": "resistor",
+          "value": 400,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"a": [8, 6], "b": [8, 8]}
+        },
+        {
+          "id": "VM1",
+          "type": "voltmeter",
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [10, 8], "positive": [10, 6]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[4, 4], [4, 5]]]},
+        {"id": "W2", "segments": [[[4, 2], [4, 1]]]},
+        {"id": "W3", "segments": [[[4, 1], [5, 1]]]},
+        {"id": "W4", "segments": [[[5, 1], [6, 1]]]},
+        {"id": "W5", "segments": [[[6, 1], [7, 1]]]},
+        {"id": "W6", "segments": [[[7, 1], [8, 1]]]},
+        {"id": "W7", "segments": [[[8, 1], [8, 2]]]},
+        {"id": "W8", "segments": [[[8, 4], [8, 5]]]},
+        {"id": "W9", "segments": [[[8, 5], [7, 5]]]},
+        {"id": "W10", "segments": [[[7, 5], [6, 5]]]},
+        {"id": "W11", "segments": [[[6, 5], [6, 6]]]},
+        {"id": "W12", "segments": [[[8, 5], [8, 6]]]},
+        {"id": "W13", "segments": [[[8, 5], [9, 5]]]},
+        {"id": "W14", "segments": [[[9, 5], [10, 5]]]},
+        {"id": "W15", "segments": [[[10, 5], [10, 6]]]},
+        {"id": "W16", "segments": [[[4, 7], [4, 8]]]},
+        {"id": "W17", "segments": [[[4, 8], [4, 9]]]},
+        {"id": "W18", "segments": [[[4, 9], [5, 9]]]},
+        {"id": "W19", "segments": [[[5, 9], [6, 9]]]},
+        {"id": "W20", "segments": [[[6, 9], [7, 9]]]},
+        {"id": "W21", "segments": [[[7, 9], [8, 9]]]},
+        {"id": "W22", "segments": [[[8, 9], [9, 9]]]},
+        {"id": "W23", "segments": [[[9, 9], [10, 9]]]},
+        {"id": "W24", "segments": [[[6, 8], [6, 9]]]},
+        {"id": "W25", "segments": [[[8, 8], [8, 9]]]},
+        {"id": "W26", "segments": [[[10, 8], [10, 9]]]}
+      ]
+    },
+    "removed_ids": [
+      "R1", "R3", "W4", "W5", "W12", "W15",
+      "W17", "W24"
+    ],
+    "decoys": [
+      {"id": "R4", "type": "resistor", "value": 220},
+      {"id": "R5", "type": "resistor", "value": 600},
+      {"id": "R6", "type": "resistor", "value": 1000}
+    ],
+    "target_meter_ids": ["VM1", "AM1"],
+    "difficulty": 4,
+    "rationale": "The learner solved series and parallel tasks without hints, so combining both rules to hit a voltage and a current is the natural next step."
+  },
+  {
+    "concept": "series–parallel combination",
+    "title": "One in front, two side by side",
+    "intro": "R1 sits in front of two resistors that share the current side by side. Put the battery in the right way round, choose the missing resistor and close the gaps so the voltmeter and the ammeter both show their target readings.",
+    "welcome": "You've mastered series sharing and parallel paths separately. Now they meet in one circuit, and you'll need both rules at once!",
+    "complete_board": {
+      "grid": {"columns": 12, "rows": 10},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 12,
+          "fixed": false,
+          "orientation": "W",
+          "pins": {"negative": [7, 9], "positive": [5, 9]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": true,
+          "orientation": "S",
+          "pins": {"negative": [2, 5], "positive": [2, 7]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 10,
+          "fixed": true,
+          "orientation": "W",
+          "pins": {"a": [4, 4], "b": [6, 4]}
+        },
+        {
+          "id": "VM1",
+          "type": "voltmeter",
+          "fixed": true,
+          "orientation": "W",
+          "pins": {"negative": [6, 2], "positive": [4, 2]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 30,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"a": [8, 5], "b": [8, 7]}
+        },
+        {
+          "id": "R3",
+          "type": "resistor",
+          "value": 15,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"a": [10, 5], "b": [10, 7]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[5, 9], [4, 9]]]},
+        {"id": "W2", "segments": [[[4, 9], [3, 9]]]},
+        {"id": "W3", "segments": [[[3, 9], [2, 9]]]},
+        {"id": "W4", "segments": [[[2, 9], [2, 8]]]},
+        {"id": "W5", "segments": [[[2, 8], [2, 7]]]},
+        {"id": "W6", "segments": [[[2, 5], [2, 4]]]},
+        {"id": "W7", "segments": [[[2, 4], [3, 4]]]},
+        {"id": "W8", "segments": [[[3, 4], [4, 4]]]},
+        {"id": "W9", "segments": [[[4, 2], [4, 3]]]},
+        {"id": "W10", "segments": [[[4, 3], [4, 4]]]},
+        {"id": "W11", "segments": [[[6, 2], [6, 3]]]},
+        {"id": "W12", "segments": [[[6, 3], [6, 4]]]},
+        {"id": "W13", "segments": [[[6, 4], [7, 4]]]},
+        {"id": "W14", "segments": [[[7, 4], [8, 4]]]},
+        {"id": "W15", "segments": [[[8, 4], [9, 4]]]},
+        {"id": "W16", "segments": [[[9, 4], [10, 4]]]},
+        {"id": "W17", "segments": [[[8, 4], [8, 5]]]},
+        {"id": "W18", "segments": [[[10, 4], [10, 5]]]},
+        {"id": "W19", "segments": [[[8, 7], [8, 8]]]},
+        {"id": "W20", "segments": [[[8, 8], [8, 9]]]},
+        {"id": "W21", "segments": [[[10, 7], [10, 8]]]},
+        {"id": "W22", "segments": [[[10, 8], [10, 9]]]},
+        {"id": "W23", "segments": [[[10, 9], [9, 9]]]},
+        {"id": "W24", "segments": [[[9, 9], [8, 9]]]},
+        {"id": "W25", "segments": [[[8, 9], [7, 9]]]}
+      ]
+    },
+    "removed_ids": [
+      "V1", "R3", "W2", "W7", "W8", "W15",
+      "W22"
+    ],
+    "decoys": [{"id": "R4", "type": "resistor", "value": 10}, {"id": "R5", "type": "resistor", "value": 30}],
+    "target_meter_ids": ["VM1", "AM1"],
+    "difficulty": 4,
+    "rationale": "The learner solved series and parallel tasks without hints, so combining both rules in one circuit is the natural next step."
+  }
+]

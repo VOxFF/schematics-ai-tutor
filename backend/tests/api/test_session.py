@@ -129,14 +129,61 @@ def test_saved_board_with_null_targets_resumes(config):
         assert reply["evaluation"]["status"] == "meter_misuse"
 
 
-def test_no_claude_means_tutor_unavailable(config):
+def resting(message):
+    assert message["type"] == "tutor.message" and message["message"]["meta"]["hint_level"] == 0
+    assert message["message"]["chat"]["kind"] == "feedback"
+    assert message["message"]["chat"]["text"].startswith("The tutor is taking a short break")
+    return message
+
+
+def test_without_claude_the_tutor_rests(config):
     client, level = connect(config, None)
     with client.websocket_connect("/ws/session") as ws:
         ws.send_json({"type": "session.start", "level": level})
         ws.receive_json()
         ws.send_json({"type": "tutor.request", "request_id": "r1", "action": "message", "learner_text": "hi"})
-        error = ws.receive_json()
-        assert error["code"] == "tutor_unavailable" and error["request_id"] == "r1"
+        assert resting(ws.receive_json())["request_id"] == "r1"
+
+
+def test_while_claude_is_down_a_hint_rests_and_does_not_count(config):
+    down = FakeClaude([])
+    down.down = True
+    client, level = connect(fast_reactions(config), down)
+    with client.websocket_connect("/ws/session") as ws:
+        ws.send_json({"type": "session.start", "level": level})
+        ws.receive_json()
+        ws.send_json({"type": "tutor.request", "request_id": "r1", "action": "hint"})
+        resting(ws.receive_json())
+        down.down = False  # Claude is back: the first hint is still rung 1
+        down.responses.append(tutor_reply("Hint"))
+        assert ask_hint(ws, "r2")["message"]["meta"]["hint_level"] == 1
+    assert len(down.requests) == 1
+
+
+def test_a_failure_that_marks_claude_down_rests_instead_of_an_error(config):
+    import anthropic
+    from app.claude_status import ClaudeStatus, GuardedClaude
+
+    class Overloaded(anthropic.APIConnectionError):
+        def __init__(self):
+            super().__init__(message="overloaded", request=None)
+
+    class Failing(FakeClaude):
+        async def create(self, **kwargs):
+            self.requests.append(kwargs)
+            raise Overloaded()
+
+    failing = Failing([])
+    client, level = connect(config, GuardedClaude(failing, ClaudeStatus(300)))
+    with client.websocket_connect("/ws/session") as ws:
+        ws.send_json({"type": "session.start", "level": level})
+        ws.receive_json()
+        ws.send_json({"type": "tutor.request", "request_id": "r1", "action": "message", "learner_text": "hi"})
+        assert ws.receive_json()["type"] == "tutor.started"
+        resting(ws.receive_json())
+        ws.send_json({"type": "tutor.request", "request_id": "r2", "action": "message", "learner_text": "hi"})
+        resting(ws.receive_json())  # no second call: Claude is down
+    assert len(failing.requests) == 1
 
 
 def fast_reactions(config, ms=50):
@@ -299,8 +346,7 @@ def test_over_the_claude_budget_the_tutor_rests_but_evaluation_works(config):
         ws.send_json({"type": "session.start", "level": level})
         assert ws.receive_json()["type"] == "evaluation"
         ws.send_json({"type": "tutor.request", "request_id": "r1", "action": "hint"})
-        error = ws.receive_json()
-        assert error["code"] == "tutor_unavailable" and error["request_id"] == "r1"
+        assert resting(ws.receive_json())["request_id"] == "r1"
         ws.send_json({"type": "board.update", "seq": 1, "board": level["board"]})
         assert ws.receive_json()["type"] == "evaluation"
         time.sleep(0.2)  # past the idle threshold: the reaction is skipped

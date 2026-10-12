@@ -42,6 +42,8 @@ claude:
     effort: low
     max_tokens: 16000
     timeout_s: 30
+  down_s: 300                  # after a connection error, timeout, 429, 529 or exhausted balance,
+                               # Claude is skipped this long: tasks from the fallback pack, plain tutor messages
   task_generation:
     model: claude-opus-5-5
     effort: high
@@ -61,6 +63,7 @@ tutor:
 
 task_generation:
   recent_tasks: 10
+  fallback_variants: 3          # tasks per skill level in the fallback pack (backend/data/fallback/)
 
 pregeneration:                 # tasks generated ahead of time and cached (docs/design.md §3)
   enabled: true

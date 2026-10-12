@@ -228,7 +228,7 @@ The inventory is drawn **inside the editor's three.js scene**, in a column right
 flowchart TD
     O[Open the app] --> P{"Saved session<br/>in this browser?"}
     P -- no --> SS["Start screen:<br/>what it is, how it works, learning path"]
-    SS -- "Start Learning" --> L1[First curated level]
+    SS -- "Start Learning" --> L1[First task]
     P -- yes --> R["Learning screen, resumed"]
     L1 --> B
     R --> B

@@ -1,0 +1,218 @@
+[
+  {
+    "concept": "parallel resistors",
+    "title": "Two paths, one total",
+    "intro": "The ammeter measures all the current leaving the battery. Put the right resistor back as a second branch beside R1 and close the gaps in the wiring so the ammeter shows the target total current. Careful: not every gap needs a resistor.",
+    "welcome": "Nice work on your first parallel circuit! This time you choose the second branch yourself, and you'll see how the branch currents add up in the total.",
+    "complete_board": {
+      "grid": {"columns": 12, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 9,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [3, 6], "positive": [3, 4]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": true,
+          "orientation": "W",
+          "pins": {"negative": [6, 3], "positive": [4, 3]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 300,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"a": [7, 4], "b": [7, 6]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 450,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"a": [10, 4], "b": [10, 6]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[3, 4], [3, 3]]]},
+        {"id": "W2", "segments": [[[3, 3], [4, 3]]]},
+        {"id": "W3", "segments": [[[6, 3], [7, 3]]]},
+        {"id": "W4", "segments": [[[7, 3], [7, 4]]]},
+        {"id": "W5", "segments": [[[7, 3], [8, 3]]]},
+        {"id": "W6", "segments": [[[8, 3], [9, 3]]]},
+        {"id": "W7", "segments": [[[9, 3], [10, 3]]]},
+        {"id": "W8", "segments": [[[10, 3], [10, 4]]]},
+        {"id": "W9", "segments": [[[10, 6], [10, 7]]]},
+        {"id": "W10", "segments": [[[10, 7], [9, 7]]]},
+        {"id": "W11", "segments": [[[9, 7], [8, 7]]]},
+        {"id": "W12", "segments": [[[8, 7], [7, 7]]]},
+        {"id": "W13", "segments": [[[7, 6], [7, 7]]]},
+        {"id": "W14", "segments": [[[7, 7], [6, 7]]]},
+        {"id": "W15", "segments": [[[6, 7], [5, 7]]]},
+        {"id": "W16", "segments": [[[5, 7], [4, 7]]]},
+        {"id": "W17", "segments": [[[4, 7], [3, 7]]]},
+        {"id": "W18", "segments": [[[3, 7], [3, 6]]]}
+      ]
+    },
+    "removed_ids": ["R2", "W6", "W7", "W9", "W11"],
+    "decoys": [{"id": "R3", "type": "resistor", "value": 300}, {"id": "R4", "type": "resistor", "value": 900}],
+    "target_meter_ids": ["AM1"],
+    "difficulty": 4,
+    "rationale": "The learner solved the first parallel task without hints, so now they must pick the branch resistor from the total current and decide which gaps need wires."
+  },
+  {
+    "concept": "parallel resistors",
+    "title": "Two paths, one meter",
+    "intro": "The ammeter measures all the current leaving the battery. Put the missing resistor back in the second branch and close the gaps in the wiring so the ammeter shows its target. Careful: not every gap needs a wire.",
+    "welcome": "Your first parallel circuit went smoothly! This time the ammeter watches the total current, so you'll see how the two branches add up.",
+    "complete_board": {
+      "grid": {"columns": 12, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 12,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [2, 6], "positive": [2, 4]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": true,
+          "orientation": "W",
+          "pins": {"negative": [5, 2], "positive": [3, 2]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 300,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"a": [6, 4], "b": [6, 6]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 600,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"a": [10, 4], "b": [10, 6]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[2, 4], [2, 3]]]},
+        {"id": "W2", "segments": [[[2, 3], [2, 2]]]},
+        {"id": "W3", "segments": [[[2, 2], [3, 2]]]},
+        {"id": "W4", "segments": [[[5, 2], [6, 2]]]},
+        {"id": "W5", "segments": [[[6, 2], [6, 3]]]},
+        {"id": "W6", "segments": [[[6, 3], [6, 4]]]},
+        {"id": "W7", "segments": [[[6, 2], [7, 2]]]},
+        {"id": "W8", "segments": [[[7, 2], [8, 2]]]},
+        {"id": "W9", "segments": [[[8, 2], [9, 2]]]},
+        {"id": "W10", "segments": [[[9, 2], [10, 2]]]},
+        {"id": "W11", "segments": [[[10, 2], [10, 3]]]},
+        {"id": "W12", "segments": [[[10, 3], [10, 4]]]},
+        {"id": "W13", "segments": [[[10, 6], [10, 7]]]},
+        {"id": "W14", "segments": [[[10, 7], [9, 7]]]},
+        {"id": "W15", "segments": [[[9, 7], [8, 7]]]},
+        {"id": "W16", "segments": [[[8, 7], [7, 7]]]},
+        {"id": "W17", "segments": [[[7, 7], [6, 7]]]},
+        {"id": "W18", "segments": [[[6, 6], [6, 7]]]},
+        {"id": "W19", "segments": [[[6, 7], [5, 7]]]},
+        {"id": "W20", "segments": [[[5, 7], [4, 7]]]},
+        {"id": "W21", "segments": [[[4, 7], [3, 7]]]},
+        {"id": "W22", "segments": [[[3, 7], [2, 7]]]},
+        {"id": "W23", "segments": [[[2, 7], [2, 6]]]}
+      ]
+    },
+    "removed_ids": ["R2", "W8", "W9", "W20", "W21"],
+    "decoys": [
+      {"id": "R3", "type": "resistor", "value": 220},
+      {"id": "R4", "type": "resistor", "value": 400},
+      {"id": "R5", "type": "resistor", "value": 1000}
+    ],
+    "target_meter_ids": ["AM1"],
+    "difficulty": 4,
+    "rationale": "After a first parallel task, measuring the total current shows the learner that branch currents add, and part-sized gaps make them decide between wire and resistor."
+  },
+  {
+    "concept": "parallel resistors",
+    "title": "Two branches, one meter",
+    "intro": "This tall circuit has two side-by-side branches, but the second resistor is missing and some wires are broken. Pick the right resistor and repair the wiring so the ammeter shows the target total current.",
+    "welcome": "Last time you met parallel paths. Now the ammeter watches the total current, so think about how much each branch adds.",
+    "complete_board": {
+      "grid": {"columns": 12, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 5,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [4, 7], "positive": [4, 5]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": true,
+          "orientation": "S",
+          "pins": {"negative": [4, 2], "positive": [4, 4]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 500,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"a": [6, 3], "b": [6, 5]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 250,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"a": [8, 3], "b": [8, 5]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[4, 2], [4, 1]]]},
+        {"id": "W2", "segments": [[[4, 1], [5, 1]]]},
+        {"id": "W3", "segments": [[[5, 1], [6, 1]]]},
+        {"id": "W4", "segments": [[[6, 1], [7, 1]]]},
+        {"id": "W5", "segments": [[[7, 1], [8, 1]]]},
+        {"id": "W6", "segments": [[[6, 1], [6, 2]]]},
+        {"id": "W7", "segments": [[[6, 2], [6, 3]]]},
+        {"id": "W8", "segments": [[[6, 5], [6, 6]]]},
+        {"id": "W9", "segments": [[[6, 6], [6, 7]]]},
+        {"id": "W10", "segments": [[[6, 7], [6, 8]]]},
+        {"id": "W11", "segments": [[[8, 1], [8, 2]]]},
+        {"id": "W12", "segments": [[[8, 2], [8, 3]]]},
+        {"id": "W13", "segments": [[[8, 5], [8, 6]]]},
+        {"id": "W14", "segments": [[[8, 6], [8, 7]]]},
+        {"id": "W15", "segments": [[[8, 7], [8, 8]]]},
+        {"id": "W16", "segments": [[[8, 8], [7, 8]]]},
+        {"id": "W17", "segments": [[[7, 8], [6, 8]]]},
+        {"id": "W18", "segments": [[[6, 8], [5, 8]]]},
+        {"id": "W19", "segments": [[[5, 8], [4, 8]]]},
+        {"id": "W20", "segments": [[[4, 8], [4, 7]]]},
+        {"id": "W21", "segments": [[[4, 4], [4, 5]]]}
+      ]
+    },
+    "removed_ids": ["R2", "W4", "W5", "W9", "W17"],
+    "decoys": [
+      {"id": "R3", "type": "resistor", "value": 500},
+      {"id": "R4", "type": "resistor", "value": 1000}
+    ],
+    "target_meter_ids": ["AM1"],
+    "difficulty": 4,
+    "rationale": "After a first parallel task, the learner now has to add up the branch currents to pick the missing resistor and to judge whether a two-step gap needs a wire."
+  }
+]

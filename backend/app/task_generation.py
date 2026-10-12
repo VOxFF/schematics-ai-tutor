@@ -172,7 +172,14 @@ def learner_context(skill_level: int, history: list[dict], grid: dict, recent: i
 
 
 def tool_result(draft: dict, grid_limits: dict, settings: dict, recent_signatures=(), level=None) -> str:
-    result = validate(normalize(draft), grid_limits, settings, recent_signatures, level)
+    try:
+        result = validate(normalize(draft), grid_limits, settings, recent_signatures, level)
+    except (ValueError, TypeError, AttributeError, KeyError) as e:
+        # A draft too malformed to validate (e.g. complete_board not an object): an error for Claude
+        # to fix, not a crash of the generation.
+        return json.dumps({"ok": False, "errors": [f"The draft is not a valid TaskSpec ({e.__class__.__name__}): "
+                                                   "complete_board must be an object with grid, components and wires."],
+                           "readings": {}})
     return json.dumps({"ok": not result["errors"], "errors": result["errors"], "readings": result["readings"]})
 
 
@@ -198,12 +205,16 @@ async def generate_task(
     skill_level: int,
     history: list[dict],
     session_id: str | None = None,
+    avoid_signatures: tuple[str, ...] = (),
 ) -> GenerationResult:
+    """A validated task for this skill level and history. `avoid_signatures` are circuits the repeat
+    check also rejects, without being the learner's history (scripts/generate_fallback.py)."""
     settings = config["claude"]["task_generation"]
     generation = config.get("task_generation", {})
     limits = config.get("rate_limits", {}).get("grid", {})  # ratelimiting.yaml
     evaluator = config.get("evaluator", {})
     recent = [t["signature"] for t in history[-generation.get("recent_tasks", 10):] if t.get("signature")]
+    recent += list(avoid_signatures)
     # Curriculum: the level and task for this skill level, and a grid size within its range.
     rules, task = position(skill_level)
     grid = pick_grid(rules)

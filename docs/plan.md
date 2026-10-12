@@ -34,7 +34,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Meter readings: rounding to resolution, target tolerance check
 - [x] Task generation pipeline: Claude call with the `validate_grid` tool (format checks), structured `TaskSpec`, retry with errors, task-grid derivation, `POST /api/tasks/generate`
 - [x] Task generation: electrical validation (working circuit, reconstruction from the task board, not already solved) and computed target values
-- [ ] Curated fallback levels (tagged by curriculum level) when generation fails, validated by playtesting
+- [ ] Curated fallback levels (tagged by curriculum level) when generation fails, validated by playtesting: replaced by the pre-generated fallback pack (§6 Polishing)
 - [ ] Server-side refusal fallbacks for Claude calls
 - [x] Background pre-generation of the next task: a backend cache keyed by progress, and a pool of first tasks
 - [x] Skill level and task history (`Progress`): kept in the browser, sent with every generation request
@@ -137,6 +137,17 @@ Formulas and paragraphs ([design.md](design.md#formulas-and-paragraphs)):
 - [x] Catalog formulas in `topics.yaml`, carried by the focus topics
 - [x] Prompt and session: formulas from `tutor.formulas_from_level`, four rungs (text only on Level 1), `hints_used` 0–4
 - [x] Chat: paragraphs, KaTeX formula block, "Hint n/4"
+
+Fallback when Claude is unavailable ([design.md](design.md#fallback-when-claude-is-unavailable)):
+
+- [x] Design: the fallback pack, when it is served, Claude down, picking, the tutor without Claude
+- [x] `scripts/generate_fallback.py`: `task_generation.fallback_variants` validated specs per skill level, sizes from `curriculum.yaml`, into `backend/data/fallback/`
+- [x] Generate the pack (75 tasks with today's curriculum) and commit it
+- [x] `./check.sh`: every spec in the pack validates; every skill level of the curriculum has its entries, no leftovers
+- [x] `/api/tasks/generate`: cache first, then the pack when Claude is down, refused or fails; `source`; `generation_fallback` log
+- [x] Claude down for `claude.down_s` after connection errors, timeouts, 429, 529 or an exhausted balance; pre-generation pauses
+- [x] Tutor without Claude: plain message with a resting note; reactions and the 🔔 prompt skipped
+- [x] Contract, schematics and task docs: curated levels replaced by the fallback pack
 
 Other polishing:
 

@@ -18,7 +18,7 @@ The system separates deterministic code from Claude, with strictly divided respo
 **Rules:**
 - Claude never produces or overrides a verdict or a computed value. It receives the evaluator's output as input and reasons about the *learner*. When a formula in a reply computes something, the reply composer recomputes it and drops it if it is wrong (§4).
 - Claude's judgment of the learner (profile scores, new topics) is applied only through the reply composer, which clamps it (§4).
-- Everything Claude produces is untrusted input. Generated tasks pass the same validator as the learner's work, and the system falls back to curated content when they fail (curated levels are planned; today a failed generation shows an error with a retry).
+- Everything Claude produces is untrusted input. Generated tasks pass the same validator as the learner's work, and when generation fails or Claude is unavailable, the system serves a pre-generated fallback task instead (§6).
 
 ## 2. The learner keeps agency
 
@@ -122,7 +122,7 @@ flowchart LR
 - **Picking is by drawn shape, and one drag serves the inventory and the board.** Hit-testing walks the scene nodes' own meshes (planes, circles, rings), grown by 2 screen pixels, instead of slot rectangles or raycasts. A drag keeps the grab offset, so the element never jumps to the pointer.
   - *Why:* bounding boxes made empty space around symbols clickable, and a rectangular hotspot can't tell a thin wire from the gap next to it. One mechanism for every source keeps the inventory and the board behaving alike. Details are in [gui.md](gui.md#4-grid).
 - **Reference solutions stay on the server.** When a task is generated, the backend keeps its complete board in memory by level ID (bounded). The tutor uses it as `<reference>`; the browser only ever receives the task board.
-- **Transport:** REST for resources and task generation (`/api/tasks/generate`; `/api/levels` is planned with the curated levels), and one WebSocket per learning session for the interactive loop: live evaluation on every board edit and validated tutor messages. Details are in [contract.md](contract.md).
+- **Transport:** REST for resources and task generation (`/api/tasks/generate`, with the fallback pack behind it, §6), and one WebSocket per learning session for the interactive loop: live evaluation on every board edit and validated tutor messages. Details are in [contract.md](contract.md).
 
 ## 4. Tutoring experience: learning path, learner profile, reply composer
 
@@ -399,7 +399,7 @@ Built: `research.py` (`ResearchLog`, `Research`), its hooks in `session.py`, the
 ## 6. Security and operations
 
 - The Claude API key exists only on the backend, loaded from the environment or the gitignored `backend/keys/apikey.txt`.
-- The deployed prototype is public and uses our API key, so the backend enforces the rate limits below. They protect the cost of Claude calls and the server. **Evaluation never depends on Claude**, so when a Claude limit is hit, the grid, the readings and the status keep working. Only the tutor goes quiet, or generation pauses.
+- The deployed prototype is public and uses our API key, so the backend enforces the rate limits below. They protect the cost of Claude calls and the server. **Evaluation never depends on Claude**, so when a Claude limit is hit, the grid, the readings and the status keep working. Only the tutor goes quiet, and new tasks come from the fallback pack ([Fallback when Claude is unavailable](#fallback-when-claude-is-unavailable)).
 
 ### Rate limits
 
@@ -407,9 +407,9 @@ One module, [`rate_limits.py`](../backend/app/rate_limits.py), with its own conf
 
 | Scope | Limit (default) | When exceeded |
 |---|---|---|
-| Daily Claude budget | $20 of estimated spend per day, all calls; the day resets at 00:00 UTC | Pre-generation stops at 80% (`background_share`), keeping the rest for learners who are waiting. At 100%: tutor requests get `error: tutor_unavailable` ("the tutor has reached today's limit"), reactions are skipped, and generation gets `429`. Evaluation is unaffected. |
+| Daily Claude budget | $20 of estimated spend per day, all calls; the day resets at 00:00 UTC | Pre-generation stops at 80% (`background_share`), keeping the rest for learners who are waiting. At 100%: tutor requests get `error: tutor_unavailable` ("the tutor has reached today's limit"), reactions are skipped, and generation serves the fallback pack. Evaluation is unaffected. |
 | Tutor calls per session | 6 per minute (reactions and messages together), one in flight | Reactions are skipped silently. A learner message gets `error: rate_limited`, shown as "The tutor needs a moment; try again shortly". |
-| Task generations per IP | 10 per hour | `429` with "Task generation is paused; please try again in N min" and `Retry-After`. Curated levels will be served here once they exist. |
+| Task generations per IP | 10 per hour | A task from the fallback pack instead of a generated one |
 | WebSocket sessions per IP | 30 per hour (reconnects included), 3 open at once | The server sends `error: rate_limited` and closes with code `1008`; the client waits 30 s before reconnecting instead of 2 s |
 | REST requests per IP | 60 per minute, except `/api/health` | `429` with `Retry-After` |
 | Board updates per session | 20 per second | Coalesced: the latest board waits until the limit allows, then it's evaluated; older ones in between are dropped |
@@ -470,6 +470,54 @@ grid:                          # learner boards and generated tasks; also bounds
   max_wires: 300
 ```
 
+### Fallback when Claude is unavailable
+
+**Problem.** Every task after the first is generated by Claude. When Claude can't be reached (an outage, overload, a refusal, an exhausted API balance or spend limit, a missing key) or our own limits refuse a generation, the learner gets an error with a retry button, and retrying doesn't help. The learning stops. The tutor fails the same way: every message gets `tutor_unavailable`.
+
+**Decision.** A **fallback pack** of tasks, generated ahead of time for the whole learning path and committed with the code, is served whenever a generated task isn't available. The tutor falls back to plain messages per status. The learner keeps learning, with a quieter tutor.
+
+**The pack.**
+- **What:** `task_generation.fallback_variants` (default 3) validated `TaskSpec`s for each skill level of the learning path, that is, for each task of each curriculum level, with that task's own rules. The sizes come from `curriculum.yaml`, never from code: a level with 4 tasks has 4 skill levels in the pack. Today that's 25 skill levels (2+2+3+3+3+4+4+4 tasks) and 75 tasks. Past the last skill level, tasks stay at the last curriculum level and cycle through its tasks, so they come from that level's files. Each spec carries its welcome message and its complete board, the tutor's reference.
+- **Where:** `backend/data/fallback/skill-<n>.json`, one file per skill level, a list of specs in readable JSON. It is in git and in the Docker image, so it needs no volume and no network.
+- **Why several per skill level:** a learner who meets the fallback several times, or restarts learning, gets a different board. Stored specs, not built levels: the level is built from the spec when it's served, the same way as a generated one, so a change in the level format reaches the pack without regenerating it.
+- **Made by a script, not at runtime:** `scripts/generate_fallback.py` runs the real generator for each skill level with a plausible history (the earlier skill levels' concepts, no hints, no misconceptions) and writes the files. The variants of a skill level get circuits of their own (the repeat check), but each is written for the same plausible history, not after the others. It is re-run by hand when the curriculum or the `TaskSpec` format changes. One run is a generation call per entry (75 today); `--skill N` regenerates one file.
+- **Checked like code:** the backend tests (`tests/unit/test_fallback.py`, run by `./check.sh`) validate every spec in the pack against the current validator, the curriculum level's rules and the grid limits, and checks that every skill level of the curriculum has its `fallback_variants` entries and that no file is left over from an older curriculum. A format change that breaks the pack fails the check instead of failing a learner.
+
+**When the pack is served.** In this order, `POST /api/tasks/generate`:
+
+1. **Pre-generated task:** a cached task for this progress is served as today, even when Claude is down or the budget is spent: it is already paid for.
+2. **Claude down or refused:** if Claude is marked down (below), there is no key, the daily budget is spent, or the per-IP generation limit is reached, the pack is served at once.
+3. **Generation:** otherwise a task is generated as today. If it fails after its retries (an API error, a timeout, a refusal, or a task that fails validation twice), the pack is served.
+
+The response says `source: "fallback"`; generated and cached tasks say `"generated"`. It is logged (`generation_fallback`, with the reason) and, with consent, recorded in the research records. The learner sees no difference.
+
+**Claude down.** A Claude call that fails with a connection error, a timeout, an overload (`529`) or another server error (`5xx`), a rate limit (`429`), a rejected key (`401`) or an exhausted balance or spend limit marks Claude **down** for `claude.down_s` (default 300 s). While it is down, generation goes straight to the pack and the tutor straight to its plain messages, so learners don't each wait out a 120 s timeout. `claude_status.py` wraps the API client, so every Claude call (tutor, generation, 🔔 conversation) is refused at once while Claude is down and can mark it down when it fails. Background pre-generation pauses too. The first call after the window tries Claude again. A refusal or an invalid task doesn't mark it down: those are about one request.
+
+**Picking a task.** The entries for the learner's skill level (past the end of the path, the last curriculum level's file for the same task), minus those whose `signature` is already in the learner's history, the repeat check generation already uses; if all were seen, the one seen longest ago. The served level's complete board is registered as its reference, like a generated one, so the tutor can use it when Claude is back.
+
+**The tutor without Claude.** When Claude is down or the budget is spent, a tutor request gets a plain message instead of `error: tutor_unavailable`:
+- **Hint or learner message:** the existing per-status message (the backstop's fallback, [tutor.md](tutor.md#6-guardrails-physics-not-placement)), with a note that the tutor is resting: "The tutor is taking a short break; your circuit is still checked live." A hint doesn't count on the ladder, so the learner gets the real one later.
+- **Reactions:** skipped, as over the budget today. The live status and the readings keep working: evaluation never depends on Claude.
+- **The 🔔 feedback prompt:** not asked while Claude is down.
+
+```mermaid
+flowchart TD
+    R["POST /api/tasks/generate"] --> C{"Pre-generated<br/>task cached?"}
+    C -- yes --> S1["Serve it<br/>source: generated"]
+    C -- no --> D{"Claude down, no key,<br/>budget spent or<br/>IP limit reached?"}
+    D -- yes --> F["Fallback pack:<br/>skill level's entries,<br/>unseen signature first"]
+    D -- no --> G["Generate<br/>(retries as today)"]
+    G -- valid task --> S2["Serve it<br/>source: generated"]
+    G -- "failed" --> F
+    G -. "connection error, timeout,<br/>429, 529, balance" .-> M["Mark Claude down<br/>for claude.down_s"]
+    F --> S3["Build the level, register<br/>its reference, serve it<br/>source: fallback"]
+```
+
+**Accepted limits.**
+- Fallback tasks are not tailored to the learner's history and misconceptions; they follow the curriculum, which is what a beginner needs most.
+- A few tasks per skill level can repeat for a learner who spends a long outage on one skill level. The check prefers the least recently seen.
+- The welcome message was written for a generic history, so it may not link to what the learner just did.
+
 ### Operations
 
 - **Usage and cost log.** When `logs.enabled` is on, the backend writes one JSON-lines log per run, `logs/run-<timestamp>.<part>.jsonl` (gitignored). It records server start and stop, every Claude call (purpose, model, learner session ID, token usage, estimated cost from the `pricing` table), each log archive, and a run summary with totals. Each `./start.sh` is one run; a code reload continues it in a new part. Earlier parts are gzipped into `logs/history/` within a size budget ([deployment.md](deployment.md#5-logs)).
@@ -517,6 +565,8 @@ claude:
     effort: low
     max_tokens: 16000
     timeout_s: 30
+  down_s: 300                  # after a connection error, timeout, 429, 529 or exhausted balance,
+                               # Claude is skipped this long: tasks from the fallback pack, plain tutor messages
   task_generation:
     model: claude-opus-5-5
     effort: high
@@ -536,6 +586,7 @@ tutor:
 
 task_generation:
   recent_tasks: 10
+  fallback_variants: 3          # tasks per skill level in the fallback pack (backend/data/fallback/)
 
 pregeneration:                 # tasks generated ahead of time and cached (§3)
   enabled: true
@@ -600,6 +651,7 @@ schematics-ai-tutor/
 │       └── deploy.yml         `deploy` label: check, deploy, smoke, merge; rollback on failure
 ├── scripts/
 │   ├── check_integrity.py     docs, config, layout and secrets checks used by check.sh
+│   ├── generate_fallback.py   generates the fallback pack in backend/data/fallback/ (Claude calls; run by hand)
 │   └── research_experience.py the 🔔 feedback conversations from research records, as a Markdown report
 ├── docs/
 │   ├── task.md                product, concept of operations, constraints
@@ -621,6 +673,7 @@ schematics-ai-tutor/
 │   │   ├── usage_log.py       per-run usage and cost log
 │   │   ├── log_archive.py     log files in parts; gzip into history/, size cap, nightly
 │   │   ├── rate_limits.py     rate limits and the daily Claude budget (ratelimiting.yaml)
+│   │   ├── claude_status.py   Claude down after an outage: the guarded client, claude.down_s
 │   │   ├── research.py        learner experience research: consent, records, the feedback prompt and conversation
 │   │   ├── grid.py            grid format validation
 │   │   ├── graph.py           grid → graph conversion, nets
@@ -630,6 +683,7 @@ schematics-ai-tutor/
 │   │   ├── curriculum.py      skill level → curriculum level and task; level-fit and centering checks
 │   │   ├── task_generation.py Claude task generation with the validate_grid tool
 │   │   ├── task_cache.py      pre-generated tasks cached by progress; the first-task pool
+│   │   ├── fallback.py        the fallback pack: loading, checking and picking pre-generated tasks
 │   │   ├── tutor.py           tutor call: context, TutorMessage schema, backstop
 │   │   ├── learner_profile.py learner profile: topic catalog, sanitizing, topics joining per task, focus topics
 │   │   ├── reply_composer.py  bounds Claude's profile changes; icon and title per message kind; paragraphs
@@ -639,7 +693,8 @@ schematics-ai-tutor/
 │   ├── data/
 │   │   ├── curriculum.yaml    curriculum levels: tasks per level, rules for generation
 │   │   ├── topics.yaml        topic catalog: principles and terms per curriculum level and component type; formulas
-│   │   └── examples/          example TaskSpecs for the generation prompt
+│   │   ├── examples/          example TaskSpecs for the generation prompt
+│   │   └── fallback/          the fallback pack: skill-<n>.json, pre-generated TaskSpecs per skill level
 │   ├── tests/
 │   │   ├── conftest.py        examples and a fake Claude client
 │   │   ├── unit/              pure logic, offline

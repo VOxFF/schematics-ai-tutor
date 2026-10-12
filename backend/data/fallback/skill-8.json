@@ -1,0 +1,220 @@
+[
+  {
+    "concept": "series resistors (voltage divider)",
+    "title": "Split the six volts",
+    "intro": "Two resistors connected one after the other share the battery's voltage. Close the gaps in the wiring and choose the right resistor for the empty spot so the voltmeter shows its target reading.",
+    "welcome": "You've mastered picking one resistor with Ohm's law. Now two resistors team up in series: let's see how they share the battery's push.",
+    "complete_board": {
+      "grid": {"columns": 12, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 6,
+          "fixed": true,
+          "orientation": "E",
+          "pins": {"negative": [6, 2], "positive": [8, 2]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 400,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"a": [11, 4], "b": [11, 6]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 800,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"a": [4, 4], "b": [4, 6]}
+        },
+        {
+          "id": "VM1",
+          "type": "voltmeter",
+          "fixed": true,
+          "orientation": "S",
+          "pins": {"negative": [2, 4], "positive": [2, 6]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[8, 2], [9, 2]]]},
+        {"id": "W2", "segments": [[[9, 2], [10, 2]]]},
+        {"id": "W3", "segments": [[[10, 2], [11, 2]]]},
+        {"id": "W4", "segments": [[[11, 2], [11, 3]]]},
+        {"id": "W5", "segments": [[[11, 3], [11, 4]]]},
+        {"id": "W6", "segments": [[[11, 6], [11, 7]]]},
+        {"id": "W7", "segments": [[[11, 7], [10, 7]]]},
+        {"id": "W8", "segments": [[[10, 7], [9, 7]]]},
+        {"id": "W9", "segments": [[[9, 7], [8, 7]]]},
+        {"id": "W10", "segments": [[[8, 7], [7, 7]]]},
+        {"id": "W11", "segments": [[[7, 7], [6, 7]]]},
+        {"id": "W12", "segments": [[[6, 7], [5, 7]]]},
+        {"id": "W13", "segments": [[[5, 7], [4, 7]]]},
+        {"id": "W14", "segments": [[[4, 7], [4, 6]]]},
+        {"id": "W15", "segments": [[[4, 6], [3, 6]]]},
+        {"id": "W16", "segments": [[[3, 6], [2, 6]]]},
+        {"id": "W17", "segments": [[[4, 4], [3, 4]]]},
+        {"id": "W18", "segments": [[[3, 4], [2, 4]]]},
+        {"id": "W19", "segments": [[[4, 4], [4, 3]]]},
+        {"id": "W20", "segments": [[[4, 3], [4, 2]]]},
+        {"id": "W21", "segments": [[[4, 2], [5, 2]]]},
+        {"id": "W22", "segments": [[[5, 2], [6, 2]]]}
+      ]
+    },
+    "removed_ids": ["R2", "W4", "W9", "W10", "W16"],
+    "decoys": [
+      {"id": "R3", "type": "resistor", "value": 400},
+      {"id": "R4", "type": "resistor", "value": 1000}
+    ],
+    "target_meter_ids": ["VM1"],
+    "difficulty": 3,
+    "rationale": "The learner solved every Ohm's law task without hints, so it's time for two series resistors sharing the source voltage in proportion to their resistance."
+  },
+  {
+    "concept": "series resistors (voltage divider)",
+    "title": "Split the push",
+    "intro": "Two resistors in a row share the battery's voltage. Fix the broken loop and pick the right resistor for the empty spot so the voltmeter shows its target reading. Careful: not every gap needs a resistor.",
+    "welcome": "You've mastered Ohm's law with one resistor. Now two resistors share one battery: let's find out how they split the voltage between them.",
+    "complete_board": {
+      "grid": {"columns": 12, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 9,
+          "fixed": true,
+          "orientation": "W",
+          "pins": {"negative": [7, 7], "positive": [5, 7]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 600,
+          "fixed": true,
+          "orientation": "W",
+          "pins": {"a": [5, 2], "b": [7, 2]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 300,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"a": [10, 4], "b": [10, 6]}
+        },
+        {
+          "id": "VM1",
+          "type": "voltmeter",
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [12, 6], "positive": [12, 4]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[5, 7], [4, 7]]]},
+        {"id": "W2", "segments": [[[4, 7], [3, 7]]]},
+        {"id": "W3", "segments": [[[3, 7], [2, 7]]]},
+        {"id": "W4", "segments": [[[2, 7], [2, 6]]]},
+        {"id": "W5", "segments": [[[2, 6], [2, 5]]]},
+        {"id": "W6", "segments": [[[2, 5], [2, 4]]]},
+        {"id": "W7", "segments": [[[2, 4], [2, 3]]]},
+        {"id": "W8", "segments": [[[2, 3], [2, 2]]]},
+        {"id": "W9", "segments": [[[2, 2], [3, 2]]]},
+        {"id": "W10", "segments": [[[3, 2], [4, 2]]]},
+        {"id": "W11", "segments": [[[4, 2], [5, 2]]]},
+        {"id": "W12", "segments": [[[7, 2], [8, 2]]]},
+        {"id": "W13", "segments": [[[8, 2], [9, 2]]]},
+        {"id": "W14", "segments": [[[9, 2], [10, 2]]]},
+        {"id": "W15", "segments": [[[10, 2], [10, 3]]]},
+        {"id": "W16", "segments": [[[10, 3], [10, 4]]]},
+        {"id": "W17", "segments": [[[10, 4], [11, 4]]]},
+        {"id": "W18", "segments": [[[11, 4], [12, 4]]]},
+        {"id": "W19", "segments": [[[10, 6], [11, 6]]]},
+        {"id": "W20", "segments": [[[11, 6], [12, 6]]]},
+        {"id": "W21", "segments": [[[10, 6], [10, 7]]]},
+        {"id": "W22", "segments": [[[10, 7], [9, 7]]]},
+        {"id": "W23", "segments": [[[9, 7], [8, 7]]]},
+        {"id": "W24", "segments": [[[8, 7], [7, 7]]]}
+      ]
+    },
+    "removed_ids": ["R2", "W5", "W6", "W13"],
+    "decoys": [{"id": "R3", "type": "resistor", "value": 900}, {"id": "R4", "type": "resistor", "value": 450}],
+    "target_meter_ids": ["VM1"],
+    "difficulty": 3,
+    "rationale": "The learner solved all the Ohm's law tasks without hints, so seeing how two resistors in a row share the voltage is the natural next step."
+  },
+  {
+    "concept": "series resistors (voltage divider)",
+    "title": "Two resistors share the push",
+    "intro": "Two resistors in a row share the battery's voltage, and the bigger resistor gets the bigger share. The battery, one resistor and a few wires are missing. Choose the right battery and resistor and close every gap so the voltmeter across the lower resistor shows its target.",
+    "welcome": "You've used Ohm's law to pick one resistor. Now two resistors share a single battery, and you'll see how they split its voltage. You'll also need to choose the right battery!",
+    "complete_board": {
+      "grid": {"columns": 12, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 5,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"negative": [4, 5], "positive": [4, 3]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 10,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"a": [7, 2], "b": [7, 4]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 40,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"a": [7, 5], "b": [7, 7]}
+        },
+        {
+          "id": "VM1",
+          "type": "voltmeter",
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [9, 7], "positive": [9, 5]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[4, 3], [4, 2]]]},
+        {"id": "W2", "segments": [[[4, 2], [4, 1]]]},
+        {"id": "W3", "segments": [[[4, 1], [5, 1]]]},
+        {"id": "W4", "segments": [[[5, 1], [6, 1]]]},
+        {"id": "W5", "segments": [[[6, 1], [7, 1]]]},
+        {"id": "W6", "segments": [[[7, 1], [7, 2]]]},
+        {"id": "W7", "segments": [[[7, 4], [7, 5]]]},
+        {"id": "W8", "segments": [[[7, 5], [8, 5]]]},
+        {"id": "W9", "segments": [[[8, 5], [9, 5]]]},
+        {"id": "W10", "segments": [[[7, 7], [8, 7]]]},
+        {"id": "W11", "segments": [[[8, 7], [9, 7]]]},
+        {"id": "W12", "segments": [[[7, 7], [7, 8]]]},
+        {"id": "W13", "segments": [[[7, 8], [6, 8]]]},
+        {"id": "W14", "segments": [[[6, 8], [5, 8]]]},
+        {"id": "W15", "segments": [[[5, 8], [4, 8]]]},
+        {"id": "W16", "segments": [[[4, 8], [4, 7]]]},
+        {"id": "W17", "segments": [[[4, 7], [4, 6]]]},
+        {"id": "W18", "segments": [[[4, 6], [4, 5]]]}
+      ]
+    },
+    "removed_ids": ["V1", "R2", "W7", "W13", "W14"],
+    "decoys": [
+      {"id": "V2", "type": "voltage_source", "value": 9},
+      {"id": "R3", "type": "resistor", "value": 20},
+      {"id": "R4", "type": "resistor", "value": 30}
+    ],
+    "target_meter_ids": ["VM1"],
+    "difficulty": 3,
+    "rationale": "The learner solved all Ohm's law tasks without hints, so they're ready to see two series resistors split the source voltage by their resistance, while also choosing the battery and telling wire gaps from part gaps."
+  }
+]

@@ -1,0 +1,207 @@
+[
+  {
+    "concept": "series resistors (voltage divider)",
+    "title": "Battery and divider",
+    "intro": "This tall circuit is missing its battery, its lower resistor and a few wire pieces. Pick the right battery and resistor, close the gaps, and make the voltmeter across the lower resistor show its target reading.",
+    "welcome": "You've already seen two resistors share a voltage. This time you also choose the battery, so think about what the whole circuit gets before you split it.",
+    "complete_board": {
+      "grid": {"columns": 12, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 12,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"negative": [4, 6], "positive": [4, 4]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 20,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"a": [8, 2], "b": [8, 4]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 40,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"a": [8, 5], "b": [8, 7]}
+        },
+        {
+          "id": "VM1",
+          "type": "voltmeter",
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [10, 7], "positive": [10, 5]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[4, 4], [4, 3]]]},
+        {"id": "W2", "segments": [[[4, 3], [4, 2]]]},
+        {"id": "W3", "segments": [[[4, 2], [4, 1]]]},
+        {"id": "W4", "segments": [[[4, 1], [5, 1]]]},
+        {"id": "W5", "segments": [[[5, 1], [6, 1]]]},
+        {"id": "W6", "segments": [[[6, 1], [7, 1]]]},
+        {"id": "W7", "segments": [[[7, 1], [8, 1]]]},
+        {"id": "W8", "segments": [[[8, 1], [8, 2]]]},
+        {"id": "W9", "segments": [[[8, 4], [8, 5]]]},
+        {"id": "W10", "segments": [[[8, 5], [9, 5]]]},
+        {"id": "W11", "segments": [[[9, 5], [10, 5]]]},
+        {"id": "W12", "segments": [[[8, 7], [9, 7]]]},
+        {"id": "W13", "segments": [[[9, 7], [10, 7]]]},
+        {"id": "W14", "segments": [[[8, 7], [8, 8]]]},
+        {"id": "W15", "segments": [[[8, 8], [7, 8]]]},
+        {"id": "W16", "segments": [[[7, 8], [6, 8]]]},
+        {"id": "W17", "segments": [[[6, 8], [5, 8]]]},
+        {"id": "W18", "segments": [[[5, 8], [4, 8]]]},
+        {"id": "W19", "segments": [[[4, 8], [4, 7]]]},
+        {"id": "W20", "segments": [[[4, 7], [4, 6]]]}
+      ]
+    },
+    "removed_ids": ["V1", "R2", "W5", "W6", "W17"],
+    "decoys": [
+      {"id": "V2", "type": "voltage_source", "value": 9},
+      {"id": "R3", "type": "resistor", "value": 20},
+      {"id": "R4", "type": "resistor", "value": 10}
+    ],
+    "target_meter_ids": ["VM1"],
+    "difficulty": 3,
+    "rationale": "The learner solved the first divider task without hints, so now they have to choose both the battery and the resistor ratio, and also judge a gap two steps wide."
+  },
+  {
+    "concept": "series resistors (voltage divider)",
+    "title": "Stacked in series",
+    "intro": "Two resistors sit one above the other in a tall loop, and the voltmeter watches the lower one. Pick the right resistor for the lower spot and repair the broken wiring so the voltmeter shows its target reading.",
+    "welcome": "You've already seen two resistors share a source's push. This time the wiring is broken in a few places too, so decide carefully what each gap really needs.",
+    "complete_board": {
+      "grid": {"columns": 12, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 12,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [4, 5], "positive": [4, 3]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 800,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"a": [8, 2], "b": [8, 4]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 400,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"a": [8, 5], "b": [8, 7]}
+        },
+        {
+          "id": "VM1",
+          "type": "voltmeter",
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [10, 7], "positive": [10, 5]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[4, 3], [4, 2]]]},
+        {"id": "W2", "segments": [[[4, 2], [4, 1]]]},
+        {"id": "W3", "segments": [[[4, 1], [5, 1]]]},
+        {"id": "W4", "segments": [[[5, 1], [6, 1]]]},
+        {"id": "W5", "segments": [[[6, 1], [7, 1]]]},
+        {"id": "W6", "segments": [[[7, 1], [8, 1]]]},
+        {"id": "W7", "segments": [[[8, 1], [8, 2]]]},
+        {"id": "W8", "segments": [[[8, 4], [8, 5]]]},
+        {"id": "W9", "segments": [[[8, 5], [9, 5]]]},
+        {"id": "W10", "segments": [[[9, 5], [10, 5]]]},
+        {"id": "W11", "segments": [[[8, 7], [9, 7]]]},
+        {"id": "W12", "segments": [[[9, 7], [10, 7]]]},
+        {"id": "W13", "segments": [[[8, 7], [8, 8]]]},
+        {"id": "W14", "segments": [[[8, 8], [7, 8]]]},
+        {"id": "W15", "segments": [[[7, 8], [6, 8]]]},
+        {"id": "W16", "segments": [[[6, 8], [5, 8]]]},
+        {"id": "W17", "segments": [[[5, 8], [4, 8]]]},
+        {"id": "W18", "segments": [[[4, 8], [4, 7]]]},
+        {"id": "W19", "segments": [[[4, 7], [4, 6]]]},
+        {"id": "W20", "segments": [[[4, 6], [4, 5]]]}
+      ]
+    },
+    "removed_ids": ["R2", "W5", "W18", "W19"],
+    "decoys": [{"id": "R3", "type": "resistor", "value": 600}, {"id": "R4", "type": "resistor", "value": 800}],
+    "target_meter_ids": ["VM1"],
+    "difficulty": 3,
+    "rationale": "The learner solved the first divider task without hints, so now they choose a resistor by its share of the voltage and also have to decide whether a part-sized gap needs a wire or a resistor."
+  },
+  {
+    "concept": "series resistors (voltage divider)",
+    "title": "Battery and a fair share",
+    "intro": "The battery, one resistor and some wires are missing. Put the battery back the right way round, close the gaps, and choose the resistor that makes the voltmeter across it show its target reading.",
+    "welcome": "Nice work on your first voltage divider! This time you place the battery yourself too, so watch which way round it goes.",
+    "complete_board": {
+      "grid": {"columns": 12, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 9,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"negative": [4, 5], "positive": [4, 3]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 300,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"a": [7, 2], "b": [7, 4]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 600,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"a": [7, 5], "b": [7, 7]}
+        },
+        {
+          "id": "VM1",
+          "type": "voltmeter",
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [9, 7], "positive": [9, 5]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[4, 3], [4, 2]]]},
+        {"id": "W2", "segments": [[[4, 2], [5, 2]]]},
+        {"id": "W3", "segments": [[[5, 2], [6, 2]]]},
+        {"id": "W4", "segments": [[[6, 2], [7, 2]]]},
+        {"id": "W5", "segments": [[[7, 4], [7, 5]]]},
+        {"id": "W6", "segments": [[[7, 5], [8, 5]]]},
+        {"id": "W7", "segments": [[[8, 5], [9, 5]]]},
+        {"id": "W8", "segments": [[[7, 7], [8, 7]]]},
+        {"id": "W9", "segments": [[[8, 7], [9, 7]]]},
+        {"id": "W10", "segments": [[[7, 7], [6, 7]]]},
+        {"id": "W11", "segments": [[[6, 7], [5, 7]]]},
+        {"id": "W12", "segments": [[[5, 7], [4, 7]]]},
+        {"id": "W13", "segments": [[[4, 7], [4, 6]]]},
+        {"id": "W14", "segments": [[[4, 6], [4, 5]]]}
+      ]
+    },
+    "removed_ids": ["V1", "R2", "W2", "W3", "W11"],
+    "decoys": [{"id": "R3", "type": "resistor", "value": 300}, {"id": "R4", "type": "resistor", "value": 900}],
+    "target_meter_ids": ["VM1"],
+    "difficulty": 3,
+    "rationale": "The learner solved the first divider task without hints, so now they also place the battery the right way round and must decide whether a two-step gap needs a wire or a resistor."
+  }
+]

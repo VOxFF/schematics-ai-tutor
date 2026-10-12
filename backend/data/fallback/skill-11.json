@@ -1,0 +1,220 @@
+[
+  {
+    "concept": "parallel resistors",
+    "title": "Two paths, one source",
+    "intro": "A second resistor and a few wire pieces are missing. Rebuild the second path next to R1 so the ammeter shows the target total current. Remember that each path gets the full source voltage.",
+    "welcome": "You've seen two resistors in series split the voltage between them. Now two resistors work in parallel, and each one gets its own path for current.",
+    "complete_board": {
+      "grid": {"columns": 12, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 12,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [2, 5], "positive": [2, 3]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": true,
+          "orientation": "W",
+          "pins": {"negative": [6, 2], "positive": [4, 2]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 60,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"a": [9, 3], "b": [9, 5]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 120,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"a": [11, 3], "b": [11, 5]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[2, 3], [2, 2]]]},
+        {"id": "W2", "segments": [[[2, 2], [3, 2]]]},
+        {"id": "W3", "segments": [[[3, 2], [4, 2]]]},
+        {"id": "W4", "segments": [[[6, 2], [7, 2]]]},
+        {"id": "W5", "segments": [[[7, 2], [8, 2]]]},
+        {"id": "W6", "segments": [[[8, 2], [9, 2]]]},
+        {"id": "W7", "segments": [[[9, 2], [9, 3]]]},
+        {"id": "W8", "segments": [[[9, 2], [10, 2]]]},
+        {"id": "W9", "segments": [[[10, 2], [11, 2]]]},
+        {"id": "W10", "segments": [[[11, 2], [11, 3]]]},
+        {"id": "W11", "segments": [[[9, 5], [9, 6]]]},
+        {"id": "W12", "segments": [[[11, 5], [11, 6]]]},
+        {"id": "W13", "segments": [[[11, 6], [10, 6]]]},
+        {"id": "W14", "segments": [[[10, 6], [9, 6]]]},
+        {"id": "W15", "segments": [[[9, 6], [8, 6]]]},
+        {"id": "W16", "segments": [[[8, 6], [7, 6]]]},
+        {"id": "W17", "segments": [[[7, 6], [6, 6]]]},
+        {"id": "W18", "segments": [[[6, 6], [5, 6]]]},
+        {"id": "W19", "segments": [[[5, 6], [4, 6]]]},
+        {"id": "W20", "segments": [[[4, 6], [3, 6]]]},
+        {"id": "W21", "segments": [[[3, 6], [2, 6]]]},
+        {"id": "W22", "segments": [[[2, 6], [2, 5]]]}
+      ]
+    },
+    "removed_ids": ["R2", "W8", "W9", "W10", "W12"],
+    "decoys": [{"id": "R3", "type": "resistor", "value": 60}, {"id": "R4", "type": "resistor", "value": 220}],
+    "target_meter_ids": ["AM1"],
+    "difficulty": 3,
+    "rationale": "The learner has solved series dividers without hints, so the next step is parallel branches, where each branch gets the full voltage and the branch currents add up."
+  },
+  {
+    "concept": "parallel resistors",
+    "title": "Two paths, one battery",
+    "intro": "The ammeter measures the total current leaving the battery. Put a second resistor back as its own path next to R1 and repair the broken wires so the ammeter shows the target current.",
+    "welcome": "You've mastered resistors in series, where they share the voltage. Now two resistors sit side by side: let's see what happens to the current when it gets two paths.",
+    "complete_board": {
+      "grid": {"columns": 12, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 9,
+          "fixed": true,
+          "orientation": "E",
+          "pins": {"negative": [5, 7], "positive": [7, 7]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 30,
+          "fixed": true,
+          "orientation": "W",
+          "pins": {"a": [5, 2], "b": [7, 2]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 45,
+          "fixed": false,
+          "orientation": "W",
+          "pins": {"a": [5, 4], "b": [7, 4]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": true,
+          "orientation": "S",
+          "pins": {"negative": [10, 5], "positive": [10, 7]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[5, 7], [4, 7]]]},
+        {"id": "W2", "segments": [[[4, 7], [3, 7]]]},
+        {"id": "W3", "segments": [[[3, 7], [3, 6]]]},
+        {"id": "W4", "segments": [[[3, 6], [3, 5]]]},
+        {"id": "W5", "segments": [[[3, 5], [3, 4]]]},
+        {"id": "W6", "segments": [[[3, 4], [3, 3]]]},
+        {"id": "W7", "segments": [[[3, 3], [3, 2]]]},
+        {"id": "W8", "segments": [[[3, 2], [4, 2]]]},
+        {"id": "W9", "segments": [[[4, 2], [5, 2]]]},
+        {"id": "W10", "segments": [[[3, 4], [4, 4]]]},
+        {"id": "W11", "segments": [[[4, 4], [5, 4]]]},
+        {"id": "W12", "segments": [[[7, 2], [8, 2]]]},
+        {"id": "W13", "segments": [[[8, 2], [9, 2]]]},
+        {"id": "W14", "segments": [[[9, 2], [10, 2]]]},
+        {"id": "W15", "segments": [[[10, 2], [10, 3]]]},
+        {"id": "W16", "segments": [[[10, 3], [10, 4]]]},
+        {"id": "W17", "segments": [[[7, 4], [8, 4]]]},
+        {"id": "W18", "segments": [[[8, 4], [9, 4]]]},
+        {"id": "W19", "segments": [[[9, 4], [10, 4]]]},
+        {"id": "W20", "segments": [[[10, 4], [10, 5]]]},
+        {"id": "W21", "segments": [[[10, 7], [9, 7]]]},
+        {"id": "W22", "segments": [[[9, 7], [8, 7]]]},
+        {"id": "W23", "segments": [[[8, 7], [7, 7]]]}
+      ]
+    },
+    "removed_ids": ["R2", "W3", "W4", "W18", "W22"],
+    "decoys": [{"id": "R3", "type": "resistor", "value": 15}, {"id": "R4", "type": "resistor", "value": 36}],
+    "target_meter_ids": ["AM1"],
+    "difficulty": 3,
+    "rationale": "After solid series and Ohm's law work, the learner now finds that each parallel branch gets the full voltage and that the branch currents add up in the total."
+  },
+  {
+    "concept": "parallel resistors",
+    "title": "Two paths, one total",
+    "intro": "R1 already has its own path from the top wire to the bottom wire. Build a second path beside it, fix the broken wiring, and choose the resistor that makes the ammeter show the target total current. Watch out: not every gap needs a resistor.",
+    "welcome": "You've seen how resistors in series share the source voltage. Now two resistors each get their own path, so let's see what happens to the total current.",
+    "complete_board": {
+      "grid": {"columns": 12, "rows": 8},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 12,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"negative": [2, 5], "positive": [2, 3]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": true,
+          "orientation": "W",
+          "pins": {"negative": [5, 2], "positive": [3, 2]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 30,
+          "fixed": true,
+          "orientation": "N",
+          "pins": {"a": [8, 3], "b": [8, 5]}
+        },
+        {
+          "id": "R2",
+          "type": "resistor",
+          "value": 40,
+          "fixed": false,
+          "orientation": "N",
+          "pins": {"a": [11, 3], "b": [11, 5]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[2, 3], [2, 2]]]},
+        {"id": "W2", "segments": [[[2, 2], [3, 2]]]},
+        {"id": "W3", "segments": [[[5, 2], [6, 2]]]},
+        {"id": "W4", "segments": [[[6, 2], [7, 2]]]},
+        {"id": "W5", "segments": [[[7, 2], [8, 2]]]},
+        {"id": "W6", "segments": [[[8, 2], [8, 3]]]},
+        {"id": "W7", "segments": [[[8, 2], [9, 2]]]},
+        {"id": "W8", "segments": [[[9, 2], [10, 2]]]},
+        {"id": "W9", "segments": [[[10, 2], [11, 2]]]},
+        {"id": "W10", "segments": [[[11, 2], [11, 3]]]},
+        {"id": "W11", "segments": [[[11, 5], [11, 6]]]},
+        {"id": "W12", "segments": [[[11, 6], [10, 6]]]},
+        {"id": "W13", "segments": [[[10, 6], [9, 6]]]},
+        {"id": "W14", "segments": [[[9, 6], [8, 6]]]},
+        {"id": "W15", "segments": [[[8, 5], [8, 6]]]},
+        {"id": "W16", "segments": [[[8, 6], [7, 6]]]},
+        {"id": "W17", "segments": [[[7, 6], [6, 6]]]},
+        {"id": "W18", "segments": [[[6, 6], [5, 6]]]},
+        {"id": "W19", "segments": [[[5, 6], [4, 6]]]},
+        {"id": "W20", "segments": [[[4, 6], [3, 6]]]},
+        {"id": "W21", "segments": [[[3, 6], [2, 6]]]},
+        {"id": "W22", "segments": [[[2, 6], [2, 5]]]}
+      ]
+    },
+    "removed_ids": ["R2", "W4", "W10", "W12", "W17", "W18"],
+    "decoys": [
+      {"id": "R3", "type": "resistor", "value": 20},
+      {"id": "R4", "type": "resistor", "value": 30},
+      {"id": "R5", "type": "resistor", "value": 47}
+    ],
+    "target_meter_ids": ["AM1"],
+    "difficulty": 3,
+    "rationale": "The learner has mastered series voltage sharing without hints, so this task brings in parallel branches, where each branch gets the full voltage and the branch currents add up."
+  }
+]
