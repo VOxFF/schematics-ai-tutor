@@ -201,6 +201,10 @@ class Session:
         if not self.limits.claude_allowed():
             self.usage_log.event("reaction_skipped", session_id=self.id, reason="claude_budget")
             return
+        # The 🔔 question waits for the learner's answer: reactions would bury it (docs/design.md §5).
+        if self.research.awaiting:
+            self.usage_log.event("reaction_skipped", session_id=self.id, reason="feedback_pending")
+            return
         # The same circuit as Claude's last reply: same evaluation, nothing new to say. After
         # `tutor.react_after_unchanged` such pauses Claude is called anyway, to guide (docs/design.md §3).
         unchanged = circuit_key(to_graph(self.board)[0]) == self.replied_key
@@ -326,7 +330,7 @@ class Session:
         # edit, the client shows the text but drops the highlights and the evaluation.
         await self.send({"type": "tutor.message", "request_id": request_id, "seq": seq,
                          "evaluation": evaluation, "message": reply, "hint_offered": offer_hint,
-                         "profile": self.profile})
+                         "profile": self.profile, **self._research_state()})
 
     def _research_state(self) -> dict:
         """`research` for an outgoing message, when recording is on: the browser keeps it (docs/design.md §5)."""

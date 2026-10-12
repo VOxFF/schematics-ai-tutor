@@ -42,7 +42,8 @@ Task rules
 - Generate exactly the context's `curriculum` level: its concept, circuit, grid size,
   what is removed, how many decoys and targets. The backend checks all of these.
 - Build on what the learner has done and never repeat a recent task.
-- Follow the context's `variation` hints (layout, source voltage, resistor range) so that tasks differ
+- Follow the context's `variation` hints (layout, source voltage, resistor range, and a
+  battery hint when there is one) so that tasks differ
   even for identical learners. Never copy the examples' layouts or values; they only
   show the format.
 - Keep circuits small: one voltage source, at most 4 resistors, 1-2 meters.
@@ -133,14 +134,28 @@ RESISTOR_HINTS = [
 ]
 
 
+# Now and then the battery is part of the puzzle too (learner feedback: a battery in the
+# inventory was fun, and it never came back). Within the level's rules, so it's a hint, not a must.
+BATTERY_HINTS = [
+    "if the level's removed parts allow it, make the voltage source one of them: the learner "
+    "places it and has to get + and - the right way round",
+    "if the level has decoys, make one of them a voltage source with a different voltage: the "
+    "learner has to pick the right battery as well as the right resistor",
+]
+BATTERY_SHARE = 0.25  # of tasks that get a battery hint
+
+
 def variation(rng: random.Random | None = None) -> dict:
     rng = rng or random.Random()
-    return {
+    hints = {
         "seed": rng.randrange(10_000),
         "layout": rng.choice(LAYOUT_HINTS),
         "source": rng.choice(SOURCE_HINTS),
         "resistors": rng.choice(RESISTOR_HINTS),
     }
+    if rng.random() < BATTERY_SHARE:
+        hints["battery"] = rng.choice(BATTERY_HINTS)
+    return hints
 
 
 def learner_context(skill_level: int, history: list[dict], grid: dict, recent: int,

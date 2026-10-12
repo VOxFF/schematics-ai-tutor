@@ -383,6 +383,28 @@ def test_with_consent_the_session_is_recorded_and_the_feedback_prompt_comes_at_a
     assert experience[3]["handoff"] is True and experience[4]["closed"] == "handoff"
 
 
+def test_reactions_wait_while_the_feedback_question_is_unanswered(config, tmp_path):
+    learner = "0b7e3c1a-5f2d-4c8e-9a1b-2c3d4e5f6a7b"
+    research = {**config["research"], "prompt_from_level": 1}
+    fake = FakeClaude([tutor_reply("Where does the current stop?")])
+    client, level = connect({**fast_reactions(config), "research": research}, fake, research_log=ResearchLog(tmp_path))
+    thread = {"turns": [{"role": "tutor", "text": "Quick check-in: how is the tutor working for you?"}],
+              "followups": 0, "idle_s": 0}
+    changed = {**level["board"], "wires": level["board"]["wires"][:-1]}
+    with client.websocket_connect("/ws/session") as ws:
+        # A reload while the 🔔 question was open: the thread comes back with session.start.
+        ws.send_json({"type": "session.start", "level": level,
+                      "research": {"consent": True, "learner_id": learner, "thread": thread}})
+        assert ws.receive_json()["research"]["thread"]["turns"] == thread["turns"]
+        ws.send_json({"type": "board.update", "seq": 1, "board": changed})
+        assert ws.receive_json()["type"] == "evaluation"
+        time.sleep(0.3)  # a pause: no reaction while the question waits
+        ws.send_json({"type": "tutor.request", "request_id": "r1", "action": "hint"})  # a hint ends the thread
+        assert ws.receive_json()["type"] == "tutor.started"
+        reply = ws.receive_json()
+        assert reply["type"] == "tutor.message" and reply["research"]["thread"] is None
+    assert len(fake.requests) == 1  # only the hint called Claude
+
 def test_without_consent_nothing_is_recorded(config, tmp_path):
     client, level = connect(config, None, research_log=ResearchLog(tmp_path))
     with client.websocket_connect("/ws/session") as ws:

@@ -40,6 +40,7 @@ The major steps to build the product. A step is checked off when it is complete,
 - [x] Skill level and task history (`Progress`): kept in the browser, sent with every generation request
 - [x] Repeat check against recent tasks (circuit signature)
 - [x] Variety for identical contexts: random variation hints (layout, source voltage, resistor range)
+- [x] Battery hint for about one task in four: the source among the removed parts, or a decoy source (learner feedback: a battery in the inventory was fun and never came back)
 - [x] Curriculum levels 1–8 (`backend/data/curriculum.yaml`): skill → level and task, rules in the prompt, deterministic level-fit and centering checks
 - [ ] Level 9, troubleshooting: format extension for replaced parts
 - [x] Prompt examples as files (`backend/data/examples/`), validated in tests
