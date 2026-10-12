@@ -397,6 +397,7 @@ The prompt has two parts: **task context**, which is the same for every request 
 1. **Role and rules.** Claude designs one small DC circuit task. The rules:
    - choose the concept and complexity from the learner context
    - keep circuits small and the removed parts meaningful
+   - from level 4, with 3 or more wire pieces removed, neighboring pieces of one run may go together, leaving a part-sized gap: the learner decides whether it needs a wire or a resistor
    - no repeats of recent tasks
    - never compute target values
    - write `intro` in plain language for beginners
