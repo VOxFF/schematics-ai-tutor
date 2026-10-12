@@ -75,7 +75,7 @@ One connection is one learning session, and it can span several tasks.
   - the latest board, the conversation history and the hint level reached
   - the learner's `Progress`: skill level and task history
   - the pre-generated next task
-- **Reconnect.** The client keeps the current `Level`, its board, the conversation history and its `Progress`, plus the chat and the `LearnerProfile`, all in `localStorage` ([gui.md](gui.md#session-persistence)), so a reload or a later visit resumes. On reconnect it sends them with `session.start`, so the server stays free of storage. Progress therefore lives in one browser, which is accepted for the prototype. If the reconnect lands on a different instance, the reference board is lost. Grading is unaffected because it uses readings only; the tutor just works without the reference.
+- **Reconnect.** The client keeps the current `Level`, its board, the conversation history and its `Progress`, plus the chat, the `LearnerProfile` and the research consent, all in `localStorage` ([gui.md](gui.md#session-persistence)), so a reload or a later visit resumes. On reconnect it sends them with `session.start`, so the server stays free of storage. Progress therefore lives in one browser, which is accepted for the prototype. If the reconnect lands on a different instance, the reference board is lost. Grading is unaffected because it uses readings only; the tutor just works without the reference.
 
 Every message is a JSON object with a `type` field.
 
@@ -83,7 +83,7 @@ Every message is a JSON object with a `type` field.
 
 | `type` | Payload | Effect |
 |---|---|---|
-| `session.start` | `progress?`, `level?`, `board?`, `history?`, `hint_level?`, `profile?` | Starts a session (the server sends `task.ready` with the curated level for the skill level) or resumes one (`level` given). The server also replies with `evaluation`, which carries the `LearnerProfile` with the task's topics joined. `profile` is the learner profile the browser saved ([design.md](design.md#learner-profile)); the server checks it and drops bad entries. With `progress` and `level`, the server pre-generates the task after this one ([design.md](design.md#3-system-architecture)). `hint_level` is the hint level reached in this task (0–3), so a resumed session continues the ladder. |
+| `session.start` | `progress?`, `level?`, `board?`, `history?`, `hint_level?`, `profile?`, `research?` | Starts a session (the server sends `task.ready` with the curated level for the skill level) or resumes one (`level` given). The server also replies with `evaluation`, which carries the `LearnerProfile` with the task's topics joined. `profile` is the learner profile the browser saved ([design.md](design.md#learner-profile)); the server checks it and drops bad entries. `research` is the learner's consent for this session, `{ consent, learner_id?, name?, active_s?, last_ts? }`; with `consent: true` and a UUID `learner_id`, the server records the session, and its active-time count continues from `active_s` and the time of the last activity, `last_ts` ([design.md](design.md#5-learner-experience-research)). With `progress` and `level`, the server pre-generates the task after this one ([design.md](design.md#3-system-architecture)). `hint_level` is the hint level reached in this task (0–3), so a resumed session continues the ladder. |
 | `task.next` | — | Asks for the next task, usually after the current one is solved |
 | `summary.request` | — | Bonus: asks for the learner's skill summary (Learning Path screen) |
 | `board.update` | `seq`, `board` | Sent on each finished edit (a part dropped, a wire piece placed or removed). The server records a snapshot, re-evaluates and replies with `evaluation` carrying the same `seq`. |
@@ -96,9 +96,9 @@ Every message is a JSON object with a `type` field.
 | `task.ready` | `level: Level`, `source` (`"curated"` or `"generated"`), `progress: Progress` | A new task. The client replaces its board with `level.board` and stores `progress`. |
 | `task.generating` | — | Sent when `task.next` arrives before the pre-generated task is ready |
 | `summary.ready` | `summary: SkillSummary` or `error` | Bonus: the reply to `summary.request` |
-| `evaluation` | `seq`, `evaluation: Evaluation`, `profile?: LearnerProfile` | The client ignores any `seq` older than the last one it applied. The reply to `session.start` carries the profile; the client saves it. |
+| `evaluation` | `seq`, `evaluation: Evaluation`, `profile?: LearnerProfile`, `research?` | The client ignores any `seq` older than the last one it applied. The reply to `session.start` carries the profile; the client saves it. With research consent, `research: { active_s, last_ts }` is the active time since the last 🔔 prompt and the time of the last activity (Unix seconds); the client saves it with the consent and sends it back with the next `session.start`. |
 | `tutor.started` | `request_id`, `trigger` (`"reaction"` or `"request"`) | The UI shows "tutor is thinking". Reactions get a server-generated `request_id`. |
-| `tutor.message` | `request_id`, `seq`, `evaluation`, `message: TutorMessage`, `hint_offered`, `profile: LearnerProfile` | The complete reply, sent only after the backend has validated and composed it. `profile` is the learner profile after the reply's changes; the client saves it. `hint_offered` is true when the reply offers a hint, so the UI highlights the Hint button. `seq` is the board the reply is about (0: the `session.start` board); when the learner has edited since, the client shows the text but drops the highlights and the evaluation, which are out of date. |
+| `tutor.message` | `request_id`, `seq`, `evaluation`, `message: TutorMessage`, `hint_offered`, `profile: LearnerProfile` | The complete reply, sent only after the backend has validated and composed it. With research consent, the 🔔 feedback prompt and the feedback conversation's replies arrive as `tutor.message`s too, with `chat.kind: "experience"` and empty `meta`: the prompt after an 8 s pause in editing, without `tutor.started`. While that conversation is open, the learner's messages go to it; one meant for the tutor is handed off and answered as a normal tutor reply. Board edits and reactions go on as usual. A hint request, the end of the conversation, or 3 active minutes without a reply close it. `profile` is the learner profile after the reply's changes; the client saves it. `hint_offered` is true when the reply offers a hint, so the UI highlights the Hint button. `seq` is the board the reply is about (0: the `session.start` board); when the learner has edited since, the client shows the text but drops the highlights and the evaluation, which are out of date. |
 | `error` | `code`, `message`, `request_id?` | Codes: `bad_message`, `unknown_level`, `rate_limited`, `tutor_unavailable`, `no_session` (a request arrived before `session.start`, e.g. after a server restart: the client re-sends `session.start` and repeats the request), `session_rejected` (the saved level or board can't be resumed: the client offers a new task). `tutor_unavailable` also answers a request over the daily Claude budget. A connection over the per-IP session limit gets `rate_limited` and is closed with code `1008`; the client then waits 30 s before reconnecting. Limits are in [design.md](design.md#rate-limits). Generation failures never surface: they fall back to a curated level. |
 
 **Rules**
@@ -263,7 +263,8 @@ interface TutorMessage {
     new_topic: NewTopic | null;    // a topic Claude adds to this learner's profile
   };
   chat: {
-    kind: "feedback" | "nudge" | "hint" | "question" | "praise" | "knowledge";
+    kind: "feedback" | "nudge" | "hint" | "question" | "praise" | "knowledge"
+        | "experience";            // the 🔔 feedback conversation (research), never from the tutor
     text: string;                  // learner-facing, plain language
     // Added by the reply composer, not by Claude:
     icon?: string;                 // the kind's icon, e.g. "📘"
@@ -327,7 +328,7 @@ interface Highlight {
 
 ## 2. Backend ↔ Claude API
 
-The backend makes three kinds of Claude calls: **tutoring** (2.1), **task generation** (2.2) and, as a bonus, the **skill summary** (2.3). Models, effort and limits are read from the root `config.yaml` ([design.md](design.md#6-configuration)); the values below are the defaults.
+The backend makes three kinds of Claude calls: **tutoring** (2.1), **task generation** (2.2) and, as a bonus, the **skill summary** (2.3). Models, effort and limits are read from the root `config.yaml` ([design.md](design.md#7-configuration)); the values below are the defaults.
 
 ### 2.1 Tutor call
 
@@ -354,9 +355,9 @@ The order runs from most stable to least stable, so the cached prefix stays vali
    - `<level>`: concept, targets and intro text
    - `<reference>`: the reference solution's `graph` when available, so hints can point toward a solution without revealing it
    - `<summary>`: a one-line circuit description written by the backend, e.g. `parts: V1 12 V, R1 40 Ω, VM1; status: meter_misuse; readings: VM1=12.0`
-   - `<history>`: the last `tutor.history_turns` tutor and learner chat turns, for continuity
    - `<snapshots>`: the `Snapshot`s recorded since the previous call, up to the last `tutor.max_snapshots`, oldest first. Earlier ones carry the graph and evaluation; the last is the current board (`"current": true`) and also carries its grid, labeled "for highlight references only". They show Claude what the learner did and how the circuit changed. The evaluations are the only source of electrical values.
    - `<profile>`: the learner's skill level and up to 8 focus topics from the `LearnerProfile`, each with its scores and `tasks_ago` ([design.md](design.md#learner-profile))
+   - `<history>`: the last `tutor.history_turns` tutor and learner chat turns, for continuity
    - `<request>`: either `trigger: "reaction"`, or the learner's `action`, the next allowed hint level and `learner_text`
 
 #### Response handling
@@ -396,6 +397,7 @@ The prompt has two parts: **task context**, which is the same for every request 
 1. **Role and rules.** Claude designs one small DC circuit task. The rules:
    - choose the concept and complexity from the learner context
    - keep circuits small and the removed parts meaningful
+   - from level 4, with 3 or more wire pieces removed, neighboring pieces of one run may go together, leaving a part-sized gap: the learner decides whether it needs a wire or a resistor
    - no repeats of recent tasks
    - never compute target values
    - write `intro` in plain language for beginners

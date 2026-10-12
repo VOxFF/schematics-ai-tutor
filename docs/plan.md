@@ -121,12 +121,18 @@ Not Boring Chat ([design.md](design.md#4-tutoring-experience-learning-path-learn
 
 Other polishing:
 
+- [ ] Improve tutoring for complex circuits (Level 6 and up): learner feedback from testing said "the feedback is not sufficient for complex schematics like level 6"
 - [ ] Solved checkmark fades out after ~2 s and leaves a small green check in the Task / Targets panel
 - [x] If the learner breaks a solved circuit, the checkmark disappears and Next is disabled again
 - [ ] Tutor highlights: glow and pulsing (`attention` pulses)
 - [ ] Tutor highlights: different visuals for "remove this" and "connect here" (e.g. a dashed line between the two points); if Claude still highlights part of a wire run, extend wire highlights to the whole run in the backend
 - [ ] Status display on the learning screen (e.g. a colored badge in the Task / Targets panel)
-- [ ] Learner experience collection from the deployed app (moved from §4: product work, not deployment)
+- [x] Learner experience research ([design.md](design.md#5-learner-experience-research)):
+  - [x] Design: consent, records, the 🔔 feedback prompt, the `research.py` interface, collection
+  - [x] `research.py`: `ResearchLog` and `Research`, wired into the session; config in `config.yaml`
+  - [x] 🔔 feedback prompt and the feedback conversation (own Claude prompt)
+  - [x] Start screen: consent checkbox and name; `research` in the session; the `experience` chat kind
+  - [x] `research.sh pull` and `delete`; `research/` gitignored; `/data/research` on Fly
 - [ ] Event log for measuring success: task started/solved, status changes, tutor calls, misconception labels
 - [ ] State the supported devices (desktop: mouse and keyboard)
 - [ ] Revisit the redundancy of component `orientation` and `pins`

@@ -3,6 +3,7 @@ import StartScreen from "./components/StartScreen.jsx";
 import TutorScreen from "./components/TutorScreen.jsx";
 import { generateTask } from "./lib/api.js";
 import { PUBLIC } from "./lib/build.js";
+import { randomName } from "./lib/names.js";
 import { clearSession, loadSession, newSession, saveSession } from "./lib/session.js";
 
 // New learners see the start screen; a saved session resumes on the tutor screen (docs/gui.md §1).
@@ -55,13 +56,17 @@ export default function App() {
     if (session && !session.level && !loading && !error) fetchTask(session);
   }, [session, loading, error, fetchTask]);
 
-  const start = () => {
+  // `choice`: { consent, name } from the start screen; a blank name gets a generated one.
+  const start = ({ consent, name } = {}) => {
     if (preview) {
       window.history.replaceState(null, "", "/");
       setPreview(false);
       if (session) return; // back to the saved session, progress intact
     }
-    const fresh = newSession();
+    const research = consent
+      ? { consent: true, learner_id: crypto.randomUUID(), name: name?.trim() || randomName() }
+      : { consent: false };
+    const fresh = newSession(research);
     saveSession(fresh);
     setSession(fresh);
   };
@@ -125,6 +130,15 @@ export default function App() {
     });
   }, []);
 
+  // The server's research state (active time) is merged into the session's consent record.
+  const setResearch = useCallback((state) => {
+    setSession((current) => {
+      const next = { ...current, research: { ...current.research, ...state } };
+      saveSession(next);
+      return next;
+    });
+  }, []);
+
   const setChat = useCallback((chat) => {
     setSession((current) => {
       const next = { ...current, chat };
@@ -143,6 +157,7 @@ export default function App() {
       onRetry={() => fetchTask(session)}
       onChat={setChat}
       onProfile={setProfile}
+      onResearch={setResearch}
       onNext={next}
       onBoard={setBoard}
       onTask={updateTask}

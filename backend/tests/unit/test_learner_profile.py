@@ -14,6 +14,9 @@ def test_catalog_topics_are_well_formed():
     assert {"closed_loop", "ohms_law", "ammeter", "voltmeter"} <= set(catalog)
     for topic in catalog.values():
         assert topic["type"] in ("principle", "term") and topic["definition"]
+        # Whole sentences: an unquoted comma in topics.yaml would cut a definition and add a stray key.
+        assert topic["definition"].endswith(".") and set(topic) <= {"id", "name", "type", "level", "component",
+                                                                    "definition"}, topic["id"]
         assert ("level" in topic) != ("component" in topic)
 
 
@@ -22,7 +25,7 @@ def test_sanitize_drops_bad_entries_and_clamps_scores():
         entry("current", understanding=7, explained=-2),
         entry("current"),  # duplicate
         {"id": "Bad Id", "name": "x", "type": "term", "definition": "x"},
-        entry("watt", type="opinion"),
+        entry("hunch", type="opinion", source="claude"),  # not in the catalog: its own type must be valid
         "nonsense",
         entry("volt", introduced=0, source="hacker", name="  " + "V" * 100),
     ]}
@@ -59,3 +62,9 @@ def test_focus_is_recent_topics_then_older_weak_ones():
     assert len(picked) == FOCUS_TOPICS
     assert [t["id"] for t in picked[:6]] == [f"new_{i}" for i in range(5)] + ["old_weak"]
     assert picked[0]["tasks_ago"] == 1 and "source" not in picked[0]
+
+
+def test_saved_catalog_topics_take_the_current_wording():
+    saved = entry("open_circuit", understanding=2, definition="A loop with a gap")  # cut short by an old bug
+    topic = sanitize({"topics": [saved]})["topics"][0]
+    assert topic["definition"] == load_catalog()["open_circuit"]["definition"] and topic["understanding"] == 2

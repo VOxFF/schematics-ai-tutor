@@ -73,7 +73,7 @@ def check_links(md_files: list[str]) -> None:
 
 
 def check_config() -> None:
-    match = re.search(r"## 6\. Configuration.*?```yaml\n(.*?)```", DESIGN.read_text(), re.S)
+    match = re.search(r"## 7\. Configuration.*?```yaml\n(.*?)```", DESIGN.read_text(), re.S)
     if not match:
         errors.append("docs/design.md: no config block in §5")
         return
@@ -83,24 +83,24 @@ def check_config() -> None:
         if section == "pricing":  # the doc shows an excerpt only
             continue
         if actual.get(section) != value:
-            errors.append(f"config.yaml: section '{section}' differs from docs/design.md §6")
+            errors.append(f"config.yaml: section '{section}' differs from docs/design.md §7")
     for section in actual:
         if section not in documented:
-            errors.append(f"config.yaml: section '{section}' is not documented in docs/design.md §6")
+            errors.append(f"config.yaml: section '{section}' is not documented in docs/design.md §7")
 
 
 def check_rate_limits() -> None:
-    """ratelimiting.yaml must match the block in docs/design.md §5 exactly."""
+    """ratelimiting.yaml must match the block in docs/design.md §6 exactly."""
     match = re.search(r"### Rate limits.*?```yaml\n(.*?)```", DESIGN.read_text(), re.S)
     if not match:
         errors.append("docs/design.md: no ratelimiting.yaml block in §4")
         return
     if yaml.safe_load(match.group(1)) != yaml.safe_load((ROOT / "ratelimiting.yaml").read_text()):
-        errors.append("ratelimiting.yaml differs from docs/design.md §5")
+        errors.append("ratelimiting.yaml differs from docs/design.md §6")
 
 
 def check_layout(tracked: list[str]) -> None:
-    match = re.search(r"## 8\. Repository layout.*?```text\n(.*?)```", DESIGN.read_text(), re.S)
+    match = re.search(r"## 9\. Repository layout.*?```text\n(.*?)```", DESIGN.read_text(), re.S)
     if not match:
         errors.append("docs/design.md: no layout snapshot in §7")
         return
@@ -119,10 +119,10 @@ def check_layout(tracked: list[str]) -> None:
         if "(gitignored)" in line:
             continue
         if not any(t == path or t.startswith(path + "/") for t in tracked):
-            errors.append(f"docs/design.md §8: '{path}' is in the snapshot but not in the repo")
+            errors.append(f"docs/design.md §9: '{path}' is in the snapshot but not in the repo")
     for top in {t.split("/")[0] for t in tracked}:
         if top not in listed_top:
-            errors.append(f"docs/design.md §8: '{top}' is in the repo but missing from the snapshot")
+            errors.append(f"docs/design.md §9: '{top}' is in the repo but missing from the snapshot")
 
 
 def check_secrets(tracked: list[str]) -> None:
@@ -143,6 +143,15 @@ def check_stale_terms(md_files: list[str]) -> None:
         for term in STALE_TERMS:
             if term.lower() in text:
                 errors.append(f"{name}: stale term '{term}'")
+
+
+def check_mermaid(md_files: list[str]) -> None:
+    """A ';' ends a statement in mermaid, so one inside a label or note breaks the diagram on GitHub."""
+    for name in md_files:
+        for block in re.findall(r"```mermaid\n(.*?)```", (ROOT / name).read_text(), re.S):
+            for line in block.splitlines():
+                if ";" in line:
+                    errors.append(f"{name}: ';' in a mermaid diagram breaks it: {line.strip()}")
 
 
 # Files written by tools in their own format (npm rewrites these on every install).
@@ -166,6 +175,7 @@ def main() -> int:
     check_layout(tracked)
     check_secrets(tracked)
     check_stale_terms(md_files)
+    check_mermaid(md_files)
     check_json_format(tracked)
     for e in errors:
         print(f"FAIL {e}")

@@ -110,11 +110,14 @@ export default function GridEditor({ board, startBoard, readings, drag, onStartD
     state.root = buildBoard(board, readings ?? {});
     for (const h of highlights ?? []) drawHighlight(state.root, h, selected);
     const node = selected && state.root.getObjectByName(selected.id);
-    if (node && node.userData.kind === selected.kind) outline(node);
+    if (node && node.userData.kind === selected.kind) {
+      // Blue for what the learner can change; grey for a fixed part or a task wire (docs/gui.md §4).
+      outline(node, lift(board, selected, startBoard) ? STYLE.selection.color : STYLE.selection.locked_color);
+    }
     state.scene.add(state.root);
     state.layout = layoutInventory(board, capacity);
     state.render();
-  }, [board, capacity, readings, selected, highlights, unsupported]);
+  }, [board, startBoard, capacity, readings, selected, highlights, unsupported]);
 
   // Scene bounds: once per task, from its starting board. The inventory column reserves the
   // starting inventory's rows, so its width and height never change during the task.

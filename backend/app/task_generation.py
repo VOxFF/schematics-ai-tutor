@@ -50,6 +50,10 @@ Task rules
   short circuit, no floating or bypassed parts, no meter misuse, and no resistor
   dissipating more than 5 W. Every target meter must read a non-zero value.
 - The removed parts must matter: without them the task is not solved.
+- From curriculum level 4, when you remove 3 or more wire pieces, you may take out
+  neighboring pieces of one straight run together, so the gap is two grid steps long,
+  the size of a part. The learner then has to reason whether that gap needs a wire or
+  a resistor, instead of just filling every short gap with a wire.
 - Never compute or state target values; the backend computes them.
 - Resistor values have at most two significant digits (e.g. 20, 60, 120, 4700).
 - Prefer values a beginner can reason about in their head: choose the source voltage

@@ -17,6 +17,7 @@ from .config import REPO_ROOT, config_path, load_config
 from .log_archive import LogArchive
 from .rate_limits import RateLimiter, client_ip
 from .reply_composer import welcome
+from .research import ResearchLog
 from .session import Session
 from .task_cache import TaskCache
 from .task_generation import generate_task
@@ -49,13 +50,15 @@ async def lifespan(app: FastAPI):
         archive.on_archived = lambda result: usage_log.event("logs_archived", **result)
         await asyncio.to_thread(archive.archive, "startup")
         nightly = asyncio.create_task(archive.nightly())
-    # Rate limits and the daily Claude budget (ratelimiting.yaml, docs/design.md §5).
+    # Rate limits and the daily Claude budget (ratelimiting.yaml, docs/design.md §6).
     limits = RateLimiter.from_settings(config.get("rate_limits", {}))
     usage_log.on_cost = limits.budget.spend
     app.state.limits = limits
     app.state.config = config
     app.state.usage_log = usage_log
     app.state.references = References()
+    # Learner experience research, with consent (docs/design.md §5); None when it's off.
+    app.state.research_log = ResearchLog.from_config(config, REPO_ROOT, usage_log)
     # The SDK reads ANTHROPIC_API_KEY from the environment; without it, Claude features are off.
     app.state.claude = anthropic.AsyncAnthropic() if os.environ.get("ANTHROPIC_API_KEY") else None
     app.state.task_cache = task_cache(app.state.claude, config, usage_log, limits)
@@ -111,6 +114,10 @@ def get_task_cache(conn: HTTPConnection) -> TaskCache | None:
     return getattr(conn.app.state, "task_cache", None)  # absent when the app runs without its lifespan
 
 
+def get_research_log(conn: HTTPConnection) -> ResearchLog | None:
+    return getattr(conn.app.state, "research_log", None)  # absent when the app runs without its lifespan
+
+
 def get_limits(conn: HTTPConnection) -> RateLimiter:
     # Without the lifespan (tests), fresh limits from ratelimiting.yaml, without the budget's state file.
     limits = getattr(conn.app.state, "limits", None)
@@ -158,7 +165,7 @@ async def generate(
     now. The task after it is then generated in the background (docs/design.md §3)."""
     if claude is None:
         raise HTTPException(503, "Claude is not configured: set ANTHROPIC_API_KEY or backend/keys/apikey.txt")
-    # Curated levels will be served here once they exist (docs/design.md §5); until then, a 429.
+    # Curated levels will be served here once they exist (docs/design.md §6); until then, a 429.
     if not limits.claude_allowed():
         usage_log.event("generation_refused", reason="claude_budget")
         raise HTTPException(429, "Task generation has reached today's limit; please try again tomorrow.")
@@ -195,6 +202,7 @@ async def session_socket(
     references: dict = Depends(get_references),
     cache: TaskCache | None = Depends(get_task_cache),
     limits: RateLimiter = Depends(get_limits),
+    research_log: ResearchLog | None = Depends(get_research_log),
 ) -> None:
     await websocket.accept()
     ip = client_ip(websocket)
@@ -213,7 +221,7 @@ async def session_socket(
             pass  # the learner left; nothing to deliver to
 
     session = Session(send, config=config, claude=claude, usage_log=usage_log, references=references,
-                      task_cache=cache, limits=limits)
+                      task_cache=cache, limits=limits, research_log=research_log)
     try:
         while True:
             message = await websocket.receive_json()

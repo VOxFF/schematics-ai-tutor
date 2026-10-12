@@ -1,4 +1,4 @@
-# Schematics AI Tutor configuration. Documented in docs/design.md §6.
+# Schematics AI Tutor configuration. Documented in docs/design.md §7.
 # The API key is never stored here (see backend/keys/README.md).
 
 # true for a public deployment: hides debug features (e.g. the editor's JSON view).
@@ -37,6 +37,11 @@ claude:
     effort: low
     max_tokens: 16000
     timeout_s: 30
+  experience:                  # the 🔔 feedback conversation (research, docs/design.md §5)
+    model: claude-opus-5-5
+    effort: low
+    max_tokens: 16000
+    timeout_s: 30
   task_generation:
     model: claude-opus-5-5
     effort: high
@@ -59,6 +64,16 @@ pregeneration:                 # tasks generated ahead of time and cached (docs/
   first_task_pool: 2           # ready first tasks for new learners, filled at startup
   max_entries: 50              # cached or running generations, oldest dropped first
   ttl_s: 3600                  # a cached task older than this is dropped
+
+research:                      # learner experience research, with consent (docs/design.md §5)
+  enabled: true
+  dir: research                # SCHEMATICS_RESEARCH_DIR overrides it (Fly: /data/research)
+  max_mb_per_learner: 20
+  prompt_from_level: 3         # curriculum level
+  prompt_every_active_min: 10
+  prompt_idle_s: 8              # the 🔔 prompt waits for this long a pause in editing
+  thread_timeout_active_min: 3 # an unanswered feedback conversation closes after this much active time
+  max_followups: 2
 
 evaluator:
   near_target_ratio: 0.10      # "near_target" when within 10% of every target

@@ -1,6 +1,6 @@
 # Deployment
 
-How the prototype is hosted and how changes reach it. The security and rate-limit design is in [design.md](design.md#5-security-and-operations).
+How the prototype is hosted and how changes reach it. The security and rate-limit design is in [design.md](design.md#6-security-and-operations).
 
 ## 1. Hosting
 
@@ -120,7 +120,7 @@ Each ship is a deploy, and a failed one is two (the rollback), so frequent ships
 
 Every log the backend writes survives deploys, is compressed, and stays within one size budget:
 
-- the usage and cost log, `run-*` ([design.md](design.md#5-security-and-operations))
+- the usage and cost log, `run-*` ([design.md](design.md#6-security-and-operations))
 - the event log for measuring success, `events-*`: task started and solved, status changes, tutor calls, misconception labels (planned, [plan.md](plan.md#6-polishing))
 
 Each log is a family of JSON-lines files with its own prefix, and the archive treats every family the same way.
@@ -134,8 +134,9 @@ A deploy replaces the machine's filesystem, so the logs live on a **Fly volume**
 | `/data/logs/` | The current part of each log: `<log>-<run id>.<part>.jsonl`, e.g. `run-20261011-172121.003.jsonl` |
 | `/data/logs/history/` | Archived parts of all logs, gzipped: `<log>-<run id>.<part>.jsonl.gz` |
 | `/data/state/` | Not a log: the day's Claude spend, `claude-budget.json`, so a deploy doesn't reset the budget ([design.md](design.md#rate-limits)) |
+| `/data/research/` | Not a log: learner experience records, with consent, one folder per learner ([design.md](design.md#5-learner-experience-research)). Never archived or served; collected with `research.sh`. |
 
-- `SCHEMATICS_LOGS_DIR=/data/logs` (`[env]` in `fly.toml`) overrides `logs.dir` in `config.yaml`, and `SCHEMATICS_STATE_DIR=/data/state` overrides `claude_budget.state_dir` in `ratelimiting.yaml`. Locally the same code uses the repo's `logs/` and `state/` folders.
+- `SCHEMATICS_LOGS_DIR=/data/logs` (`[env]` in `fly.toml`) overrides `logs.dir` in `config.yaml`, and `SCHEMATICS_STATE_DIR=/data/state` overrides `claude_budget.state_dir` in `ratelimiting.yaml`. `SCHEMATICS_RESEARCH_DIR=/data/research` overrides `research.dir` in `config.yaml`. Locally the same code uses the repo's `logs/`, `state/` and `research/` folders.
 - A 1 GB volume is plenty: the history is capped well below it (`history_max_mb`), and it costs about $0.15 a month.
 - File names sort in time order: the run id is the start time, and the part number grows within a run.
 
@@ -170,7 +171,7 @@ flowchart LR
 - **Why in the backend, not a deploy step or cron.** Fly's `release_command` runs on a temporary machine without the volume, and the image has no cron. There is one uvicorn worker, so exactly one process writes and archives.
 - **Off the request path.** The size check is the byte count the writer already keeps, not a file stat. Compression and cleanup run in a background thread.
 - **A run id seen before continues at its next part.** Locally, a code reload keeps `./start.sh`'s run id, so it goes on in a new part, and the startup archive compresses the previous one.
-- **Settings**, in the `logs` section of `config.yaml` ([design.md](design.md#6-configuration)):
+- **Settings**, in the `logs` section of `config.yaml` ([design.md](design.md#7-configuration)):
 
 ```yaml
 logs:
@@ -196,6 +197,10 @@ fly deploy --image <image>         # roll back to a past release's image
 fly ssh console                    # shell on the machine
 fly secrets list                   # names only, never values
 fly ssh sftp get /data/logs/history/<file>   # copy an archived log (§5)
+./research.sh list                 # research records on the volume, per learner
+./research.sh pull                 # download them into ./research (gitignored)
+./research.sh delete <learner_id>  # remove one learner's records, e.g. on request
+./research.sh experience --pull    # pull, then the feedback conversations as research/experience.md
 ```
 
 **Manual recovery,** when the automatic rollback fails:
@@ -204,6 +209,38 @@ fly ssh sftp get /data/logs/history/<file>   # copy an archived log (§5)
 2. `fly deploy --image <that image> --env SCHEMATICS_COMMIT=<main's commit>`
 3. `./smoke.sh https://schematics-ai-tutor.fly.dev <main's commit>`
 4. If no image works, deploy `main` from source: `deploy.yml` by hand from the Actions tab, or `git checkout main && fly deploy`.
+
+### Collecting research data
+
+Learner experience records ([design.md](design.md#5-learner-experience-research)) are on the volume, and only the app owner's Fly login can read them. No HTTP endpoint serves them.
+
+**Once, on your machine:**
+
+```sh
+brew install flyctl                # or: curl -L https://fly.io/install.sh | sh
+fly auth login                     # the account that owns the app
+fly auth whoami                    # check
+python3 --version                  # the report needs Python 3, standard library only
+```
+
+**Before there's anything to collect:**
+
+1. The app must run a release with research: one shipped with the `deploy` label after the research PR, so it has `research.py` and `SCHEMATICS_RESEARCH_DIR=/data/research` from `fly.toml`. The volume is the one the logs use, so nothing else needs to be set up.
+2. Learners must opt in: only sessions started with "Share my learning experience with the authors" checked are recorded. A learner who started earlier sees the checkbox again after Restart Learning.
+
+**Collecting:**
+
+```sh
+./research.sh list                 # learners on the server and the size of their records
+./research.sh pull                 # download everything into ./research (gitignored)
+./research.sh experience           # the 🔔 feedback conversations from ./research as research/experience.md
+./research.sh experience --pull    # both: pull, then the report
+./research.sh delete <learner_id>  # remove one learner's records on the server, e.g. on request
+FLY_APP=<app> ./research.sh list   # another Fly app than schematics-ai-tutor
+```
+
+- `pull` replaces the local copies of the files it downloads and keeps any others, so a learner deleted on the server stays in `./research` until it's removed there too.
+- The raw records are JSON lines per learner and day, `research/<learner_id>/<date>.jsonl`, with the boards, graphs, evaluations and chat; their format is in [design.md](design.md#what-is-recorded).
 
 ## 7. Status
 

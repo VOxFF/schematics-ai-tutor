@@ -41,8 +41,8 @@ The learner has a skill level that starts at 1 and goes up by one with each solv
 2. The learner places components and wires on the grid.
 3. On every edit, the evaluator builds the netlist and computes the values, and meter readings update live. It reports one status, from `short_circuit` through `near_target` to `solved`, with live readings of every placed meter and the issues behind the status.
 4. When the learner pauses (a burst of quick edits counts as one), the backend sends Claude the snapshots since its last call: each grid, its graph and its evaluation. Claude reacts to what the learner just did. A misstep gets a nudge, such as "this wire end isn't touching anything", and progress gets encouragement.
-5. The learner can also write a message to the tutor at any time, and Claude responds. Requesting hints comes later, with the hint ladder.
-6. The learner revises and repeats from step 2, or moves on when the status is `solved`: the skill level goes up by one, and the next task is served. That level was pre-generated in the background.
+5. The learner can also write a message to the tutor at any time, and Claude responds, or ask for a hint, one level at a time. The tutor knows which principles and terms the learner has met and how well they understand them, so it teaches a new idea when it first matters and asks questions about the ones already explained.
+6. The learner revises and repeats from step 2, or moves on when the status is `solved`: the skill level goes up by one, and the next task is served. That level was pre-generated in the background, and it opens with the tutor's welcome in the chat.
 
 ## Major constraints
 

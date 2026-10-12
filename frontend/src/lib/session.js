@@ -2,10 +2,12 @@
 
 const KEY = "schematics-tutor.session";
 
-// { progress, level, board?, chat, profile, lastLevel? }: `lastLevel` is the previous task's curriculum
+// { progress, level, board?, chat, profile, research, lastLevel? }: `lastLevel` is the previous task's curriculum
 // level, shown in the header while the next task loads; `profile` is the learner profile, kept by the
-// backend's reply composer and saved here between sessions (docs/design.md §4).
-export const newSession = () => ({ progress: { skill_level: 1, history: [] }, level: null, chat: [], profile: { topics: [] } });
+// backend's reply composer and saved here between sessions (docs/design.md §4); `research` is the learner's
+// consent for this session, { consent, learner_id?, name? } (docs/design.md §5).
+export const newSession = (research = { consent: false }) =>
+  ({ progress: { skill_level: 1, history: [] }, level: null, chat: [], profile: { topics: [] }, research });
 
 export function loadSession() {
   try {

@@ -262,3 +262,6 @@ backend/keys/*
 
 # Backend state kept across restarts, e.g. the day's Claude spend (ratelimiting.yaml)
 /state/
+
+# Learner experience research records, with consent (docs/design.md §5); collected by research.sh
+/research/

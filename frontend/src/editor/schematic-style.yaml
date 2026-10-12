@@ -54,6 +54,7 @@ labels:
 
 selection:
   color: "#0969da"             # outline around the selected element
+  locked_color: "#8c959f"      # the same outline on a fixed part or a task wire: selected, but not editable
   width: 2.5                   # outline width beyond the element's shape
 
 highlight:                     # tutor highlights, by style (docs/gui.md §4)

@@ -1,18 +1,21 @@
 """WebSocket session: session.start → evaluation; tutor.request → tutor.started → tutor.message;
 board.update → evaluation, then a reaction after an editing pause."""
 
+import json
 import time
 
 from fastapi.testclient import TestClient
 
-from app.main import References, app, get_claude, get_config, get_limits, get_references, get_task_cache, get_usage_log
+from app.main import (References, app, get_claude, get_config, get_limits, get_references, get_research_log,
+                      get_task_cache, get_usage_log)
 from app.rate_limits import RateLimiter
+from app.research import ResearchLog
 from app.task_cache import progress_key, solved
 from app.usage_log import UsageLog
-from tests.conftest import FakeClaude, example_level, tutor_reply
+from tests.conftest import FakeClaude, example_level, text_response, tutor_reply
 
 
-def connect(config, claude, cache=None, limits=None):
+def connect(config, claude, cache=None, limits=None, research_log=None):
     level, spec = example_level()
     references = References()
     references[level["id"]] = spec["complete_board"]
@@ -23,6 +26,7 @@ def connect(config, claude, cache=None, limits=None):
         get_references: lambda: references,
         get_task_cache: lambda: cache,
         get_limits: lambda: limits or RateLimiter(config["rate_limits"]),
+        get_research_log: lambda: research_log,
     }
     return TestClient(app), level
 
@@ -283,3 +287,56 @@ def test_sessions_per_ip_are_limited(config):
     with client.websocket_connect("/ws/session") as third:  # the first one closed
         third.send_json({"type": "session.start", "level": level})
         assert third.receive_json()["type"] == "evaluation"
+
+
+def test_with_consent_the_session_is_recorded_and_the_feedback_prompt_comes_at_a_quiet_pause(config, tmp_path):
+    learner = "0b7e3c1a-5f2d-4c8e-9a1b-2c3d4e5f6a7b"
+    research = {**config["research"], "prompt_from_level": 1, "prompt_every_active_min": 0, "prompt_idle_s": 0.05}
+    fake = FakeClaude([
+        text_response({"handoff": False, "text": "What felt vague about it?", "done": False}),
+        text_response({"handoff": True, "text": "", "done": False}),  # a circuit question: for the tutor
+        tutor_reply("What does the voltmeter need around it?"),
+    ])
+    # Reactions are slow here, so only the 🔔 prompt answers the pause.
+    client, level = connect({**fast_reactions(config, 10_000), "research": research}, fake,
+                            research_log=ResearchLog(tmp_path))
+    with client.websocket_connect("/ws/session") as ws:
+        ws.send_json({"type": "session.start", "level": level,
+                      "research": {"consent": True, "learner_id": learner, "name": "Curious Otter 42"}})
+        assert ws.receive_json()["research"]["active_s"] == 0  # the browser keeps it between tasks
+        ws.send_json({"type": "board.update", "seq": 1, "board": level["board"]})
+        evaluation = ws.receive_json()
+        assert evaluation["type"] == "evaluation" and "active_s" in evaluation["research"]
+        prompt = ws.receive_json()  # after the quiet pause
+        assert prompt["type"] == "tutor.message" and prompt["message"]["chat"]["kind"] == "experience"
+        assert prompt["message"]["chat"]["icon"] == "🔔"
+
+        ws.send_json({"type": "tutor.request", "request_id": "r1", "action": "message", "learner_text": "Hints are vague"})
+        assert ws.receive_json()["type"] == "tutor.started"
+        reply = ws.receive_json()
+        assert reply["message"]["chat"] == {"kind": "experience", "icon": "🔔", "title": None,
+                                            "text": "What felt vague about it?", "terms": []}
+        ws.send_json({"type": "board.update", "seq": 2, "board": level["board"]})  # building on: the thread stays open
+        assert ws.receive_json()["type"] == "evaluation"
+
+        ws.send_json({"type": "tutor.request", "request_id": "r2", "action": "message", "learner_text": "Why 12 V?"})
+        assert ws.receive_json()["type"] == "tutor.started"
+        handed = ws.receive_json()
+        assert handed["message"]["chat"]["kind"] == "question"  # the tutor answered it
+        assert handed["message"]["chat"]["text"] == "What does the voltmeter need around it?"
+    assert "<thread>" in fake.requests[0]["messages"][0]["content"]  # the feedback prompt, not the tutor's
+    assert "Why 12 V?" in fake.requests[2]["messages"][0]["content"]  # handed to the tutor
+    lines = [json.loads(line) for f in (tmp_path / learner).glob("*.jsonl") for line in f.read_text().splitlines()]
+    experience = [x for x in lines if x["type"] == "experience"]
+    assert [x.get("role") for x in experience] == ["tutor", "learner", "tutor", "learner", None]
+    assert experience[3]["handoff"] is True and experience[4]["closed"] == "handoff"
+
+
+def test_without_consent_nothing_is_recorded(config, tmp_path):
+    client, level = connect(config, None, research_log=ResearchLog(tmp_path))
+    with client.websocket_connect("/ws/session") as ws:
+        ws.send_json({"type": "session.start", "level": level, "research": {"consent": False}})
+        ws.receive_json()
+        ws.send_json({"type": "board.update", "seq": 1, "board": level["board"]})
+        ws.receive_json()
+    assert not any(tmp_path.iterdir())

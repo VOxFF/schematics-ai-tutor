@@ -1,4 +1,4 @@
-"""Loads the root config.yaml (docs/design.md §6) and ratelimiting.yaml (§5)."""
+"""Loads the root config.yaml (docs/design.md §7) and ratelimiting.yaml (§6)."""
 
 import os
 from pathlib import Path
