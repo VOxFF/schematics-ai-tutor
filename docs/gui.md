@@ -212,11 +212,28 @@ The inventory is drawn **inside the editor's three.js scene**, in a column right
   | `knowledge` | gold | 📘 |
   | `hint` | purple | 🔑 |
   | `experience` | teal | 🔔 |
+  | `guide` | grey | 🧭 |
 
   The icon and the title come from the backend's reply composer; the tints are CSS variables in `frontend/src/index.css`.
 - **Paragraphs:** a tutor message's paragraphs (separated by a blank line in `chat.text`) show as blocks with half a line between them, so the line spacing inside a paragraph doesn't change.
 - **Formula:** `chat.formula` shows under the text, drawn with KaTeX, a line per row, centered, in the ink color. A line too wide for the chat scrolls sideways on its own; a line KaTeX can't render shows as plain monospace text ([design.md](design.md#formulas-and-paragraphs)).
 - **Welcome:** each new task opens with a tutor message, added to the chat when the task arrives ([design.md](design.md#welcome-message)). It is gold (`knowledge`) when the task brings new topics, else blue (`feedback`).
+- **Guide:** on the learner's first visit to the learning screen, a short how-to arrives in the chat 1 s after the task's welcome: the learner has glanced at the screen, and the new message draws their eyes to the chat, where the tutor will talk to them. It is a `guide` message titled "How it works", one short paragraph per action, each starting with an emoji:
+
+  > 🖱️ **Drag** a part or a wire from the inventory onto the grid. The points it will connect to light up as you go.
+  >
+  > 🔄 Press **R** while you drag a part or a wire from the inventory to **rotate** it before you drop it. A part or wire selected on the grid turns with **R** too; if the turned piece won't fit, it stays as it is.
+  >
+  > 👆 **Click** a part or a wire on the grid to select it. **Del** removes it, **Esc** lets go.
+  >
+  > ✋ **Drag** a part you placed to **move** it. Parts outlined in grey belong to the task and stay put.
+  >
+  > 📟 Meters read **live** as you build, so try things and watch the numbers.
+  >
+  > 💬 Ask me anything here, or press **Hint** when you're stuck: hints come one step at a time.
+
+  - **Once:** the browser asks for it with `session.start` (`guide: true`) while its saved session has none, and keeps it with the chat, so a reload doesn't repeat it. **Restart Learning** clears the chat, so a fresh start shows it again.
+  - **From the backend:** the text is in `backend/data/guide.yaml`, and the reply composer prepares it like any tutor message (icon, title, bold terms). It is recorded in the research records but not added to the history Claude sees: it is about the tool, not the task.
 - While a call is running, it shows "tutor is thinking".
 - The learner can type at any time. Sending creates a `tutor.request` with `action: "message"`.
 - **Hint button** beside the chat input, labelled with the next rung: "Hint 1/4" to "Hint 4/4". It sends a `tutor.request` with `action: "hint"`, and the chat shows the request as the learner's line ("Hint 1/4, please"). After rung 4 it stays "Hint 4/4" and repeats that rung in other words. It is disabled while the tutor is thinking or disconnected.

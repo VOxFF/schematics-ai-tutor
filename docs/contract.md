@@ -81,7 +81,7 @@ Every message is a JSON object with a `type` field.
 
 | `type` | Payload | Effect |
 |---|---|---|
-| `session.start` | `progress?`, `level?`, `board?`, `history?`, `hint_level?`, `profile?`, `research?` | Starts a session (planned: the server sends `task.ready` with the task for the skill level) or resumes one (`level` given). The server also replies with `evaluation`, which carries the `LearnerProfile` with the task's topics joined. `profile` is the learner profile the browser saved ([design.md](design.md#learner-profile)); the server checks it and drops bad entries. `research` is the learner's consent for this session, `{ consent, learner_id?, name?, active_s?, last_ts?, thread? }`; with `consent: true` and a UUID `learner_id`, the server records the session, and its active-time count continues from `active_s` and the time of the last activity, `last_ts` ([design.md](design.md#5-learner-experience-research)). With `progress` and `level`, the server pre-generates the task after this one ([design.md](design.md#3-system-architecture)). `hint_level` is the hint rung reached in this task (0–4), so a resumed session continues the ladder. |
+| `session.start` | `progress?`, `level?`, `board?`, `history?`, `hint_level?`, `profile?`, `research?`, `guide?` | Starts a session (planned: the server sends `task.ready` with the task for the skill level) or resumes one (`level` given). The server also replies with `evaluation`, which carries the `LearnerProfile` with the task's topics joined. `profile` is the learner profile the browser saved ([design.md](design.md#learner-profile)); the server checks it and drops bad entries. `research` is the learner's consent for this session, `{ consent, learner_id?, name?, active_s?, last_ts?, thread? }`; with `consent: true` and a UUID `learner_id`, the server records the session, and its active-time count continues from `active_s` and the time of the last activity, `last_ts` ([design.md](design.md#5-learner-experience-research)). With `progress` and `level`, the server pre-generates the task after this one ([design.md](design.md#3-system-architecture)). `hint_level` is the hint rung reached in this task (0–4), so a resumed session continues the ladder. With `guide: true` (the browser has no guide in its chat yet), the server sends the how-to as a `tutor.message` of kind `guide` 1 s later ([gui.md](gui.md#7-chat)). |
 | `task.next` | — | Asks for the next task, usually after the current one is solved |
 | `summary.request` | — | Bonus: asks for the learner's skill summary (Learning Path screen) |
 | `board.update` | `seq`, `board` | Sent on each finished edit (a part dropped, a wire piece placed or removed). The server records a snapshot, re-evaluates and replies with `evaluation` carrying the same `seq`. |
@@ -269,7 +269,8 @@ interface TutorMessage {
   };
   chat: {
     kind: "feedback" | "nudge" | "hint" | "question" | "praise" | "knowledge"
-        | "experience";            // the 🔔 feedback conversation (research), never from the tutor
+        | "experience"             // the 🔔 feedback conversation (research), never from the tutor
+        | "guide";                 // the how-to on the first visit (gui.md §7), never from the tutor
     text: string;                  // learner-facing, plain language; paragraphs separated by a blank line
     formula?: string[] | null;     // from curriculum level 2: 1–8 lines of LaTeX (a subset), shown under
                                    // the text; checked by the math check (design.md §4), else dropped
