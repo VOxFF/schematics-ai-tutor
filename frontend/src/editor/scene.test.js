@@ -266,11 +266,11 @@ describe("inventory region (same scene as the board)", () => {
                 { id: "AM2", type: "ammeter" }],
   };
 
-  test("slots sit right of the grid in two columns: parts, then the five wire pieces", () => {
+  test("slots sit right of the grid in two columns: the five wire pieces, then parts", () => {
     const layout = layoutInventory(board);
     const grid = boardBounds(board);
     expect(layout.slots.map((s) => s.key)).toEqual([
-      "part:R2", "part:R3", "part:AM2", "wire:straight-h", "wire:straight-v", "wire:corner", "wire:T", "wire:plus"]);
+      "wire:straight-h", "wire:straight-v", "wire:corner", "wire:T", "wire:plus", "part:R2", "part:R3", "part:AM2"]);
     expect(layout.slots.every((s) => s.x - s.w / 2 > grid.right)).toBe(true);
     expect(new Set(layout.slots.map((s) => s.x)).size).toBe(2); // two columns
     expect(layout.slots.find((s) => s.key === "part:R3").label).toBe("4.7 kΩ");
@@ -347,4 +347,16 @@ describe("stable scale while placing parts", () => {
     // Without the reservation the column would shrink and the scale would jump.
     expect(sceneBounds(placed, layoutInventory(placed))).not.toEqual(before);
   });
+});
+
+test("the inventory lists the wires first, then the parts", () => {
+  const board = { grid: { columns: 8, rows: 6 }, components: [], wires: [],
+                  inventory: [{ id: "V1", type: "voltage_source", value: 6 }] };
+  const layout = layoutInventory(board, 1);
+  expect(layout.slots.map((s) => s.key)).toEqual(["wire:straight-h", "wire:straight-v", "wire:corner", "wire:T", "wire:plus",
+                                                   "part:V1"]);
+  expect(layout.titles.map((t) => t.text)).toEqual(["Inventory"]);
+  // Placing the part leaves the wires where they were.
+  const placed = layoutInventory({ ...board, inventory: [] }, 1);
+  expect(placed.slots.map((s) => s.y)).toEqual(layout.slots.slice(0, 5).map((s) => s.y));
 });

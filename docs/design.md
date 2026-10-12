@@ -696,6 +696,7 @@ schematics-ai-tutor/
 │   │   └── jsonfmt.py         readable JSON formatting
 │   ├── data/
 │   │   ├── curriculum.yaml    curriculum levels: tasks per level, rules for generation
+│   │   ├── guide.yaml         the how-to in the chat on the first visit (gui.md §7)
 │   │   ├── topics.yaml        topic catalog: principles and terms per curriculum level and component type; formulas
 │   │   ├── examples/          example TaskSpecs for the generation prompt
 │   │   └── fallback/          the fallback pack: skill-<n>.json, pre-generated TaskSpecs per skill level

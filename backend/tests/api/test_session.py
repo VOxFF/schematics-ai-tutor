@@ -504,3 +504,17 @@ def test_formulas_from_the_configured_curriculum_level(config):
             ask_hint(ws, "h1")
     requests = [r["messages"][0]["content"].split("<request>")[1] for r in fake.requests]
     assert ['"formulas": true' in r for r in requests] == [False, True]
+
+
+def test_the_guide_follows_session_start_when_the_browser_asks(config, monkeypatch):
+    import app.session as session_module
+    monkeypatch.setattr(session_module, "GUIDE_DELAY_S", 0.01)
+    client, level = connect(config, FakeClaude([]))
+    with client.websocket_connect("/ws/session") as ws:
+        ws.send_json({"type": "session.start", "level": level, "guide": True})
+        assert ws.receive_json()["type"] == "evaluation"
+        message = ws.receive_json()
+    chat = message["message"]["chat"]
+    assert message["type"] == "tutor.message" and message["request_id"].startswith("guide-")
+    assert chat["kind"] == "guide" and chat["icon"] == "🧭" and chat["title"] == "How it works"
+    assert chat["text"].startswith("🖱️ Drag") and chat["text"].count("\n\n") == 5

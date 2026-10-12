@@ -194,6 +194,7 @@ The inventory is drawn **inside the editor's three.js scene**, in a column right
 **Layout rules**
 - **Two columns**, as bare symbols, not buttons; a grab cursor over the symbol itself (not its whole slot) shows it can be picked up.
 - **Fixed width:** two elements (pin dot to pin dot) plus a small gap between the columns and a margin each side.
+- **Wires first, then parts:** under the Inventory heading the wire palette comes first, then the parts, without a heading of their own. The palette is never empty, so the column always starts with pieces to take. The parts keep the starting inventory's rows for the whole task, so nothing moves while the learner works; once every part is placed, those rows are just free space at the bottom.
 - **Fixed scale per task:** the scene's bounds (grid plus inventory) are computed **once from the task's starting board**, with the inventory column reserving the starting inventory's rows. Placing or removing parts never changes the scale; only a window resize refits the camera.
 - **One scale across tasks:** every task is fitted as if it were at least a 12 × 8 grid with 4 parts in the inventory (`config.yaml` `editor`), the usual size from curriculum level 2 on. A smaller task (Level 1's 8–10 × 6 grids) keeps that scale, centered with more air around it, so parts and wires don't shrink from one task to the next. Only a larger task (e.g. Level 6's 14 × 10) zooms out to fit.
 - **Placement in the field:** the inventory column sits flush right; the grid is centered in the field left of it, and both columns share a vertical midline.
@@ -220,17 +221,19 @@ The inventory is drawn **inside the editor's three.js scene**, in a column right
 - **Welcome:** each new task opens with a tutor message, added to the chat when the task arrives ([design.md](design.md#welcome-message)). It is gold (`knowledge`) when the task brings new topics, else blue (`feedback`).
 - **Guide:** on the learner's first visit to the learning screen, a short how-to arrives in the chat 1 s after the task's welcome: the learner has glanced at the screen, and the new message draws their eyes to the chat, where the tutor will talk to them. It is a `guide` message titled "How it works", one short paragraph per action, each starting with an emoji:
 
-  > 🖱️ **Drag** a part or a wire from the inventory onto the grid. The points it will connect to light up as you go.
+  > 🖱️ Drag a part or a wire from the inventory onto the grid. The points it will connect to light up as you go.
   >
-  > 🔄 Press **R** while you drag a part or a wire from the inventory to **rotate** it before you drop it. A part or wire selected on the grid turns with **R** too; if the turned piece won't fit, it stays as it is.
+  > 🔄 Press R while you drag a part or a wire from the inventory to rotate it before you drop it. A part or wire selected on the grid turns with R too; if the turned piece won't fit, it stays as it is.
   >
-  > 👆 **Click** a part or a wire on the grid to select it. **Del** removes it, **Esc** lets go.
+  > 👆 Click a part or a wire on the grid to select it. Del removes it, Esc lets go.
   >
-  > ✋ **Drag** a part you placed to **move** it. Parts outlined in grey belong to the task and stay put.
+  > ✋ Drag a part you placed to move it. Parts outlined in grey belong to the task and stay put.
   >
-  > 📟 Meters read **live** as you build, so try things and watch the numbers.
+  > 📟 Meters read live as you build, so try things and watch the numbers.
   >
-  > 💬 Ask me anything here, or press **Hint** when you're stuck: hints come one step at a time.
+  > 💬 Ask me anything here, or press Hint when you're stuck: hints come one step at a time.
+
+  The text is `backend/data/guide.yaml`; as in any tutor message, the learner's topics in it are bold.
 
   - **Once, from the chat itself:** the browser asks for it with `session.start` (`guide: true`) while its chat has no `guide` message, so a reload or the next task doesn't repeat it and no extra flag is stored. **Restart Learning** clears the chat, so a fresh start shows it again.
   - **Built like the welcome:** the text is in `backend/data/guide.yaml`, next to `topics.yaml`, and the reply composer prepares it beside the welcome (icon, title, bold terms; no profile changes).
@@ -316,7 +319,7 @@ A bonus feature, built after everything else ([plan.md](plan.md#7-bonus)). It gi
 - **Never color alone.** Meaning colors are paired with a shape or motion (pulse, icon, outline), so red/green colorblind learners lose nothing.
 - **Contrast:** text meets WCAG AA; muted grey is only for secondary text.
 - The colors are CSS variables in `frontend/src/index.css`, so the scheme can be tuned in one place.
-- **Headings** share one style, the Targets label's: 1rem, semibold, ink, uppercase, letter-spaced (header, task, Targets, Tutor, the start page's sections; Inventory and Wires in the editor).
+- **Headings** share one style, the Targets label's: 1rem, semibold, ink, uppercase, letter-spaced (header, task, Targets, Tutor, the start page's sections; Inventory in the editor). The parts below the wire palette have no heading of their own.
 
 ## 11. Open points
 

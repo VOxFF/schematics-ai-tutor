@@ -9,6 +9,10 @@ which the tutor's math check has already passed (formula.py).
 """
 
 import re
+from functools import lru_cache
+from pathlib import Path
+
+import yaml
 
 from .learner_profile import MAX_SCORE, add, find, join, load_catalog, sanitize, topic_entry
 from .tutor import location_talk
@@ -20,7 +24,9 @@ ICONS = {
     "question": "❓",
     "knowledge": "📘",
     "hint": "🔑",
+    "guide": "🧭",
 }
+GUIDE_PATH = Path(__file__).resolve().parents[1] / "data" / "guide.yaml"
 MAX_UPDATES = 3  # topics whose scores change in one reply
 
 
@@ -135,3 +141,17 @@ def welcome(level: dict, profile, skill_level: int) -> dict:
     kind = "knowledge" if new_topics else "feedback"
     return {"kind": kind, "icon": ICONS[kind], "title": None, "text": text, "formula": None,
             "terms": term_spans(text, profile)}
+
+
+@lru_cache(maxsize=1)
+def _guide_text() -> tuple[str, str]:
+    guide = yaml.safe_load(GUIDE_PATH.read_text())
+    return guide["title"], "\n\n".join(guide["paragraphs"])
+
+
+def guide(profile) -> dict:
+    """The how-to on the learner's first visit (docs/gui.md §7, Guide): canned text from
+    data/guide.yaml, composed like the welcome, with no profile changes."""
+    title, text = _guide_text()
+    return {"kind": "guide", "icon": ICONS["guide"], "title": title, "text": text, "formula": None,
+            "terms": term_spans(text, sanitize(profile))}

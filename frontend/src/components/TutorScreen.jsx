@@ -162,14 +162,14 @@ function InventoryList({ board, palette, onStartDrag }) {
   };
   return (
     <ul className="sr-only" aria-label="Inventory">
-      {(board?.inventory ?? []).map((p) => (
-        <li key={p.id} aria-label={partName(p)} onPointerDown={start({ kind: "part", ...p })}>
-          {partName(p)}
-        </li>
-      ))}
       {palette.map((w) => (
         <li key={w.key} aria-label={w.label} onPointerDown={start({ kind: "wire", shape: w.shape, rotation: w.rotation })}>
           {w.label}
+        </li>
+      ))}
+      {(board?.inventory ?? []).map((p) => (
+        <li key={p.id} aria-label={partName(p)} onPointerDown={start({ kind: "part", ...p })}>
+          {partName(p)}
         </li>
       ))}
     </ul>

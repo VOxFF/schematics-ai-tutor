@@ -41,6 +41,8 @@
   --hint-edge: #a475f9;
   --experience-tint: #e6f7f5;
   --experience-edge: #2fb5a5;
+  --guide-tint: #f1f3f5;
+  --guide-edge: #8a96a3;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   color: var(--text);
   background: var(--bg);
@@ -587,6 +589,7 @@ button.danger {
 .chat .kind-knowledge { --tint: var(--knowledge-tint); --edge: var(--knowledge-edge); }
 .chat .kind-hint { --tint: var(--hint-tint); --edge: var(--hint-edge); }
 .chat .kind-experience { --tint: var(--experience-tint); --edge: var(--experience-edge); }
+.chat .kind-guide { --tint: var(--guide-tint); --edge: var(--guide-edge); }
 
 @keyframes message-in {
   from {
