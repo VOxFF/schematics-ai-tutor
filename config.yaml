@@ -55,6 +55,7 @@ tutor:
   max_snapshots: 10
   history_turns: 6
   offer_hint_after_reactions: 3
+  react_after_unchanged: 4      # pauses with an unchanged circuit before Claude is called anyway
 
 task_generation:
   recent_tasks: 10

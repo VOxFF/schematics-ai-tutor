@@ -89,7 +89,9 @@ flowchart LR
 - **Two feedbacks per edit, fast and slow.** Every finished edit is sent to the backend.
   - *Fast:* the evaluator runs at once, with no Claude call, and its readings and status reach the browser within a split second. The edit also clears Claude's highlights, which described the previous board.
   - *Slow:* when editing pauses, the backend passes the evaluator's results, the task context and the learner's profile to Claude, validates the reply, composes it (§4), and sends the composed message and new highlights.
-  - *Why:* readings must feel like a real meter, and Claude takes seconds. A reply is tagged with the board it is about, so one that arrives after a newer edit shows its text but never overwrites the fresh readings or draws highlights on a changed board ([contract.md](contract.md#1-frontend--backend)).
+  - *Why:* readings must feel like a real meter, and Claude takes seconds. A reply is tagged with the board it is about, so one that arrives after a newer edit never overwrites the fresh readings or draws highlights on a changed board ([contract.md](contract.md#1-frontend--backend)).
+  - *Out-of-date reactions are dropped:* a reaction that finishes after a newer edit isn't sent at all. Its text would answer a board that's gone, sometimes questioning a gap the learner has just closed, right before the praise for solving. The reaction to the newer board follows. A reply to the learner's own message or hint is always sent.
+  - *No call when nothing changed:* Claude is called only when the circuit's graph differs from the one it last replied about. Moving a wire along the same connections, dropping a stray piece, or changing and undoing gives the same graph, so the same evaluation, and a reply would only repeat itself. After `tutor.react_after_unchanged` (4) such pauses in a row, Claude is called anyway with `unchanged_moves`, because a learner who keeps trying without progress needs more direct guidance. A pause, not an edit, is the unit: one drag can be several edits within a second.
 
   ```mermaid
   sequenceDiagram
@@ -108,7 +110,7 @@ flowchart LR
       L->>FE: edit (board #6) while Claude thinks
       FE->>EV: board #6
       EV-->>FE: readings + status (#6)
-      C-->>FE: reply about #5: text shown, highlights and readings dropped
+      Note over C: reply about #5 is out of date: not sent
       Note over L,FE: learner pauses again
       Note over C: idle timer fires: reaction on board #6
       C-->>FE: reply about #6: text and highlights shown
@@ -477,6 +479,7 @@ tutor:
   max_snapshots: 10
   history_turns: 6
   offer_hint_after_reactions: 3
+  react_after_unchanged: 4      # pauses with an unchanged circuit before Claude is called anyway
 
 task_generation:
   recent_tasks: 10

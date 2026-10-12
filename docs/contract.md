@@ -109,6 +109,8 @@ Every message is a JSON object with a `type` field.
 - **Reactions.** The server starts an idle timer on every `board.update`. When editing pauses for at least the **idle threshold** (`tutor.idle_threshold_ms`, default 1.5 s), the server calls Claude with the snapshots recorded since the previous Claude call.
   - A burst of quick edits, each within a split second of the last, produces one reaction, not one per edit.
   - If edits arrive while a reaction is running, they wait for the next pause.
+  - **An out-of-date reaction is dropped.** When a reaction's call finishes after a newer edit, the server doesn't send it: it describes a board that's gone, and the reaction to the newer board follows. Replies to the learner's messages and hints are always sent.
+  - **No reaction when nothing changed.** If the board's graph (parts, values, connections) is the same as the one Claude last replied about, the pause gets no reaction: the evaluation is the same too, so there's nothing new to say. Moving a wire along the same connections or dropping a stray piece are such edits. After `tutor.react_after_unchanged` such pauses in a row (default 4), the server calls Claude anyway, with `"unchanged_moves": N` in the request: the learner is trying things without progress and needs more direct guidance. Skipped pauses keep their snapshots, so Claude sees what was tried, and they count toward the hint offer like reactions without progress.
 - An explicit `tutor.request` cancels the pending idle timer and takes priority. Its call also includes the unsent snapshots.
 - Only one Claude tutor call, either a reaction or a request, may be in flight per session.
 - A second `tutor.request` while one is in flight gets `error: rate_limited`.
@@ -224,6 +226,7 @@ interface Issue {
   wire_ids?: string[];           // unused_wire only: the leftover piece
   pins: PinRef[];                // the pins involved, from the graph
   points: Point[];               // the same pins mapped to grid points (unused_wire: the piece's ends), for highlighting
+  open_ends?: Point[];           // open_circuit only: where the loop is broken (schematics.md §6)
 }
 
 
