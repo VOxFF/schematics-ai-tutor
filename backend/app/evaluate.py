@@ -1,6 +1,6 @@
 """Deterministic evaluation of a grid: status, readings and issues (docs/schematics.md §4–§6)."""
 
-from .graph import UnionFind, assign_nets, to_graph, unused_wires
+from .graph import UnionFind, assign_nets, open_ends, to_graph, unused_wires
 from .grid import METER_TYPES
 from .solver import solve
 
@@ -34,9 +34,27 @@ def default_tolerance(value: float, meter_type: str) -> float:
 
 def evaluate(grid: dict, settings: dict | None = None) -> dict:
     """Evaluate a format-valid grid. Returns {status, readings, issues}: the graph checks and
-    solve (evaluate_graph), plus one `unused_wire` issue per leftover wire piece, found on the grid."""
+    solve (evaluate_graph), refined with what only the grid shows (docs/schematics.md §6): an open
+    loop's `open_ends`, `floating_part` only for pins no wire touches while the loop is open, and
+    one `unused_wire` issue per leftover wire piece once current flows."""
     graph, pin_points = to_graph(grid)
     result = evaluate_graph(graph, pin_points, settings)
+    issues = result["issues"]
+    if any(i["code"] == "open_circuit" for i in issues):
+        ends = open_ends(grid)
+        for i in issues:
+            if i["code"] == "open_circuit":
+                i["open_ends"] = ends
+        # A pin whose wire run dead-ends is part of the gap the open ends show, not a floating part.
+        wired = {tuple(p) for w in grid.get("wires", []) for segment in w["segments"] for p in segment}
+        for i in issues:
+            if i["code"] == "floating_part":
+                i["pins"] = [p for p in i["pins"] if pin_points[p] not in wired]
+                i["points"] = [list(pin_points[p]) for p in i["pins"]]
+        result["issues"] = issues = [i for i in issues if i["code"] != "floating_part" or i["pins"]]
+    # In an open loop every wire would count as leftover, so they're reported only when current flows.
+    if any(i["code"] in ("open_circuit", "floating_part") for i in issues):
+        return result
     # Leftover wire pieces don't change the circuit, so they don't change the status either.
     for wire in unused_wires(grid):
         ends = {tuple(p) for segment in wire["segments"] for p in segment}

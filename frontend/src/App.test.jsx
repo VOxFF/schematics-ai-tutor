@@ -267,6 +267,11 @@ test("a tutor reaction arrives unprompted, and a failed one ends quietly", async
   });
   expect(screen.getByText("Where does the current go after R1?")).toBeDefined();
 
+  ws.serverSends({ type: "tutor.started", request_id: "react-3", trigger: "reaction" });
+  ws.serverSends({ type: "tutor.dropped", request_id: "react-3" }); // out of date: nothing is shown
+  expect(screen.queryByText("Tutor is thinking…")).toBeNull();
+  expect(JSON.parse(localStorage.getItem(SESSION_KEY)).chat.map((m) => m.role)).toEqual(["tutor"]);
+
   ws.serverSends({ type: "tutor.started", request_id: "react-2", trigger: "reaction" });
   ws.serverSends({ type: "error", code: "tutor_unavailable", message: "The tutor is unavailable right now; try again shortly.", request_id: null });
   expect(screen.queryByText("Tutor is thinking…")).toBeNull();

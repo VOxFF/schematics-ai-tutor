@@ -55,6 +55,7 @@ tutor:
   max_snapshots: 10
   history_turns: 6
   offer_hint_after_reactions: 3
+  react_after_unchanged: 4      # pauses with an unchanged circuit before Claude is called anyway
 
 task_generation:
   recent_tasks: 10
@@ -70,7 +71,7 @@ research:                      # learner experience research, with consent (docs
   dir: research                # SCHEMATICS_RESEARCH_DIR overrides it (Fly: /data/research)
   max_mb_per_learner: 20
   prompt_from_level: 3         # curriculum level
-  prompt_every_active_min: 10
+  prompt_every_active_min: 6
   prompt_idle_s: 8              # the 🔔 prompt waits for this long a pause in editing
   thread_timeout_active_min: 3 # an unanswered feedback conversation closes after this much active time
   max_followups: 2

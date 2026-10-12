@@ -1,13 +1,17 @@
 """WebSocket session: session.start → evaluation; tutor.request → tutor.started → tutor.message;
 board.update → evaluation, then a reaction after an editing pause."""
 
+import asyncio
 import json
 import time
+
+import pytest
 
 from fastapi.testclient import TestClient
 
 from app.main import (References, app, get_claude, get_config, get_limits, get_references, get_research_log,
                       get_task_cache, get_usage_log)
+from app.evaluate import evaluate
 from app.rate_limits import RateLimiter
 from app.research import ResearchLog
 from app.task_cache import progress_key, solved
@@ -220,7 +224,8 @@ def test_a_resumed_session_continues_the_ladder(config):
 
 def test_reactions_without_progress_offer_a_hint(config):
     config = fast_reactions(config)
-    config = {**config, "tutor": {**config["tutor"], "offer_hint_after_reactions": 2}}
+    # react_after_unchanged 1: every pause gets a reaction, even with the same circuit.
+    config = {**config, "tutor": {**config["tutor"], "offer_hint_after_reactions": 2, "react_after_unchanged": 1}}
     fake = FakeClaude([tutor_reply(f"Reaction {n}") for n in range(3)])
     client, level = connect(config, fake)
     offered = []
@@ -235,6 +240,55 @@ def test_reactions_without_progress_offer_a_hint(config):
     assert offered == [False, False, True]  # the first sets the best status; then two without progress
     assert '"offer_hint": true' in fake.requests[2]["messages"][0]["content"]
 
+
+
+def test_no_reaction_while_the_circuit_is_unchanged_then_guidance(config):
+    config = fast_reactions(config)
+    config = {**config, "tutor": {**config["tutor"], "react_after_unchanged": 3}}
+    fake = FakeClaude([tutor_reply("Where does the current stop?"), tutor_reply("Look at the highlighted gap.")])
+    client, level = connect(config, fake)
+    with client.websocket_connect("/ws/session") as ws:
+        ws.send_json({"type": "session.start", "level": level})
+        ws.receive_json()
+        for seq in (1, 2, 3, 4):  # the same circuit each time, one pause per move
+            ws.send_json({"type": "board.update", "seq": seq, "board": level["board"]})
+            assert ws.receive_json()["type"] == "evaluation"
+            if seq in (1, 4):  # the first move, and the third unchanged one
+                assert ws.receive_json()["type"] == "tutor.started"
+                assert ws.receive_json()["type"] == "tutor.message"
+            else:
+                time.sleep(0.2)  # a pause: skipped, nothing is sent
+    assert len(fake.requests) == 2
+    assert '"unchanged_moves": 3' in fake.requests[1]["messages"][0]["content"]
+    assert '"seq": 2' in fake.requests[1]["messages"][0]["content"]  # the skipped moves are in the snapshots
+
+
+class SlowClaude(FakeClaude):
+    """A Claude call that takes a moment, so the learner can edit while it runs."""
+
+    async def create(self, **kwargs):
+        await asyncio.sleep(0.3)
+        return await super().create(**kwargs)
+
+
+def test_a_reaction_that_comes_back_after_a_newer_edit_is_dropped(config):
+    fake = SlowClaude([tutor_reply("Where is the gap?"), tutor_reply("Nice, now it's closed.")])
+    client, level = connect(fast_reactions(config), fake)
+    board = level["board"]
+    changed = {**board, "wires": board["wires"][:-1]}  # a different circuit
+    with client.websocket_connect("/ws/session") as ws:
+        ws.send_json({"type": "session.start", "level": level})
+        ws.receive_json()
+        ws.send_json({"type": "board.update", "seq": 1, "board": changed})
+        assert ws.receive_json()["type"] == "evaluation"
+        started = ws.receive_json()
+        assert started["type"] == "tutor.started"
+        ws.send_json({"type": "board.update", "seq": 2, "board": board})  # while Claude thinks
+        assert ws.receive_json()["type"] == "evaluation"
+        assert ws.receive_json() == {"type": "tutor.dropped", "request_id": started["request_id"]}
+        assert ws.receive_json()["type"] == "tutor.started"  # the reaction to the newer board
+        reply = ws.receive_json()
+        assert reply["seq"] == 2 and reply["message"]["chat"]["text"] == "Nice, now it's closed."
 
 def test_over_the_claude_budget_the_tutor_rests_but_evaluation_works(config):
     limits = RateLimiter(config["rate_limits"])
@@ -289,6 +343,36 @@ def test_sessions_per_ip_are_limited(config):
         assert third.receive_json()["type"] == "evaluation"
 
 
+@pytest.mark.parametrize("kind, newer, kept", [
+    ("question", "solved", False),   # about the old board
+    ("knowledge", "open", True),     # a lesson stays true
+    ("praise", "solved", True),      # still solved: the success stands
+    ("praise", "open", False),       # broken since: "Solved" would contradict the board
+])
+def test_an_out_of_date_reaction_is_kept_only_while_it_still_holds(config, kind, newer, kept):
+    fake = SlowClaude([tutor_reply("About the earlier board.", kind=kind), tutor_reply("About the newer board.")])
+    client, level = connect(fast_reactions(config), fake)
+    _, spec = example_level()
+    complete = spec["complete_board"]  # the task built back: every target met
+    solved = {**level["board"], "components": complete["components"], "wires": complete["wires"], "inventory": []}
+    assert evaluate(solved)["status"] == "solved"
+    open_board = {**solved, "wires": solved["wires"][:-1]}
+    first, second = (open_board, solved) if newer == "solved" else (solved, open_board)
+    with client.websocket_connect("/ws/session") as ws:
+        ws.send_json({"type": "session.start", "level": level})
+        ws.receive_json()
+        ws.send_json({"type": "board.update", "seq": 1, "board": first})
+        ws.receive_json()
+        started = ws.receive_json()
+        ws.send_json({"type": "board.update", "seq": 2, "board": second})  # while Claude thinks
+        ws.receive_json()
+        late = ws.receive_json()
+        if kept:
+            assert late["type"] == "tutor.message" and late["seq"] == 1  # text only: the client drops its highlights
+            assert late["message"]["chat"]["text"] == "About the earlier board."
+        else:
+            assert late == {"type": "tutor.dropped", "request_id": started["request_id"]}
+
 def test_with_consent_the_session_is_recorded_and_the_feedback_prompt_comes_at_a_quiet_pause(config, tmp_path):
     learner = "0b7e3c1a-5f2d-4c8e-9a1b-2c3d4e5f6a7b"
     research = {**config["research"], "prompt_from_level": 1, "prompt_every_active_min": 0, "prompt_idle_s": 0.05}
@@ -331,6 +415,28 @@ def test_with_consent_the_session_is_recorded_and_the_feedback_prompt_comes_at_a
     assert [x.get("role") for x in experience] == ["tutor", "learner", "tutor", "learner", None]
     assert experience[3]["handoff"] is True and experience[4]["closed"] == "handoff"
 
+
+def test_reactions_wait_while_the_feedback_question_is_unanswered(config, tmp_path):
+    learner = "0b7e3c1a-5f2d-4c8e-9a1b-2c3d4e5f6a7b"
+    research = {**config["research"], "prompt_from_level": 1}
+    fake = FakeClaude([tutor_reply("Where does the current stop?")])
+    client, level = connect({**fast_reactions(config), "research": research}, fake, research_log=ResearchLog(tmp_path))
+    thread = {"turns": [{"role": "tutor", "text": "Quick check-in: how is the tutor working for you?"}],
+              "followups": 0, "idle_s": 0}
+    changed = {**level["board"], "wires": level["board"]["wires"][:-1]}
+    with client.websocket_connect("/ws/session") as ws:
+        # A reload while the 🔔 question was open: the thread comes back with session.start.
+        ws.send_json({"type": "session.start", "level": level,
+                      "research": {"consent": True, "learner_id": learner, "thread": thread}})
+        assert ws.receive_json()["research"]["thread"]["turns"] == thread["turns"]
+        ws.send_json({"type": "board.update", "seq": 1, "board": changed})
+        assert ws.receive_json()["type"] == "evaluation"
+        time.sleep(0.3)  # a pause: no reaction while the question waits
+        ws.send_json({"type": "tutor.request", "request_id": "r1", "action": "hint"})  # a hint ends the thread
+        assert ws.receive_json()["type"] == "tutor.started"
+        reply = ws.receive_json()
+        assert reply["type"] == "tutor.message" and reply["research"]["thread"] is None
+    assert len(fake.requests) == 1  # only the hint called Claude
 
 def test_without_consent_nothing_is_recorded(config, tmp_path):
     client, level = connect(config, None, research_log=ResearchLog(tmp_path))

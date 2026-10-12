@@ -124,12 +124,12 @@ def test_active_time_continues_from_the_browser_across_connections(tmp_path):
     clock.now = 1000.0
     # The previous task's last activity was 20 s ago: that gap (reading the new task) counts too.
     r.start({"consent": True, "learner_id": LEARNER, "active_s": 570, "last_ts": 980.0}, {}, {}, {})
-    assert r.state() == {"active_s": 570, "last_ts": 980.0}
+    assert r.state() == {"active_s": 570, "last_ts": 980.0, "thread": None}
     r.activity()
     clock.now += 10
     r.activity()
     assert r.prompt_due(3, "open_circuit") is not None  # 570 s from earlier tasks + 20 s between + 10 s now
-    assert r.state() == {"active_s": 0, "last_ts": 1010.0}
+    assert r.state()["active_s"] == 0 and r.state()["last_ts"] == 1010.0
     r.start({"consent": True, "learner_id": LEARNER, "active_s": 0, "last_ts": 0.0}, {}, {}, {})
     r.activity()
     assert r.active_s == MAX_GAP_S  # a stale last_ts adds one capped gap at most
@@ -140,3 +140,25 @@ def test_active_time_continues_from_the_browser_across_connections(tmp_path):
         assert 0 <= r.state()["active_s"] <= 600
     r.start({"consent": False}, {}, {}, {})
     assert r.state() is None
+
+
+def test_an_open_thread_survives_a_reconnect_and_waits_for_the_answer(tmp_path):
+    fake = FakeClaude([text_response({"handoff": False, "text": "Which hint was it?", "done": False})])
+    r = research(tmp_path)
+    r.active_s = 600
+    r.prompt_due(3, "open_circuit")
+    assert r.awaiting  # the question waits: the session holds reactions
+    saved = r.state()["thread"]
+    assert saved["turns"][0]["role"] == "tutor" and saved["followups"] == 0
+
+    # A reload: a new session restores the thread from the browser and takes the answer.
+    again = Research(ResearchLog(tmp_path), SETTINGS, fake, UsageLog(None), "s3", Clock())
+    again.start({"consent": True, "learner_id": LEARNER, "thread": saved}, {}, {}, {})
+    assert again.thread_open and again.awaiting
+    reply = asyncio.run(again.reply("The hints are vague"))
+    assert reply["text"] == "Which hint was it?" and again.awaiting  # a follow-up waits again
+    assert "Quick check-in" in fake.requests[0]["messages"][0]["content"]  # the restored prompt is in the thread
+
+    for bad in ("x", {"turns": "x"}, {"turns": [{"role": "admin", "text": "hi"}]}):
+        again.start({"consent": True, "learner_id": LEARNER, "thread": bad}, {}, {}, {})
+        assert not again.thread_open

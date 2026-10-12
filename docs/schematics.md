@@ -314,10 +314,19 @@ Each check reads the graph and its nets, except `unused_wire`, which reads the g
 | `overcurrent` | A resistor dissipates more than its power rating: I² · R > `evaluator.resistor_max_power_w` (default 5 W). A real resistor would overheat. | `overcurrent` |
 | `ammeter_parallel` | An ammeter's two nets are exactly the two nets of a resistor, so the ammeter shorts that resistor | `meter_misuse` |
 | `voltmeter_series` | The source current is ~0, and re-solving with a voltmeter replaced by a wire makes current flow: the voltmeter blocks the loop | `meter_misuse` |
-| `open_circuit` | A source exists, but its current is below the ammeter resolution (0.1 mA), and no `voltmeter_series` explains it | `open_circuit` |
-| `floating_part` | A component has a pin that is connected to no other pin | `floating_part` |
+| `open_circuit` | A source exists, but its current is below the ammeter resolution (0.1 mA), and no `voltmeter_series` explains it. The issue also has `open_ends`, the grid points where the loop is broken (below); its `points` stay the source's pins. | `open_circuit` |
+| `floating_part` | A component has a pin that is connected to no other pin. While the loop is open, only pins that no wire touches are reported: a pin whose wire run dead-ends is part of the gap, which `open_circuit` shows with its open ends. When current flows, a part hanging on a dead-end stub is still floating. | `floating_part` |
 | `bypassed` | A component's two pins are in the same net, so it reads 0 V and carries 0 A | `bypassed` |
-| `unused_wire` | A wire piece whose removal leaves every pin connection unchanged: a stray piece, a dead-end stub, or a duplicate. Pieces are checked newest first against the ones still kept, so of two duplicates only the later one counts. Found on the grid, not the graph. | none: the status stays as it is |
+| `unused_wire` | A wire piece whose removal leaves every pin connection unchanged: a stray piece, a dead-end stub, or a duplicate. Pieces are checked newest first against the ones still kept, so of two duplicates only the later one counts. Found on the grid, not the graph. Reported only when current flows (no `open_circuit` or `floating_part`): in an open loop every wire passes the test, so the list would name the whole circuit. | none: the status stays as it is |
+
+### Open ends
+
+An open loop's issue says where it is broken, so the tutor can point there instead of guessing.
+
+- **Open end:** a grid point where a wire run or a component pin stops without meeting anything else: the end of a wire touched by no other wire and no pin, or a pin touched by no wire.
+- **Only where it matters:** open ends are listed only for the part of the circuit connected to a source (through wires and parts). A stray piece lying elsewhere on the grid is not a gap in the loop.
+- **Example:** a loop whose resistor slot is empty, between wire runs ending at `[4, 6]` and `[6, 6]`, has exactly those two open ends, even after the learner has closed every other break.
+- They are the `open_circuit` issue's `open_ends`, a field of their own, so they can't be mistaken for the source's pins. The tutor highlights them as `point` targets ([tutor.md](tutor.md#2-reactions-by-status)).
 
 ### Status precedence
 

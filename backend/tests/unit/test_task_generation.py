@@ -104,6 +104,15 @@ def test_identical_contexts_get_different_variations():
     assert len(variations) > 1
 
 
+def test_some_tasks_get_a_battery_hint():
+    import random
+    from app.task_generation import BATTERY_HINTS, variation
+    rng = random.Random(7)
+    hints = [variation(rng).get("battery") for _ in range(200)]
+    share = sum(h is not None for h in hints) / len(hints)
+    assert 0.15 < share < 0.35 and {h for h in hints if h} == set(BATTERY_HINTS)
+
+
 def test_prompt_carries_variation_and_level_has_shape(config, usage_log):
     client = FakeClaude([text_response(as_claude_output(load_example()))])
     result = run(client, config, usage_log)

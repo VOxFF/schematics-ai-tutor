@@ -98,3 +98,39 @@ def assign_nets(graph: dict) -> dict[str, int]:
         pins.union(a, b)
     numbers: dict = {}
     return {ref: numbers.setdefault(pins.find(ref), len(numbers)) for ref in sorted(pins.parent)}
+
+
+def open_ends(grid: dict) -> list[list[int]]:
+    """Where a loop is broken (docs/schematics.md §6, open ends): grid points where a wire run or a
+    pin stops without meeting anything else, on the part of the board connected to a source.
+
+    A point's degree is the number of wire segments touching it, plus one for a component pin; an
+    open end has degree 1. Points are joined through wire segments and through components (a part
+    conducts between its pins), and only ends joined to a source's pin are kept, so a stray piece
+    elsewhere on the grid is not reported.
+    """
+    degree: dict[tuple, int] = {}
+    joined = UnionFind()
+    for wire in grid.get("wires", []):
+        for a, b in wire["segments"]:
+            a, b = tuple(a), tuple(b)
+            degree[a] = degree.get(a, 0) + 1
+            degree[b] = degree.get(b, 0) + 1
+            joined.union(a, b)
+    sources = []
+    for c in grid.get("components", []):
+        pins = [tuple(c["pins"][name]) for name in PIN_NAMES[c["type"]]]
+        for p in pins:
+            degree[p] = degree.get(p, 0) + 1
+            joined.union(pins[0], p)
+        if c["type"] == "voltage_source":
+            sources.append(pins[0])
+    live = {joined.find(p) for p in sources}
+    return sorted([list(p) for p, d in degree.items() if d == 1 and joined.find(p) in live])
+
+
+def circuit_key(graph: dict) -> tuple:
+    """What makes two graphs the same circuit: parts with their values, and connections. The order
+    of parts on the grid and the inventory don't count (docs/design.md §3, no call when nothing changed)."""
+    parts = sorted((c["id"], c["type"], c.get("value")) for c in graph["components"])
+    return tuple(parts), tuple(tuple(e) for e in graph["edges"])

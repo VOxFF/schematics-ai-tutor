@@ -39,6 +39,7 @@ With every call, Claude gets the learner's focus topics: the principles and term
 | `explained` ≥ 1, `understanding` ≤ 1 | No re-explaining: one question that tests the idea ("Do you need a larger or a smaller resistance?") |
 | `understanding` ≥ 2 | Short: confirm or praise the strategy |
 
+- **Terms, not only principles.** Evidence counts for every topic it shows: fixing an open loop without a hint is evidence for `open_circuit` and `current` as well as `closed_loop`.
 - **Scores move on evidence.** `understanding` +1 when the learner fixes a problem without a hint, answers a question correctly or explains the idea in their own words; −1 when a mistake or misconception shows a gap. `explained` +1 when the reply explains the topic. Claude reports them in `meta.topic_updates`; the reply composer clamps them.
 - **Safety first.** For `short_circuit` and `overcurrent` the reply is about safety; teaching waits.
 - **One topic per reply**, recent topics first. An idea no topic covers can be added as `meta.new_topic`, at most one per reply.
@@ -53,14 +54,18 @@ A reaction is Claude's response when the learner pauses editing ([contract.md](c
 | `no_source` | Point out what's missing | — | "Nothing can push current yet. What does every circuit need first?" |
 | `overcurrent` | About safety | `error` on the resistor | "R1 would get very hot here. What happens to current when resistance gets smaller?" |
 | `meter_misuse` | Address the misconception | `error` on the meter | "An ammeter acts like a plain wire. What happens to R1 if you connect a wire across it?" |
-| `open_circuit` | Ask about closing the loop | `attention` on the gap | "Follow the path from V1's + side. Does it make it back to the − side?" |
+| `open_circuit` | Ask about closing the loop | `attention` on the issue's `open_ends`, the points where the loop is broken ([schematics.md](schematics.md#open-ends)); the source only if one of its own pins is an open end | "Follow the path from V1's + side. Does it make it back to the − side?" |
 | `floating_part` | Ask about connecting both ends | `attention` on the part | "Current goes *through* a part. How many ends does it need connected?" |
 | `bypassed` | "Around or through?" | `attention` on the part | "Does current have to go *through* R2, or can it go around it?" |
 | `misplaced` | Which way to adjust | `attention` on the target meter | "VM1 shows 6 V; you need 4 V. Should R2 be bigger or smaller?" |
 | `near_target` | Encourage, then fine-tune | `success` on the meter | "Very close! Which part sets that last bit?" |
 | `solved` | Praise the strategy, then a reflection question. If `unused_wire` issues remain, suggest tidying them up | `success`; `attention` on each leftover wire | "Nice! Why did a smaller R2 lower its voltage?" Answering is optional and doesn't block moving on. |
 
-If the status hasn't changed since the last reaction, the reply is a single short line.
+If the status hasn't changed since the last reaction, the reply is a single short line. If the circuit itself hasn't changed (the same graph), there is no reaction at all, until the learner has made `tutor.react_after_unchanged` such moves in a row (default 4): then the request carries `unchanged_moves`, and the reply guides more directly, highlighting what has to change or offering a hint ([contract.md](contract.md#websocket-session)).
+
+**No repetition.** Two rules keep consecutive replies from sounding the same:
+- A topic the learner already shows (`understanding` ≥ 2) gets one short line, without explaining the cause again: after the third closed loop, "Still a gap; follow the path" is enough.
+- A reply never opens with the same words as the tutor's previous message, which Claude sees in `<history>`.
 
 **Highlights on a problem.** Whenever the status shows a problem, the reply highlights it, so the words can stay on the physics:
 - **What's wrong, by ID:** a misplaced wire or part, the parts on a short path, the misused meter.
@@ -84,7 +89,7 @@ Hints are given **only when the learner asks**, one level at a time. The backend
 - **After level 3:** another request repeats level 3 in different words; it never goes further.
 - **One ladder per task.** The level reached carries over to a new problem within the same task (hints build on each other) and resets only with a new task. It survives reloads and reconnects: the browser keeps it and sends it with `session.start`.
 - **Enforced by the backend:** the session decides the level of each hint (one above the highest given, at most 3); Claude's `meta.hint_level` is overwritten with it, a level-1 hint's highlights are dropped, and messages and reactions always get `hint_level` 0.
-- **Offering a hint:** "without the status improving" means the status didn't get better than the best one reached in this task, by the precedence order ([schematics.md](schematics.md#6-structural-checks-and-status)). After `tutor.offer_hint_after_reactions` such reactions in a row (default 3), the next reaction ends by *offering* a hint ("Want a hint?") and the Hint button is highlighted; the count then starts over. The tutor never gives a hint unasked, and there is no offer once the task is solved or level 3 is reached.
+- **Offering a hint:** "without the status improving" means the status didn't get better than the best one reached in this task, by the precedence order ([schematics.md](schematics.md#6-structural-checks-and-status)). After `tutor.offer_hint_after_reactions` such reactions in a row (default 3), counting pauses skipped because the circuit didn't change, the next reaction ends by *offering* a hint ("Want a hint?") and the Hint button is highlighted; the count then starts over. The tutor never gives a hint unasked, and there is no offer once the task is solved or level 3 is reached.
 - **Recorded:** the task's summary in the learner's history gets `hints_used` (the level reached) and the misconception labels the tutor reported during the task, which later task generation uses.
 
 ## 4. Free chat

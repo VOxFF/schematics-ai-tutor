@@ -17,6 +17,8 @@ from .jsonfmt import dumps
 
 LEARNER_ID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 MAX_NAME = 40
+MAX_THREAD_TURNS = 12  # a restored thread is cut to this many turns
+MAX_TURN_TEXT = 2000
 MAX_GAP_S = 60  # a gap between interactions counts as active time up to this long
 ICON = "🔔"
 PROMPTS = [
@@ -121,6 +123,12 @@ class Research:
     def thread_open(self) -> bool:
         return self.thread is not None
 
+    @property
+    def awaiting(self) -> bool:
+        """The 🔔 question (the prompt or a follow-up) is waiting for the learner's answer: the
+        session holds tutor reactions meanwhile, so they don't bury it."""
+        return self.thread_open and self.thread[-1]["role"] == "tutor"
+
     def _record(self, kind: str, **fields) -> None:
         if self.active:
             now = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
@@ -138,12 +146,13 @@ class Research:
             return
         self.learner_id = learner_id
         saved = research.get("active_s")
-        limit = self.settings.get("prompt_every_active_min", 10) * 60
+        limit = self.settings.get("prompt_every_active_min", 6) * 60
         if isinstance(saved, (int, float)) and not isinstance(saved, bool):
             self.active_s = min(max(float(saved), 0.0), limit)
         last = research.get("last_ts")
         if isinstance(last, (int, float)) and not isinstance(last, bool) and last <= self.clock():
             self.last_activity = float(last)  # any gap still counts at most MAX_GAP_S
+        self._restore_thread(research.get("thread"))
         name = research.get("name")
         name = name.strip()[:MAX_NAME] if isinstance(name, str) and name.strip() else "Anonymous"
         self._record("session", name=name, level=level, profile=profile, progress=progress)
@@ -152,7 +161,23 @@ class Research:
         """What the browser keeps between connections: the active time since the last prompt."""
         if not self.active:
             return None
-        return {"active_s": round(self.active_s), "last_ts": self.last_activity}
+        thread = ({"turns": self.thread, "followups": self.followups, "idle_s": round(self.thread_idle_s)}
+                  if self.thread_open else None)
+        return {"active_s": round(self.active_s), "last_ts": self.last_activity, "thread": thread}
+
+    def _restore_thread(self, saved) -> None:
+        """An open feedback conversation from the browser: a reload or a reconnect doesn't end it."""
+        self.thread = None
+        if not isinstance(saved, dict) or not isinstance(saved.get("turns"), list):
+            return
+        turns = [{"role": t["role"], "text": t["text"][:MAX_TURN_TEXT]} for t in saved["turns"][-MAX_THREAD_TURNS:]
+                 if isinstance(t, dict) and t.get("role") in ("tutor", "learner") and isinstance(t.get("text"), str)]
+        if not turns:
+            return
+        followups, idle = saved.get("followups"), saved.get("idle_s")
+        self.thread = turns
+        self.followups = min(max(followups, 0), 10) if isinstance(followups, int) and not isinstance(followups, bool) else 0
+        self.thread_idle_s = min(max(float(idle), 0.0), 3600.0) if isinstance(idle, (int, float)) and not isinstance(idle, bool) else 0.0
 
     def board(self, seq: int, board: dict, graph: dict, evaluation: dict) -> None:
         self._record("board", seq=seq, board=board, graph=graph, evaluation=evaluation)
@@ -180,7 +205,7 @@ class Research:
             return None
         if curriculum_level < self.settings.get("prompt_from_level", 3):
             return None
-        if self.active_s < self.settings.get("prompt_every_active_min", 10) * 60:
+        if self.active_s < self.settings.get("prompt_every_active_min", 6) * 60:
             return None
         text = PROMPTS[self.prompts % len(PROMPTS)]
         self.prompts += 1

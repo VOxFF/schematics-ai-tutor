@@ -89,7 +89,9 @@ flowchart LR
 - **Two feedbacks per edit, fast and slow.** Every finished edit is sent to the backend.
   - *Fast:* the evaluator runs at once, with no Claude call, and its readings and status reach the browser within a split second. The edit also clears Claude's highlights, which described the previous board.
   - *Slow:* when editing pauses, the backend passes the evaluator's results, the task context and the learner's profile to Claude, validates the reply, composes it (§4), and sends the composed message and new highlights.
-  - *Why:* readings must feel like a real meter, and Claude takes seconds. A reply is tagged with the board it is about, so one that arrives after a newer edit shows its text but never overwrites the fresh readings or draws highlights on a changed board ([contract.md](contract.md#1-frontend--backend)).
+  - *Why:* readings must feel like a real meter, and Claude takes seconds. A reply is tagged with the board it is about, so one that arrives after a newer edit never overwrites the fresh readings or draws highlights on a changed board ([contract.md](contract.md#1-frontend--backend)).
+  - *Out-of-date reactions are dropped, unless they still hold:* a reaction that finishes after a newer edit isn't sent when it describes the old board (`question`, `nudge`, `feedback`): it would answer a board that's gone, sometimes questioning a gap the learner has just closed, right before the praise for solving. Two kinds still hold and are sent, as text only (the client drops an out-of-date reply's highlights and readings): `knowledge`, because a lesson stays true and counts toward the profile, and `praise` while the board is still `solved`; praise for a board broken since would contradict the vanished checkmark. The reaction to the newer board follows either way. A reply to the learner's own message or hint is always sent.
+  - *No call when nothing changed:* Claude is called only when the circuit's graph differs from the one it last replied about. Moving a wire along the same connections, dropping a stray piece, or changing and undoing gives the same graph, so the same evaluation, and a reply would only repeat itself. After `tutor.react_after_unchanged` (4) such pauses in a row, Claude is called anyway with `unchanged_moves`, because a learner who keeps trying without progress needs more direct guidance. A pause, not an edit, is the unit: one drag can be several edits within a second.
 
   ```mermaid
   sequenceDiagram
@@ -108,7 +110,7 @@ flowchart LR
       L->>FE: edit (board #6) while Claude thinks
       FE->>EV: board #6
       EV-->>FE: readings + status (#6)
-      C-->>FE: reply about #5: text shown, highlights and readings dropped
+      Note over C: reply about #5 is out of date: not sent
       Note over L,FE: learner pauses again
       Note over C: idle timer fires: reaction on board #6
       C-->>FE: reply about #6: text and highlights shown
@@ -265,12 +267,13 @@ While consent is on, the server appends one JSON line per event to `research/<le
 
 ### The 🔔 feedback prompt
 
-From curriculum level 3 (the "Level 3" badge, after about four tasks), the tutor asks the learner for their thoughts every 10 minutes of active use.
+From curriculum level 3 (the "Level 3" badge, after about four tasks), the tutor asks the learner for their thoughts every 6 minutes of active use. It was 10 at first, but learners aren't busy all the time (reading, thinking and breaks count at most a minute per gap), so 10 active minutes took far longer on the clock.
 
 - **Active time:** the gaps between the learner's edits and messages are added up, each gap counting at most 60 s, so time away from the screen doesn't count. The count carries over from task to task (see Status).
 - **When it's due:** consent is on, the curriculum level is at least `prompt_from_level`, `prompt_every_active_min` of active time have passed since the last prompt (or since the session started), the tutor isn't replying, and the status isn't `short_circuit`. The check runs after a real break: `prompt_idle_s` (8 s) without edits, and after the tutor's reaction to that pause, if one is running. A 1.5 s pause between two drops is the middle of a move; a prompt there would be closed by the next drop before it's read, as testing showed.
 - **The message:** a new chat kind, `experience`, with a 🔔 icon and a teal tint: e.g. "Quick check-in: how is the tutor working for you so far? Anything confusing or annoying?"
-- **The conversation:** the prompt opens an experience thread. While it's open, the learner's chat messages go to `research.reply()`, not to the tutor: a Claude call with its own short prompt that asks at most `max_followups` follow-up questions (default 2), never tutors, and ends by thanking the learner. Learners keep building while they read, so the thread stays open across board edits, and tutor reactions go on as usual; only the learner's typed messages go to the thread. It closes after the thanks, on a hint request, or after `thread_timeout_active_min` (3) of active time without a reply; ignoring the prompt is fine. A new task (a new connection) also ends it.
+- **The conversation:** the prompt opens an experience thread. While it's open, the learner's chat messages go to `research.reply()`, not to the tutor: a Claude call with its own short prompt that asks at most `max_followups` follow-up questions (default 2), never tutors, and ends by thanking the learner. Learners keep building while they read, so the thread stays open across board edits; only the learner's typed messages go to the thread. While a 🔔 question (the prompt or a follow-up) waits for an answer, tutor reactions are held, so they don't bury it; the board, the readings and the status still update live, and a hint request still reaches the tutor. The thread closes after the thanks, on a hint request, or after `thread_timeout_active_min` (3) of active time without a reply; then reactions resume. Ignoring the prompt is fine.
+- **Kept in the browser:** an open thread (its turns, follow-up count and idle time) is part of the `research` state the browser keeps with the active time, so a reload, a reconnect or the next task doesn't end it. In testing, a reload a minute after the prompt sent the learner's answer to the tutor.
 - **Handoff:** a message typed while the thread is open may be meant for the tutor ("why does the ammeter read zero?"). The feedback conversation's reply has a `handoff` field: when it's true, the thread closes and the same message goes to the tutor as a normal request. Feedback that mentions the circuit ("the hints don't help on level 6") stays in the thread. The learner's turn is recorded as `experience` either way, with `handoff: true` when handed off.
 - **Recorded:** the prompt and every turn, learner and Claude, as `experience` records.
 
@@ -289,7 +292,7 @@ sequenceDiagram
         FE->>S: board.update / tutor.request
         S->>R: board() / chat(), activity()
     end
-    Note over S,R: 8 s without edits, Level ≥ 3, 10 active min since the last prompt
+    Note over S,R: 8 s without edits, Level ≥ 3, 6 active min since the last prompt
     S->>R: prompt_due()
     R-->>FE: 🔔 experience message (thread open)
     L->>FE: "The hints are too vague"
@@ -341,7 +344,7 @@ The `research` block and `claude.experience` in `config.yaml` (§7): the folder,
 
 Built: `research.py` (`ResearchLog`, `Research`), its hooks in `session.py`, the start screen's consent and name, the `experience` chat kind and `research.sh`. Interfaces are in [contract.md](contract.md), the start screen and the chat kind in [gui.md](gui.md), collecting on Fly in [deployment.md](deployment.md#6-manual-operations).
 
-- **Active time survives tasks.** Each task opens a new WebSocket session, and most tasks take a minute or two, so a count kept only in the server's session would never reach 10 minutes. The server sends `research: { active_s, last_ts }` with every `evaluation` (and with the feedback messages); the browser keeps it with the consent and sends it back with `session.start`. `Research.start` continues the count from `active_s`, clamped to the prompt interval, and counts the gap since `last_ts`, the previous task's last activity, so the time spent reading a new task isn't lost. That gap is capped at 60 s like any other, so a stale or altered `last_ts` adds a minute at most.
+- **Active time survives tasks.** Each task opens a new WebSocket session, and most tasks take a minute or two, so a count kept only in the server's session would never reach the prompt interval. The server sends `research: { active_s, last_ts, thread }` with every `evaluation` and tutor message; the browser keeps it with the consent and sends it back with `session.start`. `Research.start` continues the count from `active_s`, clamped to the prompt interval, and counts the gap since `last_ts`, the previous task's last activity, so the time spent reading a new task isn't lost. That gap is capped at 60 s like any other, so a stale or altered `last_ts` adds a minute at most.
 
 ## 6. Security and operations
 
@@ -477,6 +480,7 @@ tutor:
   max_snapshots: 10
   history_turns: 6
   offer_hint_after_reactions: 3
+  react_after_unchanged: 4      # pauses with an unchanged circuit before Claude is called anyway
 
 task_generation:
   recent_tasks: 10
@@ -492,7 +496,7 @@ research:                      # learner experience research, with consent (docs
   dir: research                # SCHEMATICS_RESEARCH_DIR overrides it (Fly: /data/research)
   max_mb_per_learner: 20
   prompt_from_level: 3         # curriculum level
-  prompt_every_active_min: 10
+  prompt_every_active_min: 6
   prompt_idle_s: 8              # the 🔔 prompt waits for this long a pause in editing
   thread_timeout_active_min: 3 # an unanswered feedback conversation closes after this much active time
   max_followups: 2
