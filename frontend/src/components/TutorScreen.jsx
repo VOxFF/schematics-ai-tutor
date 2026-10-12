@@ -3,10 +3,10 @@
 
 import katex from "katex";
 import "katex/dist/katex.min.css";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import GridEditor from "../editor/GridEditor.jsx";
 import { partName } from "../editor/naming.js";
-import { WIRE_PALETTE, lift, nextOrientation, place, removeSelected, rotateSelected } from "../editor/placement.js";
+import { lift, nextOrientation, place, removeSelected, rotateSelected, wirePalette } from "../editor/placement.js";
 import { PUBLIC } from "../lib/build.js";
 import { readableJson } from "../lib/jsonfmt.js";
 import { MAX_HINT, useTutorSession } from "../lib/tutorSession.js";
@@ -95,7 +95,7 @@ function TaskPanel({ level, evaluation }) {
   );
 }
 
-function Editor({ level, board, evaluation, loading, error, startError, onRetry, drag, onStartDrag, onDrop, onPlan, selected, onSelect, highlights, showJson, onToggleJson, onReset }) {
+function Editor({ level, palette, board, evaluation, loading, error, startError, onRetry, drag, onStartDrag, onDrop, onPlan, selected, onSelect, highlights, showJson, onToggleJson, onReset }) {
   let body;
   if (loading)
     body = (
@@ -129,7 +129,7 @@ function Editor({ level, board, evaluation, loading, error, startError, onRetry,
           <GridEditor board={board} startBoard={level.board}
                       readings={evaluation?.readings} drag={drag} onStartDrag={onStartDrag}
                       onDrop={onDrop} onPlan={onPlan} selected={selected} onSelect={onSelect}
-                      highlights={highlights} />
+                      highlights={highlights} palette={palette} />
         )}
         {evaluation?.status === "solved" && (
           // Non-blocking: the learner can still read the meters and the tutor's praise (docs/gui.md §4).
@@ -155,7 +155,7 @@ function Editor({ level, board, evaluation, loading, error, startError, onRetry,
 
 // The inventory is drawn inside the editor's scene (same scale as the board). This visually
 // hidden list mirrors it for screen readers and keyboard users.
-function InventoryList({ board, onStartDrag }) {
+function InventoryList({ board, palette, onStartDrag }) {
   const start = (item) => (event) => {
     event.preventDefault();
     onStartDrag(item);
@@ -167,7 +167,7 @@ function InventoryList({ board, onStartDrag }) {
           {partName(p)}
         </li>
       ))}
-      {WIRE_PALETTE.map((w) => (
+      {palette.map((w) => (
         <li key={w.key} aria-label={w.label} onPointerDown={start({ kind: "wire", shape: w.shape, rotation: w.rotation })}>
           {w.label}
         </li>
@@ -309,6 +309,8 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
   const [selected, setSelected] = useState(null); // { kind: "component" | "wire", id } on the board
   const [blocked, setBlocked] = useState(false); // the last R on the selection didn't fit
   const startBoard = level?.board;
+  // The task's wire palette: straight always, other shapes only when the task removed one.
+  const palette = useMemo(() => wirePalette(level?.wire_shapes), [level?.wire_shapes]);
   const solved = tutor.evaluation?.status === "solved"; // Next unlocks only then
   // The selection only counts while its element is on the board (e.g. not after Reset board).
   const selection = selected && board &&
@@ -385,6 +387,7 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
         <div className="editor-column">
           <Editor
             level={level}
+            palette={palette}
             board={drag?.base ?? board}
             drag={drag}
             onStartDrag={setDrag}
@@ -404,7 +407,7 @@ export default function TutorScreen({ session, loading, error, onRestart, onRetr
           />
           <div className="hint-bar" aria-live="polite">{hint(drag, fits, selection && { id: selection.id, editable, blocked }, solved)}</div>
         </div>
-        <InventoryList board={board} onStartDrag={startDrag} />
+        <InventoryList board={board} palette={palette} onStartDrag={startDrag} />
       </div>
       <Chat chat={chat} connected={tutor.connected} thinking={tutor.thinking} onSend={tutor.send}
             hintLevel={hintLevel} hintOffered={Boolean(session.hint_offered)} onHint={askHint} />

@@ -81,3 +81,14 @@ def test_a_welcome_that_describes_locations_is_rejected():
     spec["welcome"] = "Put a wire at [3, 4] and see what happens."
     assert [e for e in check_format(spec) if e.startswith("welcome")] == [
         "welcome: describes locations ([3, 4]); talk about the idea instead"]
+
+
+def test_wire_shapes_are_straight_plus_the_removed_pieces_shapes():
+    from app.task_spec import wire_shapes
+    spec = {"removed_ids": ["W1", "W2", "R2"], "complete_board": {"wires": [
+        {"id": "W1", "segments": [[[2, 2], [3, 2]], [[2, 2], [2, 3]]]},                    # corner
+        {"id": "W2", "segments": [[[5, 5], [6, 5]], [[5, 5], [4, 5]], [[5, 5], [5, 6]]]},  # T
+        {"id": "W3", "segments": [[[8, 1], [8, 2]], [[8, 1], [9, 1]], [[8, 1], [7, 1]], [[8, 1], [8, 0]]]},  # kept +
+    ]}}
+    assert wire_shapes(spec) == ["straight", "corner", "T"]
+    assert wire_shapes({**spec, "removed_ids": ["R2"]}) == ["straight"]

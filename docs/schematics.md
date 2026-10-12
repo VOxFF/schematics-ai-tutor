@@ -232,6 +232,19 @@ Claude does **not** produce the task grid or any target value. The backend deriv
 1. **Task grid** = the complete board with `removed_ids` taken out.
 2. **Inventory** = the removed parts plus the decoys, shuffled.
 3. **Targets** = the readings of `target_meter_ids` from solving the complete board, rounded to meter resolution. Each tolerance is the default from §1.
+4. **Wire palette** = the wire shapes the learner can take from the inventory: straight pieces always, plus the shape of each removed wire piece. It is sent as `Level.wire_shapes` ([contract.md](contract.md#data-model)).
+
+**Wire palette.** Generated tasks rarely remove a corner, use T-junctions only from about Level 6, and don't use +-junctions yet, so a full palette is mostly clutter. The palette shows only what the task needs:
+
+| Shape (`wire_shapes`) | In the palette |
+|---|---|
+| `straight` | Always, both horizontal and vertical |
+| `corner`, `T`, `plus` | Only when a removed wire piece has that shape (§1 Wires) |
+
+- **Every task stays solvable.** Wire pieces connect wherever their endpoints meet (§1 Connectivity), so straight pieces can build any corner or junction. The other shapes are shortcuts.
+- **Computed when the level is built,** from the complete board's wires in `removed_ids`, for generated, pre-generated and fallback tasks alike. The fallback pack needs no regeneration.
+- **Accepted hint:** a T in the palette tells the learner a junction is missing. At the levels that have junctions, the learner's work is the physics and the math, not finding the shape.
+- **Older levels:** a level without `wire_shapes` (saved in a browser or cached before this change) shows the full palette.
 
 ### Validation stages
 

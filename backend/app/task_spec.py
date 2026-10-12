@@ -10,7 +10,7 @@ import uuid
 from .evaluate import RESOLUTION, evaluate
 from .curriculum import check_centered, check_level
 from .graph import assign_nets, to_graph
-from .grid import METER_TYPES, PIN_NAMES, validate_grid
+from .grid import METER_TYPES, PIN_NAMES, validate_grid, wire_shape
 from .tutor import location_talk
 
 COMPONENT_TYPES = sorted(PIN_NAMES)
@@ -260,7 +260,19 @@ def build_level(spec: dict, skill_level: int, board: dict | None = None, curricu
         # Stored in the learner's history (TaskSummary) for the next generation and the repeat check.
         "shape": shape(spec),
         "signature": signature(spec),
+        "wire_shapes": wire_shapes(spec),
     }
+
+
+WIRE_SHAPES = ("straight", "corner", "T", "plus")
+
+
+def wire_shapes(spec: dict) -> list[str]:
+    """The wire palette (docs/schematics.md §3): straight always, plus the shape of each removed wire
+    piece. Straight pieces can build any corner or junction, so every task stays solvable."""
+    removed = set(spec.get("removed_ids", []))
+    shapes = {"straight"} | {wire_shape(w["segments"]) for w in spec["complete_board"]["wires"] if w["id"] in removed}
+    return [s for s in WIRE_SHAPES if s in shapes]
 
 
 def shape(spec: dict) -> str:
