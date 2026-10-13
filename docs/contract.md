@@ -423,11 +423,11 @@ The prompt has two parts: **task context**, which is the same for every request 
 ```json
 {
   "skill_level": 4,
-  "curriculum": { "level": 2, "task": "2 of 2", "concept": "Ohm's law, picking a resistor",
-                  "goal": "Current depends on voltage and resistance (I = V / R).",
-                  "circuit": "a source, one resistor and a meter; the learner picks the resistor",
-                  "grid": { "columns": 11, "rows": 7 }, "removed": { "wires": [1, 1], "parts": [1, 1] },
-                  "decoys": [1, 2], "targets": [1, 1] },
+  "curriculum": { "level": 2, "task": "2 of 2", "concept": "Ohm's law, placing a resistor",
+                  "goal": "A resistor sets the current (I = V / R); placed in the loop, it makes the meter read the target.",
+                  "circuit": "a source, one resistor and a meter; the learner places the resistor (no choice yet)",
+                  "grid": { "columns": 11, "rows": 7 }, "removed": { "wires": [0, 0], "parts": [2, 2] },
+                  "decoys": [0, 0], "targets": [1, 1] },
   "grid": { "columns": 11, "rows": 7 },
   "recent_tasks": [
     { "title": "Close the loop", "concept": "closed circuit", "shape": "V + R + VM",

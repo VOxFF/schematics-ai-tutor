@@ -1,11 +1,11 @@
 [
   {
-    "concept": "Ohm's law, picking a resistor",
-    "title": "Pick the right resistor",
-    "intro": "The loop has a gap where a resistor belongs, and one wire piece is missing too. Choose the resistor that makes the ammeter show 3 mA with the 6 V battery, then close the loop.",
-    "welcome": "You've got the hang of closing loops! Now you'll see that the resistor you choose decides how much current flows.",
+    "concept": "Ohm's law, placing a resistor",
+    "title": "A resistor sets the current",
+    "intro": "The ammeter should show the current that flows when the 1 kΩ resistor is part of the loop. Put the resistor into its gap and add the missing wires so the loop is closed.",
+    "welcome": "You've closed loops twice already, nicely done! Now a resistor joins the circuit, so let's see how it controls the current.",
     "complete_board": {
-      "grid": {"columns": 12, "rows": 6},
+      "grid": {"columns": 10, "rows": 6},
       "components": [
         {
           "id": "V1",
@@ -13,125 +13,54 @@
           "value": 6,
           "fixed": true,
           "orientation": "N",
-          "pins": {"negative": [2, 5], "positive": [2, 3]}
+          "pins": {"negative": [8, 4], "positive": [8, 2]}
         },
         {
           "id": "R1",
           "type": "resistor",
-          "value": 2000,
+          "value": 1000,
           "fixed": false,
-          "orientation": "W",
-          "pins": {"a": [6, 2], "b": [8, 2]}
-        },
-        {
-          "id": "AM1",
-          "type": "ammeter",
-          "fixed": true,
           "orientation": "E",
-          "pins": {"negative": [6, 5], "positive": [8, 5]}
-        }
-      ],
-      "wires": [
-        {"id": "W1", "segments": [[[2, 3], [2, 2]]]},
-        {"id": "W2", "segments": [[[2, 2], [3, 2]]]},
-        {"id": "W3", "segments": [[[3, 2], [4, 2]]]},
-        {"id": "W4", "segments": [[[4, 2], [5, 2]]]},
-        {"id": "W5", "segments": [[[5, 2], [6, 2]]]},
-        {"id": "W6", "segments": [[[8, 2], [9, 2]]]},
-        {"id": "W7", "segments": [[[9, 2], [10, 2]]]},
-        {"id": "W8", "segments": [[[10, 2], [11, 2]]]},
-        {"id": "W9", "segments": [[[11, 2], [11, 3]]]},
-        {"id": "W10", "segments": [[[11, 3], [11, 4]]]},
-        {"id": "W11", "segments": [[[11, 4], [11, 5]]]},
-        {"id": "W12", "segments": [[[11, 5], [10, 5]]]},
-        {"id": "W13", "segments": [[[10, 5], [9, 5]]]},
-        {"id": "W14", "segments": [[[9, 5], [8, 5]]]},
-        {"id": "W15", "segments": [[[6, 5], [5, 5]]]},
-        {"id": "W16", "segments": [[[5, 5], [4, 5]]]},
-        {"id": "W17", "segments": [[[4, 5], [3, 5]]]},
-        {"id": "W18", "segments": [[[3, 5], [2, 5]]]}
-      ]
-    },
-    "removed_ids": ["R1", "W10"],
-    "decoys": [
-      {"id": "R2", "type": "resistor", "value": 1000},
-      {"id": "V2", "type": "voltage_source", "value": 9}
-    ],
-    "target_meter_ids": ["AM1"],
-    "difficulty": 2,
-    "rationale": "After two clean closed-loop tasks, the learner is ready to use I = V / R to choose a resistor for a target current."
-  },
-  {
-    "concept": "Ohm's law, picking a resistor",
-    "title": "Pick the right resistor",
-    "intro": "The ammeter should show the target current. Choose the resistor that gives exactly that current with this source, put it in the empty spot, and close the loop.",
-    "welcome": "You've mastered closing loops! Now the resistor gets a say: you'll pick how much it holds back the current.",
-    "complete_board": {
-      "grid": {"columns": 12, "rows": 8},
-      "components": [
-        {
-          "id": "V1",
-          "type": "voltage_source",
-          "value": 5,
-          "fixed": true,
-          "orientation": "N",
-          "pins": {"negative": [2, 6], "positive": [2, 4]}
-        },
-        {
-          "id": "R1",
-          "type": "resistor",
-          "value": 500,
-          "fixed": false,
-          "orientation": "W",
-          "pins": {"a": [5, 2], "b": [7, 2]}
+          "pins": {"a": [6, 1], "b": [4, 1]}
         },
         {
           "id": "AM1",
           "type": "ammeter",
           "fixed": true,
           "orientation": "N",
-          "pins": {"negative": [10, 6], "positive": [10, 4]}
+          "pins": {"negative": [2, 4], "positive": [2, 2]}
         }
       ],
       "wires": [
-        {"id": "W1", "segments": [[[2, 4], [2, 3]]]},
-        {"id": "W2", "segments": [[[2, 3], [2, 2]]]},
-        {"id": "W3", "segments": [[[2, 2], [3, 2]]]},
-        {"id": "W4", "segments": [[[3, 2], [4, 2]]]},
-        {"id": "W5", "segments": [[[4, 2], [5, 2]]]},
-        {"id": "W6", "segments": [[[7, 2], [8, 2]]]},
-        {"id": "W7", "segments": [[[8, 2], [9, 2]]]},
-        {"id": "W8", "segments": [[[9, 2], [10, 2]]]},
-        {"id": "W9", "segments": [[[10, 2], [10, 3]]]},
-        {"id": "W10", "segments": [[[10, 3], [10, 4]]]},
-        {"id": "W11", "segments": [[[10, 6], [10, 7]]]},
-        {"id": "W12", "segments": [[[10, 7], [9, 7]]]},
-        {"id": "W13", "segments": [[[9, 7], [8, 7]]]},
-        {"id": "W14", "segments": [[[8, 7], [7, 7]]]},
-        {"id": "W15", "segments": [[[7, 7], [6, 7]]]},
-        {"id": "W16", "segments": [[[6, 7], [5, 7]]]},
-        {"id": "W17", "segments": [[[5, 7], [4, 7]]]},
-        {"id": "W18", "segments": [[[4, 7], [3, 7]]]},
-        {"id": "W19", "segments": [[[3, 7], [2, 7]]]},
-        {"id": "W20", "segments": [[[2, 7], [2, 6]]]}
+        {"id": "W1", "segments": [[[8, 2], [8, 1]]]},
+        {"id": "W2", "segments": [[[8, 1], [7, 1]]]},
+        {"id": "W3", "segments": [[[7, 1], [6, 1]]]},
+        {"id": "W4", "segments": [[[4, 1], [3, 1]]]},
+        {"id": "W5", "segments": [[[3, 1], [2, 1]]]},
+        {"id": "W6", "segments": [[[2, 1], [2, 2]]]},
+        {"id": "W7", "segments": [[[2, 4], [2, 5]]]},
+        {"id": "W8", "segments": [[[2, 5], [3, 5]]]},
+        {"id": "W9", "segments": [[[3, 5], [4, 5]]]},
+        {"id": "W10", "segments": [[[4, 5], [5, 5]]]},
+        {"id": "W11", "segments": [[[5, 5], [6, 5]]]},
+        {"id": "W12", "segments": [[[6, 5], [7, 5]]]},
+        {"id": "W13", "segments": [[[7, 5], [8, 5]]]},
+        {"id": "W14", "segments": [[[8, 5], [8, 4]]]}
       ]
     },
-    "removed_ids": ["R1", "W15"],
-    "decoys": [
-      {"id": "R2", "type": "resistor", "value": 250},
-      {"id": "R3", "type": "resistor", "value": 1000}
-    ],
+    "removed_ids": ["R1", "W3", "W6", "W10"],
+    "decoys": [],
     "target_meter_ids": ["AM1"],
     "difficulty": 2,
-    "rationale": "The learner closed loops twice without hints, so now they can use I = V / R to choose the right resistor from options that would give twice or half the target current."
+    "rationale": "The learner closed loops easily with no hints, so now placing one resistor shows how I = V / R sets the current."
   },
   {
-    "concept": "Ohm's law, picking a resistor",
-    "title": "Pick the right resistor",
-    "intro": "The loop has a gap where a resistor goes, and one wire is missing too. Choose the resistor that makes the ammeter show the target current, then close the loop.",
-    "welcome": "You've closed loops twice without a single hint, nice work! Now the resistor gets a job: it decides how much current flows.",
+    "concept": "Ohm's law, placing a resistor",
+    "title": "Set the current",
+    "intro": "The ammeter should show a small, steady current. Put the resistor into the loop and fill in the missing wire pieces so the circuit is complete.",
+    "welcome": "You've closed two loops already, nicely done! Now a resistor joins in: it decides how much current can flow.",
     "complete_board": {
-      "grid": {"columns": 10, "rows": 8},
+      "grid": {"columns": 12, "rows": 7},
       "components": [
         {
           "id": "V1",
@@ -147,40 +76,98 @@
           "value": 300,
           "fixed": false,
           "orientation": "W",
-          "pins": {"a": [4, 2], "b": [6, 2]}
+          "pins": {"a": [6, 2], "b": [8, 2]}
         },
         {
           "id": "AM1",
           "type": "ammeter",
           "fixed": true,
           "orientation": "N",
-          "pins": {"negative": [8, 5], "positive": [8, 3]}
+          "pins": {"negative": [11, 5], "positive": [11, 3]}
         }
       ],
       "wires": [
         {"id": "W1", "segments": [[[2, 3], [2, 2]]]},
         {"id": "W2", "segments": [[[2, 2], [3, 2]]]},
         {"id": "W3", "segments": [[[3, 2], [4, 2]]]},
-        {"id": "W4", "segments": [[[6, 2], [7, 2]]]},
-        {"id": "W5", "segments": [[[7, 2], [8, 2]]]},
-        {"id": "W6", "segments": [[[8, 2], [8, 3]]]},
-        {"id": "W7", "segments": [[[8, 5], [8, 6]]]},
-        {"id": "W8", "segments": [[[8, 6], [7, 6]]]},
-        {"id": "W9", "segments": [[[7, 6], [6, 6]]]},
-        {"id": "W10", "segments": [[[6, 6], [5, 6]]]},
-        {"id": "W11", "segments": [[[5, 6], [4, 6]]]},
-        {"id": "W12", "segments": [[[4, 6], [3, 6]]]},
-        {"id": "W13", "segments": [[[3, 6], [2, 6]]]},
-        {"id": "W14", "segments": [[[2, 6], [2, 5]]]}
+        {"id": "W4", "segments": [[[4, 2], [5, 2]]]},
+        {"id": "W5", "segments": [[[5, 2], [6, 2]]]},
+        {"id": "W6", "segments": [[[8, 2], [9, 2]]]},
+        {"id": "W7", "segments": [[[9, 2], [10, 2]]]},
+        {"id": "W8", "segments": [[[10, 2], [11, 2]]]},
+        {"id": "W9", "segments": [[[11, 2], [11, 3]]]},
+        {"id": "W10", "segments": [[[11, 5], [11, 6]]]},
+        {"id": "W11", "segments": [[[11, 6], [10, 6]]]},
+        {"id": "W12", "segments": [[[10, 6], [9, 6]]]},
+        {"id": "W13", "segments": [[[9, 6], [8, 6]]]},
+        {"id": "W14", "segments": [[[8, 6], [7, 6]]]},
+        {"id": "W15", "segments": [[[7, 6], [6, 6]]]},
+        {"id": "W16", "segments": [[[6, 6], [5, 6]]]},
+        {"id": "W17", "segments": [[[5, 6], [4, 6]]]},
+        {"id": "W18", "segments": [[[4, 6], [3, 6]]]},
+        {"id": "W19", "segments": [[[3, 6], [2, 6]]]},
+        {"id": "W20", "segments": [[[2, 6], [2, 5]]]}
       ]
     },
-    "removed_ids": ["R1", "W10"],
-    "decoys": [
-      {"id": "R2", "type": "resistor", "value": 600},
-      {"id": "R3", "type": "resistor", "value": 1000}
-    ],
+    "removed_ids": ["R1", "W3", "W14"],
+    "decoys": [],
     "target_meter_ids": ["AM1"],
     "difficulty": 2,
-    "rationale": "The learner closed loops easily, so now they use I = V / R to choose between resistors that give clearly different currents."
+    "rationale": "The learner closed loops without hints, so now a resistor is added to show that it sets the current (I = V / R)."
+  },
+  {
+    "concept": "Ohm's law, placing a resistor",
+    "title": "A resistor sets the current",
+    "intro": "Place the resistor in the empty spot at the top and fill the wire gaps so current flows all the way around. The ammeter should then show the target current.",
+    "welcome": "Great job closing those loops! This time a resistor joins the circuit, and you'll see how it controls how much current flows.",
+    "complete_board": {
+      "grid": {"columns": 10, "rows": 6},
+      "components": [
+        {
+          "id": "V1",
+          "type": "voltage_source",
+          "value": 6,
+          "fixed": true,
+          "orientation": "E",
+          "pins": {"negative": [4, 6], "positive": [6, 6]}
+        },
+        {
+          "id": "R1",
+          "type": "resistor",
+          "value": 60,
+          "fixed": false,
+          "orientation": "W",
+          "pins": {"a": [4, 2], "b": [6, 2]}
+        },
+        {
+          "id": "AM1",
+          "type": "ammeter",
+          "fixed": true,
+          "orientation": "S",
+          "pins": {"negative": [8, 3], "positive": [8, 5]}
+        }
+      ],
+      "wires": [
+        {"id": "W1", "segments": [[[6, 6], [7, 6]]]},
+        {"id": "W2", "segments": [[[7, 6], [8, 6]]]},
+        {"id": "W3", "segments": [[[8, 6], [8, 5]]]},
+        {"id": "W4", "segments": [[[8, 3], [8, 2]]]},
+        {"id": "W5", "segments": [[[8, 2], [7, 2]]]},
+        {"id": "W6", "segments": [[[7, 2], [6, 2]]]},
+        {"id": "W7", "segments": [[[4, 2], [3, 2]]]},
+        {"id": "W8", "segments": [[[3, 2], [2, 2]]]},
+        {"id": "W9", "segments": [[[2, 2], [2, 3]]]},
+        {"id": "W10", "segments": [[[2, 3], [2, 4]]]},
+        {"id": "W11", "segments": [[[2, 4], [2, 5]]]},
+        {"id": "W12", "segments": [[[2, 5], [2, 6]]]},
+        {"id": "W13", "segments": [[[2, 6], [3, 6]]]},
+        {"id": "W14", "segments": [[[3, 6], [4, 6]]]}
+      ]
+    },
+    "removed_ids": ["R1", "W5", "W11"],
+    "decoys": [],
+    "target_meter_ids": ["AM1"],
+    "difficulty": 2,
+    "rationale": "The learner closed loops easily twice, so now they place a resistor and see that it sets the current, I = V / R."
   }
 ]

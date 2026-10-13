@@ -556,7 +556,7 @@ claude:
     timeout_s: 30
   tutor_request:               # learner message / hint
     model: claude-opus-5-5
-    effort: medium             # rarer than reactions and matter more
+    effort: low                # half the wait of medium (~4 s vs. ~9 s), same quality in testing
     max_tokens: 16000
     timeout_s: 30
   skill_summary:               # bonus: Learning Path screen
