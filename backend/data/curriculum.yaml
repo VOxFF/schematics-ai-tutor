@@ -28,23 +28,27 @@ levels:
         removed: { wires: [0, 2], parts: [1, 2], total: [2, 3] }
 
   - level: 2
-    concept: Ohm's law, picking a resistor
-    goal: Current depends on voltage and resistance (I = V / R).
+    concept: Ohm's law, placing a resistor
+    goal: A resistor sets the current (I = V / R); placed in the loop, it makes the meter read the target.
     tasks: 2
     grid: { columns: [10, 12], rows: [6, 8] }
-    circuit: a source, one resistor and a meter; the learner picks the resistor
-    removed: { wires: [1, 2], parts: [1, 1] }
-    decoys: [1, 2]
+    circuit: a source, one resistor and a meter; the learner places the resistor (no choice yet)
+    decoys: [0, 0]
     targets: [1, 1]
+    variants:
+      - description: the resistor and two or three wire pieces are missing
+        removed: { wires: [2, 3], parts: [1, 1] }
+      - description: the resistor and the battery are missing; the learner places both, the battery the right way round
+        removed: { wires: [0, 0], parts: [2, 2] }
 
   - level: 3
     concept: Ohm's law with more choices
     goal: Reason about which resistance gives the target, among several options.
     tasks: 3
     grid: { columns: [10, 12], rows: [6, 8] }
-    circuit: a source, one resistor and a meter
+    circuit: a source, one resistor and a meter; the learner picks the resistor among 2–4
     removed: { wires: [2, 4], parts: [1, 1] }
-    decoys: [3, 3]
+    decoys: [1, 3]
     targets: [1, 1]
 
   - level: 4

@@ -66,6 +66,15 @@ def paragraphs(text: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
 
 
+def plain_symbols(text: str) -> str:
+    """LaTeX that slipped into the prose, written the way the board labels parts: V_{R2} → VR2,
+    R_2 → R2, \\text{total} → total, $R_1$ → R1. LaTeX belongs in chat.formula only."""
+    text = re.sub(r"\\(?:text|mathrm|textrm)\{([^{}]*)\}", r"\1", text)
+    text = re.sub(r"\b([A-Za-z])_\{([^{}]+)\}", r"\1\2", text)
+    text = re.sub(r"\b([A-Za-z])_([A-Za-z0-9]+)\b", r"\1\2", text)
+    return re.sub(r"\$([^$\n]{1,40})\$", r"\1", text)
+
+
 def _utf16(text: str, index: int) -> int:
     return len(text[:index].encode("utf-16-le")) // 2
 
@@ -122,7 +131,7 @@ def compose(message: dict, profile: dict, skill_level: int) -> tuple[dict, list[
             taught = topic
 
     chat = message["chat"]
-    kind, text = chat["kind"], paragraphs(chat["text"])
+    kind, text = chat["kind"], paragraphs(plain_symbols(chat["text"]))
     title = taught["name"] if kind == "knowledge" and taught else None
     return {"kind": kind, "icon": ICONS.get(kind, "💬"), "title": title, "text": text,
             "formula": chat.get("formula") or None, "terms": term_spans(text, profile)}, dropped

@@ -201,8 +201,8 @@ flowchart TD
 | Level | Concept | Grid | Missing (the learner places it) | Decoys | Targets |
 |---|---|---|---|---|---|
 | 1 | Closed loop | 8–10 × 6 | Task 1: 1–2 wire pieces. Task 2: several elements, e.g. the resistor and a wire, or the battery | 0 | 1 |
-| 2 | Ohm's law: pick the resistor | 10–12 × 6–8 | 1 resistor + 1–2 wires | 1–2 | 1 |
-| 3 | Ohm's law, more choices | 10–12 × 6–8 | 1 resistor + 2–4 wires | 3 | 1 |
+| 2 | Ohm's law: place the resistor | 10–12 × 6–8 | Task 1: the resistor + 2–3 wires. Task 2: the resistor + the battery. No choice yet | 0 | 1 |
+| 3 | Ohm's law, more choices | 10–12 × 6–8 | 1 resistor + 2–4 wires; the learner picks it among 2–4 resistors | 1–3 | 1 |
 | 4 | Series resistors (voltage divider) | 12 × 8 | 1–2 resistors + 3–5 wires | 2–3 | 1 |
 | 5 | Parallel resistors | 12 × 8 | 1 branch resistor + 4–6 wires | 2–3 | 1 |
 | 6 | Series–parallel combination | 12–14 × 8–10 | 2 resistors + 5–8 wires | 2–3 | 2 (a voltage and a current) |

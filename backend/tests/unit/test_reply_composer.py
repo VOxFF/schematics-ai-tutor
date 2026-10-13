@@ -105,6 +105,15 @@ def test_paragraphs_are_tidied_and_the_formula_passes_through():
     assert chat["terms"] == [[0, 7]]
 
 
+def test_latex_in_the_text_is_written_like_the_board_labels():
+    message = reply()
+    message["chat"]["text"] = r"Here R_2 is the one you choose, and V_{R2} is what $R_{\text{total}}$ splits; keep snake_case."
+    message["chat"]["formula"] = [r"V_{R2} = V \cdot \frac{R_2}{R_1 + R_2}"]
+    chat, _ = compose(message, profile(), 4)
+    assert chat["text"] == "Here R2 is the one you choose, and VR2 is what Rtotal splits; keep snake_case."
+    assert chat["formula"] == [r"V_{R2} = V \cdot \frac{R_2}{R_1 + R_2}"]  # the formula keeps its LaTeX
+
+
 def test_the_guide_is_canned_and_bolds_the_learners_topics():
     from app.reply_composer import guide
     p = profile("hint")

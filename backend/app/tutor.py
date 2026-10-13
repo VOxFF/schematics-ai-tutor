@@ -89,6 +89,8 @@ symbols with subscripts (R_1, V_{{R2}}, R_{{\\text{{total}}}}), numbers with uni
 words, no \\Rightarrow. Numbers only from the board: part values (placed or in the
 inventory), readings, targets, and results of earlier lines; small whole numbers
 for algebra (2 R_2). The backend recomputes every = and drops a wrong formula.
+LaTeX only in chat.formula: in the text, name symbols the way the board labels parts
+(R1, R2) and say "the voltage across R2", never V_R2 or other LaTeX.
 Never give the answer, the value of a part the learner still has to place, in the
 formula or the text, except on hint rung 4. A knowledge message about a topic
 with a formula in <profile> shows that formula, symbolic.
