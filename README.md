@@ -2,6 +2,9 @@
 
 A Claude-based tutor for learning electric circuits and schematics on an interactive grid.
 
+<img width="1722" height="916" alt="image" src="https://github.com/user-attachments/assets/5c4bf416-ff15-425d-ba8b-ea662805c79f" />
+
+
 ## Structure
 
 - Full layout: [docs/design.md](docs/design.md#9-repository-layout)
